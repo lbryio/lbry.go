@@ -106,20 +106,26 @@ func TestFloat64Pointer(t *testing.T) {
 	}
 }
 
-func TestFloat64IsZero(t *testing.T) {
+func TestFloat64IsNull(t *testing.T) {
 	f := Float64From(1.2345)
-	if f.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if f.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewFloat64(0, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewFloat64(0, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

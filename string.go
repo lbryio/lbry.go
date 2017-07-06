@@ -93,8 +93,8 @@ func (s String) Ptr() *string {
 	return &s.String
 }
 
-// IsZero returns true for null strings, for potential future omitempty support.
-func (s String) IsZero() bool {
+// IsNull returns true for null strings, for potential future omitempty support.
+func (s String) IsNull() bool {
 	return !s.Valid
 }
 

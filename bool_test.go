@@ -129,20 +129,26 @@ func TestBoolPointer(t *testing.T) {
 	}
 }
 
-func TestBoolIsZero(t *testing.T) {
+func TestBoolIsNull(t *testing.T) {
 	b := BoolFrom(true)
-	if b.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if b.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewBool(false, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewBool(false, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

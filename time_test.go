@@ -99,6 +99,29 @@ func TestTimeSetValid(t *testing.T) {
 	assertTime(t, change, "SetValid()")
 }
 
+func TestTimeIsNull(t *testing.T) {
+	ti := TimeFrom(time.Now())
+	if ti.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	null := NewTime(time.Now(), false)
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
+	}
+
+	zero := NewTime(time.Time{}, true)
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
+	}
+}
+
 func TestTimePointer(t *testing.T) {
 	ti := TimeFrom(timeValue)
 	ptr := ti.Ptr()

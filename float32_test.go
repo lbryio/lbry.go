@@ -106,20 +106,26 @@ func TestFloat32Pointer(t *testing.T) {
 	}
 }
 
-func TestFloat32IsZero(t *testing.T) {
+func TestFloat32IsNull(t *testing.T) {
 	f := Float32From(1.2345)
-	if f.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if f.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewFloat32(0, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewFloat32(0, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

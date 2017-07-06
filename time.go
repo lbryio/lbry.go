@@ -93,6 +93,11 @@ func (t Time) Ptr() *time.Time {
 	return &t.Time
 }
 
+// IsNull returns true for invalid Times, for future omitempty support (Go 1.4?)
+func (t Time) IsNull() bool {
+	return !t.Valid
+}
+
 // Scan implements the Scanner interface.
 func (t *Time) Scan(value interface{}) error {
 	var err error

@@ -99,8 +99,8 @@ func (u Uint) Ptr() *uint {
 	return &u.Uint
 }
 
-// IsZero returns true for invalid Uints, for future omitempty support (Go 1.4?)
-func (u Uint) IsZero() bool {
+// IsNull returns true for invalid Uints, for future omitempty support (Go 1.4?)
+func (u Uint) IsNull() bool {
 	return !u.Valid
 }
 

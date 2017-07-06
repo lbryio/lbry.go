@@ -100,8 +100,8 @@ func (b Bytes) Ptr() *[]byte {
 	return &b.Bytes
 }
 
-// IsZero returns true for null or zero Bytes's, for future omitempty support (Go 1.4?)
-func (b Bytes) IsZero() bool {
+// IsNull returns true for null or zero Bytes's, for future omitempty support (Go 1.4?)
+func (b Bytes) IsNull() bool {
 	return !b.Valid
 }
 

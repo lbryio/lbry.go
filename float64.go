@@ -94,8 +94,8 @@ func (f Float64) Ptr() *float64 {
 	return &f.Float64
 }
 
-// IsZero returns true for invalid Float64s, for future omitempty support (Go 1.4?)
-func (f Float64) IsZero() bool {
+// IsNull returns true for invalid Float64s, for future omitempty support (Go 1.4?)
+func (f Float64) IsNull() bool {
 	return !f.Valid
 }
 

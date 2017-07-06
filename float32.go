@@ -99,8 +99,8 @@ func (f Float32) Ptr() *float32 {
 	return &f.Float32
 }
 
-// IsZero returns true for invalid Float32s, for future omitempty support (Go 1.4?)
-func (f Float32) IsZero() bool {
+// IsNull returns true for invalid Float32s, for future omitempty support (Go 1.4?)
+func (f Float32) IsNull() bool {
 	return !f.Valid
 }
 

@@ -180,20 +180,26 @@ func TestJSONPointer(t *testing.T) {
 	}
 }
 
-func TestJSONIsZero(t *testing.T) {
+func TestJSONIsNull(t *testing.T) {
 	i := JSONFrom([]byte(`"hello"`))
-	if i.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if i.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewJSON(nil, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewJSON(nil, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

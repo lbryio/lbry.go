@@ -131,25 +131,31 @@ func TestStringPointer(t *testing.T) {
 	}
 }
 
-func TestStringIsZero(t *testing.T) {
+func TestStringIsNull(t *testing.T) {
 	str := StringFrom("test")
-	if str.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if str.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	blank := StringFrom("")
-	if blank.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if blank.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	empty := NewString("", true)
-	if empty.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if empty.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := StringFromPtr(nil)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
+	}
+
+	var testInt interface{}
+	testInt = empty
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

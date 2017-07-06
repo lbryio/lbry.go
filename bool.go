@@ -109,8 +109,8 @@ func (b Bool) Ptr() *bool {
 	return &b.Bool
 }
 
-// IsZero returns true for invalid Bools, for future omitempty support (Go 1.4?)
-func (b Bool) IsZero() bool {
+// IsNull returns true for invalid Bools, for future omitempty support (Go 1.4?)
+func (b Bool) IsNull() bool {
 	return !b.Valid
 }
 

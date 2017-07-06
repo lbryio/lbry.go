@@ -105,8 +105,8 @@ func (i Int16) Ptr() *int16 {
 	return &i.Int16
 }
 
-// IsZero returns true for invalid Int16's, for future omitempty support (Go 1.4?)
-func (i Int16) IsZero() bool {
+// IsNull returns true for invalid Int16's, for future omitempty support (Go 1.4?)
+func (i Int16) IsNull() bool {
 	return !i.Valid
 }
 

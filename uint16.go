@@ -105,8 +105,8 @@ func (u Uint16) Ptr() *uint16 {
 	return &u.Uint16
 }
 
-// IsZero returns true for invalid Uint16's, for future omitempty support (Go 1.4?)
-func (u Uint16) IsZero() bool {
+// IsNull returns true for invalid Uint16's, for future omitempty support (Go 1.4?)
+func (u Uint16) IsNull() bool {
 	return !u.Valid
 }
 

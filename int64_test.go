@@ -133,20 +133,26 @@ func TestInt64Pointer(t *testing.T) {
 	}
 }
 
-func TestInt64IsZero(t *testing.T) {
+func TestInt64IsNull(t *testing.T) {
 	i := Int64From(9223372036854775806)
-	if i.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if i.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewInt64(0, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewInt64(0, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

@@ -102,8 +102,8 @@ func (b Byte) Ptr() *byte {
 	return &b.Byte
 }
 
-// IsZero returns true for invalid Bytes, for future omitempty support (Go 1.4?)
-func (b Byte) IsZero() bool {
+// IsNull returns true for invalid Bytes, for future omitempty support (Go 1.4?)
+func (b Byte) IsNull() bool {
 	return !b.Valid
 }
 

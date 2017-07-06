@@ -133,20 +133,26 @@ func TestInt8Pointer(t *testing.T) {
 	}
 }
 
-func TestInt8IsZero(t *testing.T) {
+func TestInt8IsNull(t *testing.T) {
 	i := Int8From(126)
-	if i.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if i.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewInt8(0, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewInt8(0, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

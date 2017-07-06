@@ -110,20 +110,26 @@ func TestBytePointer(t *testing.T) {
 	}
 }
 
-func TestByteIsZero(t *testing.T) {
+func TestByteIsNull(t *testing.T) {
 	i := ByteFrom('b')
-	if i.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if i.IsNull() {
+		t.Errorf("IsNull() should be false")
 	}
 
 	null := NewByte(0, false)
-	if !null.IsZero() {
-		t.Errorf("IsZero() should be true")
+	if !null.IsNull() {
+		t.Errorf("IsNull() should be true")
 	}
 
 	zero := NewByte(0, true)
-	if zero.IsZero() {
-		t.Errorf("IsZero() should be false")
+	if zero.IsNull() {
+		t.Errorf("IsNull() should be false")
+	}
+
+	var testInt interface{}
+	testInt = zero
+	if _, ok := testInt.(Nullable); !ok {
+		t.Errorf("Nullable interface should be implemented")
 	}
 }
 

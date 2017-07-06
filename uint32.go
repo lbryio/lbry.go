@@ -105,8 +105,8 @@ func (u Uint32) Ptr() *uint32 {
 	return &u.Uint32
 }
 
-// IsZero returns true for invalid Uint32's, for future omitempty support (Go 1.4?)
-func (u Uint32) IsZero() bool {
+// IsNull returns true for invalid Uint32's, for future omitempty support (Go 1.4?)
+func (u Uint32) IsNull() bool {
 	return !u.Valid
 }
 

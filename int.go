@@ -99,8 +99,8 @@ func (i Int) Ptr() *int {
 	return &i.Int
 }
 
-// IsZero returns true for invalid Ints, for future omitempty support (Go 1.4?)
-func (i Int) IsZero() bool {
+// IsNull returns true for invalid Ints, for future omitempty support (Go 1.4?)
+func (i Int) IsNull() bool {
 	return !i.Valid
 }
 

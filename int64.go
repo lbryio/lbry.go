@@ -94,8 +94,8 @@ func (i Int64) Ptr() *int64 {
 	return &i.Int64
 }
 
-// IsZero returns true for invalid Int64's, for future omitempty support (Go 1.4?)
-func (i Int64) IsZero() bool {
+// IsNull returns true for invalid Int64's, for future omitempty support (Go 1.4?)
+func (i Int64) IsNull() bool {
 	return !i.Valid
 }
 

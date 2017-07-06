@@ -133,8 +133,8 @@ func (j JSON) Ptr() *[]byte {
 	return &j.JSON
 }
 
-// IsZero returns true for null or zero JSON's, for future omitempty support (Go 1.4?)
-func (j JSON) IsZero() bool {
+// IsNull returns true for null or zero JSON's, for future omitempty support (Go 1.4?)
+func (j JSON) IsNull() bool {
 	return !j.Valid
 }
 

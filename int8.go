@@ -105,8 +105,8 @@ func (i Int8) Ptr() *int8 {
 	return &i.Int8
 }
 
-// IsZero returns true for invalid Int8's, for future omitempty support (Go 1.4?)
-func (i Int8) IsZero() bool {
+// IsNull returns true for invalid Int8's, for future omitempty support (Go 1.4?)
+func (i Int8) IsNull() bool {
 	return !i.Valid
 }
 

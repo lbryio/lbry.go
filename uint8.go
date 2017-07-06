@@ -105,8 +105,8 @@ func (u Uint8) Ptr() *uint8 {
 	return &u.Uint8
 }
 
-// IsZero returns true for invalid Uint8's, for future omitempty support (Go 1.4?)
-func (u Uint8) IsZero() bool {
+// IsNull returns true for invalid Uint8's, for future omitempty support (Go 1.4?)
+func (u Uint8) IsNull() bool {
 	return !u.Valid
 }
 
