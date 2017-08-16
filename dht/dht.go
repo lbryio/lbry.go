@@ -5,16 +5,10 @@ package dht
 import (
 	"encoding/hex"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"math"
 	"net"
 	"time"
-)
-
-const (
-	// StandardMode follows the standard protocol
-	StandardMode = iota
-	// CrawlMode for crawling the dht network.
-	CrawlMode
 )
 
 // Config represents the configure of dht.
@@ -50,8 +44,6 @@ type Config struct {
 	BlockedIPs []string
 	// blacklist size
 	BlackListMaxSize int
-	// StandardMode or CrawlMode
-	Mode int
 	// the times it tries when send fails
 	Try int
 	// the size of packet need to be dealt with
@@ -83,24 +75,10 @@ func NewStandardConfig() *Config {
 		BlockedIPs:           make([]string, 0),
 		BlackListMaxSize:     65536,
 		Try:                  2,
-		Mode:                 StandardMode,
 		PacketJobLimit:       1024,
 		PacketWorkerLimit:    256,
 		RefreshNodeNum:       8,
 	}
-}
-
-// NewCrawlConfig returns a config in crawling mode.
-func NewCrawlConfig() *Config {
-	config := NewStandardConfig()
-	config.NodeExpriedAfter = 0
-	config.KBucketExpiredAfter = 0
-	config.CheckKBucketPeriod = time.Second * 5
-	config.KBucketSize = math.MaxInt32
-	config.Mode = CrawlMode
-	config.RefreshNodeNum = 256
-
-	return config
 }
 
 // DHT represents a DHT node.
@@ -156,18 +134,9 @@ func New(config *Config) *DHT {
 	return d
 }
 
-// IsStandardMode returns whether mode is StandardMode.
-func (dht *DHT) IsStandardMode() bool {
-	return dht.Mode == StandardMode
-}
-
-// IsCrawlMode returns whether mode is CrawlMode.
-func (dht *DHT) IsCrawlMode() bool {
-	return dht.Mode == CrawlMode
-}
-
-// init initializes global varables.
+// init initializes global variables.
 func (dht *DHT) init() {
+	log.Info("Initializing DHT")
 	listener, err := net.ListenPacket(dht.Network, dht.Address)
 	if err != nil {
 		panic(err)
@@ -210,6 +179,7 @@ func (dht *DHT) listen() {
 			if err != nil {
 				continue
 			}
+			log.Infof("Received %s", buff)
 
 			dht.packets <- packet{buff[:n], raddr}
 		}
@@ -219,10 +189,7 @@ func (dht *DHT) listen() {
 // id returns a id near to target if target is not null, otherwise it returns
 // the dht's node id.
 func (dht *DHT) id(target string) string {
-	if dht.IsStandardMode() || target == "" {
-		return dht.node.id.RawString()
-	}
-	return target[:15] + dht.node.id.RawString()[15:]
+	return dht.node.id.RawString()
 }
 
 // GetPeers returns peers who have announced having infoHash.
@@ -255,10 +222,10 @@ func (dht *DHT) GetPeers(infoHash string) ([]*Peer, error) {
 		}
 
 		i := 0
-		for _ = range time.Tick(time.Second * 1) {
+		for range time.Tick(time.Second * 1) {
 			i++
 			peers = dht.peersManager.GetPeers(infoHash, dht.K)
-			if len(peers) != 0 || i == 30 {
+			if len(peers) != 0 || i >= 30 {
 				break
 			}
 		}
@@ -277,6 +244,7 @@ func (dht *DHT) Run() {
 	dht.join()
 
 	dht.Ready = true
+	log.Info("DHT ready")
 
 	var pkt packet
 	tick := time.Tick(dht.CheckKBucketPeriod)

@@ -2,6 +2,8 @@ package dht
 
 import (
 	"errors"
+	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strings"
 	"sync"
@@ -313,8 +315,7 @@ func (tm *transactionManager) run() {
 }
 
 // sendQuery send query-formed data to the chan.
-func (tm *transactionManager) sendQuery(
-	no *node, queryType string, a map[string]interface{}) {
+func (tm *transactionManager) sendQuery(no *node, queryType string, a map[string]interface{}) {
 
 	// If the target is self, then stop.
 	if no.id != nil && no.id.RawString() == tm.dht.node.id.RawString() ||
@@ -354,9 +355,7 @@ func (tm *transactionManager) getPeers(no *node, infoHash string) {
 }
 
 // announcePeer sends announce_peer query to the chan.
-func (tm *transactionManager) announcePeer(
-	no *node, infoHash string, impliedPort, port int, token string) {
-
+func (tm *transactionManager) announcePeer(no *node, infoHash string, impliedPort, port int, token string) {
 	tm.sendQuery(no, announcePeerType, map[string]interface{}{
 		"id":           tm.dht.id(no.id.RawString()),
 		"info_hash":    infoHash,
@@ -422,8 +421,7 @@ func parseMessage(data interface{}) (map[string]interface{}, error) {
 }
 
 // handleRequest handles the requests received from udp.
-func handleRequest(dht *DHT, addr *net.UDPAddr,
-	response map[string]interface{}) (success bool) {
+func handleRequest(dht *DHT, addr *net.UDPAddr, response map[string]interface{}) (success bool) {
 
 	t := response["t"].(string)
 
@@ -469,36 +467,34 @@ func handleRequest(dht *DHT, addr *net.UDPAddr,
 			"id": dht.id(id),
 		}))
 	case findNodeType:
-		if dht.IsStandardMode() {
-			if err := parseKey(a, "target", "string"); err != nil {
-				send(dht, addr, makeError(t, protocolError, err.Error()))
-				return
-			}
-
-			target := a["target"].(string)
-			if len(target) != 20 {
-				send(dht, addr, makeError(t, protocolError, "invalid target"))
-				return
-			}
-
-			var nodes string
-			targetID := newBitmapFromString(target)
-
-			no, _ := dht.routingTable.GetNodeKBucktByID(targetID)
-			if no != nil {
-				nodes = no.CompactNodeInfo()
-			} else {
-				nodes = strings.Join(
-					dht.routingTable.GetNeighborCompactInfos(targetID, dht.K),
-					"",
-				)
-			}
-
-			send(dht, addr, makeResponse(t, map[string]interface{}{
-				"id":    dht.id(target),
-				"nodes": nodes,
-			}))
+		if err := parseKey(a, "target", "string"); err != nil {
+			send(dht, addr, makeError(t, protocolError, err.Error()))
+			return
 		}
+
+		target := a["target"].(string)
+		if len(target) != 20 {
+			send(dht, addr, makeError(t, protocolError, "invalid target"))
+			return
+		}
+
+		var nodes string
+		targetID := newBitmapFromString(target)
+
+		no, _ := dht.routingTable.GetNodeKBucktByID(targetID)
+		if no != nil {
+			nodes = no.CompactNodeInfo()
+		} else {
+			nodes = strings.Join(
+				dht.routingTable.GetNeighborCompactInfos(targetID, dht.K),
+				"",
+			)
+		}
+
+		send(dht, addr, makeResponse(t, map[string]interface{}{
+			"id":    dht.id(target),
+			"nodes": nodes,
+		}))
 	case getPeersType:
 		if err := parseKey(a, "info_hash", "string"); err != nil {
 			send(dht, addr, makeError(t, protocolError, err.Error()))
@@ -512,13 +508,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr,
 			return
 		}
 
-		if dht.IsCrawlMode() {
-			send(dht, addr, makeResponse(t, map[string]interface{}{
-				"id":    dht.id(infoHash),
-				"token": dht.tokenManager.token(addr),
-				"nodes": "",
-			}))
-		} else if peers := dht.peersManager.GetPeers(
+		if peers := dht.peersManager.GetPeers(
 			infoHash, dht.K); len(peers) > 0 {
 
 			values := make([]interface{}, len(peers))
@@ -568,13 +558,11 @@ func handleRequest(dht *DHT, addr *net.UDPAddr,
 			port = addr.Port
 		}
 
-		if dht.IsStandardMode() {
-			dht.peersManager.Insert(infoHash, newPeer(addr.IP, port, token))
+		dht.peersManager.Insert(infoHash, newPeer(addr.IP, port, token))
 
-			send(dht, addr, makeResponse(t, map[string]interface{}{
-				"id": dht.id(id),
-			}))
-		}
+		send(dht, addr, makeResponse(t, map[string]interface{}{
+			"id": dht.id(id),
+		}))
 
 		if dht.OnAnnouncePeer != nil {
 			dht.OnAnnouncePeer(infoHash, addr.IP.String(), port)
@@ -592,8 +580,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr,
 // findOn puts nodes in the response to the routingTable, then if target is in
 // the nodes or all nodes are in the routingTable, it stops. Otherwise it
 // continues to findNode or getPeers.
-func findOn(dht *DHT, r map[string]interface{}, target *bitmap,
-	queryType string) error {
+func findOn(dht *DHT, r map[string]interface{}, target *bitmap, queryType string) error {
 
 	if err := parseKey(r, "nodes", "string"); err != nil {
 		return err
@@ -637,8 +624,7 @@ func findOn(dht *DHT, r map[string]interface{}, target *bitmap,
 }
 
 // handleResponse handles responses received from udp.
-func handleResponse(dht *DHT, addr *net.UDPAddr,
-	response map[string]interface{}) (success bool) {
+func handleResponse(dht *DHT, addr *net.UDPAddr, response map[string]interface{}) (success bool) {
 
 	t := response["t"].(string)
 
@@ -722,8 +708,7 @@ func handleResponse(dht *DHT, addr *net.UDPAddr,
 }
 
 // handleError handles errors received from udp.
-func handleError(dht *DHT, addr *net.UDPAddr,
-	response map[string]interface{}) (success bool) {
+func handleError(dht *DHT, addr *net.UDPAddr, response map[string]interface{}) (success bool) {
 
 	if err := parseKey(response, "e", "list"); err != nil {
 		return
@@ -750,6 +735,7 @@ var handlers = map[string]func(*DHT, *net.UDPAddr, map[string]interface{}) bool{
 
 // handle handles packets received from udp.
 func handle(dht *DHT, pkt packet) {
+	log.Infof("Packet from %s: %s", pkt.raddr.IP.String(), pkt.data)
 	if len(dht.workerTokens) == dht.PacketWorkerLimit {
 		return
 	}
@@ -762,16 +748,19 @@ func handle(dht *DHT, pkt packet) {
 		}()
 
 		if dht.blackList.in(pkt.raddr.IP.String(), pkt.raddr.Port) {
+			log.Infof("%s blacklisted, ignoring packet", pkt.raddr.IP.String())
 			return
 		}
 
 		data, err := Decode(pkt.data)
 		if err != nil {
+			log.Errorf("Error decoding data: %s\n%s", err, pkt.data)
 			return
 		}
 
 		response, err := parseMessage(data)
 		if err != nil {
+			log.Errorf("Error parsing message: %s", err)
 			return
 		}
 

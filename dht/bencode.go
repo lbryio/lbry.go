@@ -21,8 +21,7 @@ func find(data []byte, start int, target rune) (index int) {
 
 // DecodeString decodes a string in the data. It returns a tuple
 // (decoded result, the end position, error).
-func DecodeString(data []byte, start int) (
-	result interface{}, index int, err error) {
+func DecodeString(data []byte, start int) (result interface{}, index int, err error) {
 
 	if start >= len(data) || data[start] < '0' || data[start] > '9' {
 		err = errors.New("invalid string bencode")
@@ -57,8 +56,7 @@ func DecodeString(data []byte, start int) (
 }
 
 // DecodeInt decodes int value in the data.
-func DecodeInt(data []byte, start int) (
-	result interface{}, index int, err error) {
+func DecodeInt(data []byte, start int) (result interface{}, index int, err error) {
 
 	if start >= len(data) || data[start] != 'i' {
 		err = errors.New("invalid int bencode")
@@ -82,9 +80,7 @@ func DecodeInt(data []byte, start int) (
 }
 
 // decodeItem decodes an item of dict or list.
-func decodeItem(data []byte, i int) (
-	result interface{}, index int, err error) {
-
+func decodeItem(data []byte, i int) (result interface{}, index int, err error) {
 	var decodeFunc = []func([]byte, int) (interface{}, int, error){
 		DecodeString, DecodeInt, DecodeList, DecodeDict,
 	}
@@ -101,8 +97,7 @@ func decodeItem(data []byte, i int) (
 }
 
 // DecodeList decodes a list value.
-func DecodeList(data []byte, start int) (
-	result interface{}, index int, err error) {
+func DecodeList(data []byte, start int) (result interface{}, index int, err error) {
 
 	if start >= len(data) || data[start] != 'l' {
 		err = errors.New("invalid list bencode")
@@ -137,8 +132,7 @@ func DecodeList(data []byte, start int) (
 }
 
 // DecodeDict decodes a map value.
-func DecodeDict(data []byte, start int) (
-	result interface{}, index int, err error) {
+func DecodeDict(data []byte, start int) (result interface{}, index int, err error) {
 
 	if start >= len(data) || data[start] != 'd' {
 		err = errors.New("invalid dict bencode")

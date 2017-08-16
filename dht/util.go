@@ -66,8 +66,7 @@ func decodeCompactIPPortInfo(info string) (ip net.IP, port int, err error) {
 // compactIP-address/port info.
 func encodeCompactIPPortInfo(ip net.IP, port int) (info string, err error) {
 	if port > 65535 || port < 0 {
-		err = errors.New(
-			"port should be no greater than 65535 and no less than 0")
+		err = errors.New("port should be no greater than 65535 and no less than 0")
 		return
 	}
 

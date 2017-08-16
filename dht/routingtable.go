@@ -2,7 +2,7 @@ package dht
 
 import (
 	"container/heap"
-	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -518,12 +518,6 @@ func (rt *routingTable) Fresh() {
 				rt.clearQueue.PushBack(no)
 			}
 			i++
-		}
-	}
-
-	if rt.dht.IsCrawlMode() {
-		for e := range rt.clearQueue.Iter() {
-			rt.Remove(e.Value.(*node).id)
 		}
 	}
 
