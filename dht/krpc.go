@@ -446,7 +446,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, response map[string]interface{})
 		return
 	}
 
-	if len(id) != 20 {
+	if len(id) != nodeIDLength {
 		send(dht, addr, makeError(t, protocolError, "invalid id"))
 		return
 	}
@@ -473,7 +473,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, response map[string]interface{})
 		}
 
 		target := a["target"].(string)
-		if len(target) != 20 {
+		if len(target) != nodeIDLength {
 			send(dht, addr, makeError(t, protocolError, "invalid target"))
 			return
 		}
@@ -503,7 +503,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, response map[string]interface{})
 
 		infoHash := a["info_hash"].(string)
 
-		if len(infoHash) != 20 {
+		if len(infoHash) != nodeIDLength {
 			send(dht, addr, makeError(t, protocolError, "invalid info_hash"))
 			return
 		}
@@ -587,14 +587,14 @@ func findOn(dht *DHT, r map[string]interface{}, target *bitmap, queryType string
 	}
 
 	nodes := r["nodes"].(string)
-	if len(nodes)%26 != 0 {
-		return errors.New("the length of nodes should can be divided by 26")
+	if len(nodes)%compactNodeInfoLength != 0 {
+		return fmt.Errorf("the length of nodes should can be divided by %d", compactNodeInfoLength)
 	}
 
 	hasNew, found := false, false
-	for i := 0; i < len(nodes)/26; i++ {
+	for i := 0; i < len(nodes)/compactNodeInfoLength; i++ {
 		no, _ := newNodeFromCompactInfo(
-			string(nodes[i*26:(i+1)*26]), dht.Network)
+			string(nodes[i*compactNodeInfoLength:(i+1)*compactNodeInfoLength]), dht.Network)
 
 		if no.id.RawString() == target.RawString() {
 			found = true

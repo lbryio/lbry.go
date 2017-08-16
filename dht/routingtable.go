@@ -11,6 +11,8 @@ import (
 
 // maxPrefixLength is the length of DHT node.
 const maxPrefixLength = 160
+const nodeIDLength = 20
+const compactNodeInfoLength = nodeIDLength + 6
 
 // node represents a DHT node.
 type node struct {
@@ -21,8 +23,8 @@ type node struct {
 
 // newNode returns a node pointer.
 func newNode(id, network, address string) (*node, error) {
-	if len(id) != 20 {
-		return nil, errors.New("node id should be a 20-length string")
+	if len(id) != nodeIDLength {
+		return nil, fmt.Errorf("node id should be a %d-length string", nodeIDLength)
 	}
 
 	addr, err := net.ResolveUDPAddr(network, address)
@@ -34,15 +36,14 @@ func newNode(id, network, address string) (*node, error) {
 }
 
 // newNodeFromCompactInfo parses compactNodeInfo and returns a node pointer.
-func newNodeFromCompactInfo(
-	compactNodeInfo string, network string) (*node, error) {
+func newNodeFromCompactInfo(compactNodeInfo string, network string) (*node, error) {
 
-	if len(compactNodeInfo) != 26 {
-		return nil, errors.New("compactNodeInfo should be a 26-length string")
+	if len(compactNodeInfo) != compactNodeInfoLength {
+		return nil, fmt.Errorf("compactNodeInfo should be a %d-length string", compactNodeInfoLength)
 	}
 
-	id := compactNodeInfo[:20]
-	ip, port, _ := decodeCompactIPPortInfo(compactNodeInfo[20:])
+	id := compactNodeInfo[:nodeIDLength]
+	ip, port, _ := decodeCompactIPPortInfo(compactNodeInfo[nodeIDLength:])
 
 	return newNode(id, network, genAddress(ip.String(), port))
 }
@@ -179,7 +180,7 @@ func (bucket *kbucket) RandomChildID() string {
 
 	return strings.Join([]string{
 		bucket.prefix.RawString()[:prefixLen],
-		randomString(20 - prefixLen),
+		randomString(nodeIDLength - prefixLen),
 	}, "")
 }
 

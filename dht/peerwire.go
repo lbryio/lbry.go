@@ -36,6 +36,7 @@ var handshakePrefix = []byte{
 	19, 66, 105, 116, 84, 111, 114, 114, 101, 110, 116, 32, 112, 114,
 	111, 116, 111, 99, 111, 108, 0, 0, 0, 0, 0, 16, 0, 1,
 }
+var handshakePrefixLength = len(handshakePrefix)
 
 // read reads size-length bytes from conn to data.
 func read(conn *net.TCPConn, size int, data *bytes.Buffer) error {
@@ -81,10 +82,10 @@ func sendMessage(conn *net.TCPConn, data []byte) error {
 
 // sendHandshake sends handshake message to conn.
 func sendHandshake(conn *net.TCPConn, infoHash, peerID []byte) error {
-	data := make([]byte, 68)
-	copy(data[:28], handshakePrefix)
-	copy(data[28:48], infoHash)
-	copy(data[48:], peerID)
+	data := make([]byte, handshakePrefixLength+nodeIDLength+len(peerID))
+	copy(data[:handshakePrefixLength], handshakePrefix)
+	copy(data[handshakePrefixLength:handshakePrefixLength+nodeIDLength], infoHash)
+	copy(data[handshakePrefixLength+nodeIDLength:], peerID)
 
 	conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
 	_, err := conn.Write(data)
@@ -93,7 +94,7 @@ func sendHandshake(conn *net.TCPConn, infoHash, peerID []byte) error {
 
 // onHandshake handles the handshake response.
 func onHandshake(data []byte) (err error) {
-	if !(bytes.Equal(handshakePrefix[:20], data[:20]) && data[25]&0x10 != 0) {
+	if !(bytes.Equal(handshakePrefix[:handshakePrefixLength], data[:handshakePrefixLength]) && data[25]&0x10 != 0) {
 		err = errors.New("invalid handshake response")
 	}
 	return
@@ -253,7 +254,7 @@ func (wire *Wire) fetchMetadata(r Request) {
 	data := bytes.NewBuffer(nil)
 	data.Grow(BLOCK)
 
-	if sendHandshake(conn, infoHash, []byte(randomString(20))) != nil ||
+	if sendHandshake(conn, infoHash, []byte(randomString(nodeIDLength))) != nil ||
 		read(conn, 68, data) != nil ||
 		onHandshake(data.Next(68)) != nil ||
 		sendExtHandshake(conn) != nil {
@@ -374,7 +375,7 @@ func (wire *Wire) Run() {
 				string(r.InfoHash), genAddress(r.IP, r.Port),
 			}, ":")
 
-			if len(r.InfoHash) != 20 || wire.blackList.in(r.IP, r.Port) ||
+			if len(r.InfoHash) != nodeIDLength || wire.blackList.in(r.IP, r.Port) ||
 				wire.queue.Has(key) {
 				return
 			}

@@ -103,7 +103,7 @@ func New(config *Config) *DHT {
 		config = NewStandardConfig()
 	}
 
-	node, err := newNode(randomString(20), config.Network, config.Address)
+	node, err := newNode(randomString(nodeIDLength), config.Network, config.Address)
 	if err != nil {
 		panic(err)
 	}
