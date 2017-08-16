@@ -15,9 +15,6 @@ import (
 type Config struct {
 	// in mainline dht, k = 8
 	K int
-	// for crawling mode, we put all nodes in one bucket, so KBucketSize may
-	// not be K
-	KBucketSize int
 	// candidates are udp, udp4, udp6
 	Network string
 	// format is `ip:port`
@@ -40,10 +37,6 @@ type Config struct {
 	OnGetPeers func(string, string, int)
 	// callback when got announce_peer request
 	OnAnnouncePeer func(string, string, int)
-	// blcoked ips
-	BlockedIPs []string
-	// blacklist size
-	BlackListMaxSize int
 	// the times it tries when send fails
 	Try int
 	// the size of packet need to be dealt with
@@ -57,14 +50,13 @@ type Config struct {
 // NewStandardConfig returns a Config pointer with default values.
 func NewStandardConfig() *Config {
 	return &Config{
-		K:           8,
-		KBucketSize: 8,
-		Network:     "udp4",
-		Address:     ":6881",
+		K:       8,
+		Network: "udp4",
+		Address: ":4444",
 		PrimeNodes: []string{
-			"router.bittorrent.com:6881",
-			"router.utorrent.com:6881",
-			"dht.transmissionbt.com:6881",
+			"lbrynet1.lbry.io:4444",
+			"lbrynet2.lbry.io:4444",
+			"lbrynet3.lbry.io:4444",
 		},
 		NodeExpriedAfter:     time.Duration(time.Minute * 15),
 		KBucketExpiredAfter:  time.Duration(time.Minute * 15),
@@ -72,8 +64,6 @@ func NewStandardConfig() *Config {
 		TokenExpiredAfter:    time.Duration(time.Minute * 10),
 		MaxTransactionCursor: math.MaxUint32,
 		MaxNodes:             5000,
-		BlockedIPs:           make([]string, 0),
-		BlackListMaxSize:     65536,
 		Try:                  2,
 		PacketJobLimit:       1024,
 		PacketWorkerLimit:    256,
@@ -90,7 +80,6 @@ type DHT struct {
 	transactionManager *transactionManager
 	peersManager       *peersManager
 	tokenManager       *tokenManager
-	blackList          *blackList
 	Ready              bool
 	packets            chan packet
 	workerTokens       chan struct{}
@@ -111,25 +100,9 @@ func New(config *Config) *DHT {
 	d := &DHT{
 		Config:       config,
 		node:         node,
-		blackList:    newBlackList(config.BlackListMaxSize),
 		packets:      make(chan packet, config.PacketJobLimit),
 		workerTokens: make(chan struct{}, config.PacketWorkerLimit),
 	}
-
-	for _, ip := range config.BlockedIPs {
-		d.blackList.insert(ip, -1)
-	}
-
-	go func() {
-		for _, ip := range getLocalIPs() {
-			d.blackList.insert(ip, -1)
-		}
-
-		ip, err := getRemoteIP()
-		if err != nil {
-			d.blackList.insert(ip, -1)
-		}
-	}()
 
 	return d
 }
@@ -143,15 +116,13 @@ func (dht *DHT) init() {
 	}
 
 	dht.conn = listener.(*net.UDPConn)
-	dht.routingTable = newRoutingTable(dht.KBucketSize, dht)
+	dht.routingTable = newRoutingTable(dht.K, dht)
 	dht.peersManager = newPeersManager(dht)
 	dht.tokenManager = newTokenManager(dht.TokenExpiredAfter, dht)
-	dht.transactionManager = newTransactionManager(
-		dht.MaxTransactionCursor, dht)
+	dht.transactionManager = newTransactionManager(dht.MaxTransactionCursor, dht)
 
 	go dht.transactionManager.run()
 	go dht.tokenManager.clear()
-	go dht.blackList.clear()
 }
 
 // join makes current node join the dht network.
@@ -162,9 +133,8 @@ func (dht *DHT) join() {
 			continue
 		}
 
-		// NOTE: Temporary node has NOT node id.
 		dht.transactionManager.findNode(
-			&node{addr: raddr},
+			&node{id: dht.node.id, addr: raddr},
 			dht.node.id.RawString(),
 		)
 	}
@@ -179,7 +149,6 @@ func (dht *DHT) listen() {
 			if err != nil {
 				continue
 			}
-			log.Infof("Received %s", buff)
 
 			dht.packets <- packet{buff[:n], raddr}
 		}
@@ -214,12 +183,12 @@ func (dht *DHT) GetPeers(infoHash string) ([]*Peer, error) {
 	ch := make(chan struct{})
 
 	go func() {
-		neighbors := dht.routingTable.GetNeighbors(
-			newBitmapFromString(infoHash), dht.K)
-
-		for _, no := range neighbors {
-			dht.transactionManager.getPeers(no, infoHash)
-		}
+		//neighbors := dht.routingTable.GetNeighbors(
+		//	newBitmapFromString(infoHash), dht.K)
+		//
+		//for _, no := range neighbors {
+		//	dht.transactionManager.getPeers(no, infoHash)
+		//}
 
 		i := 0
 		for range time.Tick(time.Second * 1) {

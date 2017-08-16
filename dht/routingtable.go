@@ -11,7 +11,7 @@ import (
 
 // maxPrefixLength is the length of DHT node.
 const maxPrefixLength = 160
-const nodeIDLength = 20
+const nodeIDLength = 48
 const compactNodeInfoLength = nodeIDLength + 6
 
 // node represents a DHT node.
@@ -358,11 +358,6 @@ func newRoutingTable(k int, dht *DHT) *routingTable {
 func (rt *routingTable) Insert(nd *node) bool {
 	rt.Lock()
 	defer rt.Unlock()
-
-	if rt.dht.blackList.in(nd.addr.IP.String(), nd.addr.Port) ||
-		rt.cachedNodes.Len() >= rt.dht.MaxNodes {
-		return false
-	}
 
 	var (
 		next   *routingTableNode
