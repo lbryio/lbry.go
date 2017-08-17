@@ -2,7 +2,9 @@ package dht
 
 import (
 	"container/heap"
+	"encoding/hex"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strings"
 	"sync"
@@ -61,6 +63,13 @@ func (node *node) CompactNodeInfo() string {
 	return strings.Join([]string{
 		node.id.RawString(), node.CompactIPPortInfo(),
 	}, "")
+}
+
+func (node *node) HexID() string {
+	if node.id == nil {
+		return ""
+	}
+	return hex.EncodeToString([]byte(node.id.RawString()))
 }
 
 // Peer represents a peer contact.
@@ -358,6 +367,8 @@ func newRoutingTable(k int, dht *DHT) *routingTable {
 func (rt *routingTable) Insert(nd *node) bool {
 	rt.Lock()
 	defer rt.Unlock()
+
+	log.Infof("Adding node to routing table: %s (%s:%d)", nd.id.RawString(), nd.addr.IP, nd.addr.Port)
 
 	var (
 		next   *routingTableNode

@@ -109,7 +109,8 @@ func New(config *Config) *DHT {
 
 // init initializes global variables.
 func (dht *DHT) init() {
-	log.Info("Initializing DHT")
+	log.Info("Initializing DHT on " + dht.Address)
+	log.Infof("Node ID is %s", dht.node.HexID())
 	listener, err := net.ListenPacket(dht.Network, dht.Address)
 	if err != nil {
 		panic(err)
@@ -133,8 +134,9 @@ func (dht *DHT) join() {
 			continue
 		}
 
+		// NOTE: Temporary node has NO node id.
 		dht.transactionManager.findNode(
-			&node{id: dht.node.id, addr: raddr},
+			&node{addr: raddr},
 			dht.node.id.RawString(),
 		)
 	}
@@ -155,27 +157,21 @@ func (dht *DHT) listen() {
 	}()
 }
 
-// id returns a id near to target if target is not null, otherwise it returns
-// the dht's node id.
-func (dht *DHT) id(target string) string {
-	return dht.node.id.RawString()
-}
-
-// GetPeers returns peers who have announced having infoHash.
-func (dht *DHT) GetPeers(infoHash string) ([]*Peer, error) {
+// FindNode returns peers who have announced having key.
+func (dht *DHT) FindNode(key string) ([]*Peer, error) {
 	if !dht.Ready {
 		return nil, errors.New("dht not ready")
 	}
 
-	if len(infoHash) == 40 {
-		data, err := hex.DecodeString(infoHash)
+	if len(key) == nodeIDLength*2 {
+		data, err := hex.DecodeString(key)
 		if err != nil {
 			return nil, err
 		}
-		infoHash = string(data)
+		key = string(data)
 	}
 
-	peers := dht.peersManager.GetPeers(infoHash, dht.K)
+	peers := dht.peersManager.GetPeers(key, dht.K)
 	if len(peers) != 0 {
 		return peers, nil
 	}
@@ -183,17 +179,16 @@ func (dht *DHT) GetPeers(infoHash string) ([]*Peer, error) {
 	ch := make(chan struct{})
 
 	go func() {
-		//neighbors := dht.routingTable.GetNeighbors(
-		//	newBitmapFromString(infoHash), dht.K)
-		//
-		//for _, no := range neighbors {
-		//	dht.transactionManager.getPeers(no, infoHash)
-		//}
+		neighbors := dht.routingTable.GetNeighbors(newBitmapFromString(key), dht.K)
+
+		for _, no := range neighbors {
+			dht.transactionManager.findNode(no, key)
+		}
 
 		i := 0
 		for range time.Tick(time.Second * 1) {
 			i++
-			peers = dht.peersManager.GetPeers(infoHash, dht.K)
+			peers = dht.peersManager.GetPeers(key, dht.K)
 			if len(peers) != 0 || i >= 30 {
 				break
 			}

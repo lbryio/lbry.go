@@ -65,20 +65,38 @@ func (r Request) Encode() ([]byte, error) {
 	})
 }
 
+type findNodeDatum struct {
+	ID   string
+	IP   string
+	Port int
+}
 type Response struct {
-	ID       string
-	NodeID   string
-	Response string
+	ID           string
+	NodeID       string
+	Data         string
+	FindNodeData []findNodeDatum
 }
 
 func (r Response) GetID() string { return r.ID }
 func (r Response) Encode() ([]byte, error) {
-	return bencode.EncodeBytes(map[string]interface{}{
+	data := map[string]interface{}{
 		headerTypeField:      responseType,
 		headerMessageIDField: r.ID,
 		headerNodeIDField:    r.NodeID,
-		headerPayloadField:   r.Response,
-	})
+	}
+	if r.Data != "" {
+		data[headerPayloadField] = r.Data
+	} else {
+		var nodes []interface{}
+		for _, n := range r.FindNodeData {
+			nodes = append(nodes, []interface{}{n.ID, n.IP, n.Port})
+		}
+		data[headerPayloadField] = nodes
+	}
+
+	log.Info("Response data is ")
+	spew.Dump(data)
+	return bencode.EncodeBytes(data)
 }
 
 type Error struct {
@@ -379,7 +397,7 @@ func (tm *transactionManager) sendQuery(no *node, request Request) {
 	}
 
 	request.ID = tm.genTransID()
-	request.NodeID = tm.dht.id(no.id.RawString())
+	request.NodeID = tm.dht.node.id.RawString()
 	tm.queryChan <- &query{node: no, request: request}
 }
 
@@ -433,10 +451,18 @@ func handle(dht *DHT, pkt packet) {
 
 		case responseType:
 			response := Response{
-				ID:       data[headerMessageIDField].(string),
-				NodeID:   data[headerNodeIDField].(string),
-				Response: data[headerPayloadField].(string),
+				ID:     data[headerMessageIDField].(string),
+				NodeID: data[headerNodeIDField].(string),
 			}
+
+			if reflect.TypeOf(data[headerPayloadField]).Kind() == reflect.String {
+				response.Data = data[headerPayloadField].(string)
+			} else {
+				response.FindNodeData = getFindNodeResponse(data[headerPayloadField])
+			}
+
+			spew.Dump(response)
+
 			handleResponse(dht, pkt.raddr, response)
 
 		case errorType:
@@ -453,6 +479,38 @@ func handle(dht *DHT, pkt packet) {
 			return
 		}
 	}()
+}
+
+func getFindNodeResponse(i interface{}) (data []findNodeDatum) {
+	if reflect.TypeOf(i).Kind() != reflect.Slice {
+		return
+	}
+
+	v := reflect.ValueOf(i)
+	for i := 0; i < v.Len(); i++ {
+		if v.Index(i).Kind() != reflect.Interface {
+			continue
+		}
+
+		contact := v.Index(i).Elem()
+		if contact.Type().Kind() != reflect.Slice || contact.Len() != 3 {
+			continue
+		}
+
+		if contact.Index(0).Elem().Kind() != reflect.String ||
+			contact.Index(1).Elem().Kind() != reflect.String ||
+			!(contact.Index(2).Elem().Kind() == reflect.Int64 ||
+				contact.Index(2).Elem().Kind() == reflect.Int) {
+			continue
+		}
+
+		data = append(data, findNodeDatum{
+			ID:   contact.Index(0).Elem().String(),
+			IP:   contact.Index(1).Elem().String(),
+			Port: int(contact.Index(2).Elem().Int()),
+		})
+	}
+	return
 }
 
 func getArgs(argsInt interface{}) (args []string) {
@@ -484,7 +542,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 
 	switch request.Method {
 	case pingMethod:
-		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Response: "pong"})
+		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: "pong"})
 	case findNodeMethod:
 		if len(request.Args) < 1 {
 			send(dht, addr, Error{ID: request.ID, NodeID: dht.node.id.RawString(), Response: []string{"No target"}})
@@ -497,17 +555,20 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 			return
 		}
 
-		var nodes string
+		nodes := []findNodeDatum{}
 		targetID := newBitmapFromString(target)
 
 		no, _ := dht.routingTable.GetNodeKBucktByID(targetID)
 		if no != nil {
-			nodes = no.CompactNodeInfo()
+			nodes = []findNodeDatum{{ID: no.id.RawString(), IP: no.addr.IP.String(), Port: no.addr.Port}}
 		} else {
-			nodes = strings.Join(dht.routingTable.GetNeighborCompactInfos(targetID, dht.K), "")
+			neighbors := dht.routingTable.GetNeighbors(targetID, dht.K)
+			for _, n := range neighbors {
+				nodes = append(nodes, findNodeDatum{ID: n.id.RawString(), IP: n.addr.IP.String(), Port: n.addr.Port})
+			}
 		}
 
-		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Response: nodes})
+		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: nodes})
 
 	default:
 		//		send(dht, addr, makeError(t, protocolError, "invalid q"))
@@ -522,15 +583,13 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 // findOn puts nodes in the response to the routingTable, then if target is in
 // the nodes or all nodes are in the routingTable, it stops. Otherwise it
 // continues to findNode or getPeers.
-func findOn(dht *DHT, nodes string, target *bitmap, queryType string) error {
-	if len(nodes)%compactNodeInfoLength != 0 {
-		return fmt.Errorf("the length of nodes should can be divided by %d", compactNodeInfoLength)
-	}
-
+func findOn(dht *DHT, nodes []findNodeDatum, target *bitmap, queryType string) error {
 	hasNew, found := false, false
-	for i := 0; i < len(nodes)/compactNodeInfoLength; i++ {
-		no, _ := newNodeFromCompactInfo(
-			string(nodes[i*compactNodeInfoLength:(i+1)*compactNodeInfoLength]), dht.Network)
+	for _, n := range nodes {
+		no, err := newNode(n.ID, dht.Network, fmt.Sprintf("%s:%d", n.IP, n.Port))
+		if err != nil {
+			return err
+		}
 
 		if no.id.RawString() == target.RawString() {
 			found = true
@@ -581,7 +640,7 @@ func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) (success boo
 	case pingMethod:
 	case findNodeMethod:
 		target := trans.request.Args[0]
-		if findOn(dht, response.Response, newBitmapFromString(target), findNodeMethod) != nil {
+		if findOn(dht, response.FindNodeData, newBitmapFromString(target), findNodeMethod) != nil {
 			return
 		}
 	default:
