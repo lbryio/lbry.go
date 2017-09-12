@@ -165,7 +165,7 @@ func (tm *tokenManager) token(addr *net.UDPAddr) string {
 
 // clear removes expired tokens.
 func (tm *tokenManager) clear() {
-	for _ = range time.Tick(time.Minute * 3) {
+	for range time.Tick(time.Minute * 3) {
 		keys := make([]interface{}, 0, 100)
 
 		for item := range tm.Iter() {
@@ -189,16 +189,6 @@ func (tm *tokenManager) check(addr *net.UDPAddr, tokenString string) bool {
 	}
 
 	return ok && tokenString == tk.data
-}
-
-// makeQuery returns a query-formed data.
-func makeQuery(t, q string, a map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"t": t,
-		"y": "q",
-		"q": q,
-		"a": a,
-	}
 }
 
 // send sends data to the udp.
