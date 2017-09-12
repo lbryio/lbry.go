@@ -2,9 +2,9 @@ package jsonrpc
 
 import (
 	"encoding/json"
-	"github.com/go-errors/errors"
 	"reflect"
 
+	"github.com/go-errors/errors"
 	lbryschema "github.com/lbryio/lbryschema.go/pb"
 )
 
@@ -202,7 +202,7 @@ type BlobGetResponse struct {
 	SuggestedFileName string `json:"suggested_file_name"`
 }
 
-type StreamCostEstimateResponse *float64
+type StreamCostEstimateResponse float64
 
 type GetResponse File
 type FileListResponse []File

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/mitchellh/mapstructure"
+	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -45,6 +46,7 @@ func decode(data interface{}, targetStruct interface{}) error {
 }
 
 func (d *Client) callNoDecode(command string, params map[string]interface{}) (interface{}, error) {
+	log.Debugln("Calling " + command)
 	r, err := d.conn.CallNamed(command, params)
 	if err != nil {
 		return nil, err
@@ -192,9 +194,27 @@ func (d *Client) StreamCostEstimate(url string, size *uint64) (*StreamCostEstima
 	})
 }
 
-func (d *Client) FileList() (*FileListResponse, error) {
+type FileListOptions struct {
+	SDHash     *string
+	StreamHash *string
+	FileName   *string
+	ClaimID    *string
+	Outpoint   *string
+	RowID      *string
+	Name       *string
+}
+
+func (d *Client) FileList(options FileListOptions) (*FileListResponse, error) {
 	response := new(FileListResponse)
-	return response, d.call(response, "file_list", map[string]interface{}{})
+	return response, d.call(response, "file_list", map[string]interface{}{
+		"sd_hash":     options.SDHash,
+		"stream_hash": options.StreamHash,
+		"file_name":   options.FileName,
+		"claim_id":    options.ClaimID,
+		"outpoint":    options.Outpoint,
+		"rowid":       options.RowID,
+		"name":        options.Name,
+	})
 }
 
 func (d *Client) Resolve(url string) (*ResolveResponse, error) {
