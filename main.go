@@ -16,10 +16,9 @@ func main() {
 
 	conn := jsonrpc.NewClient("")
 
-	response, err := conn.Get("one", nil, nil)
+	response, err := conn.Resolve("one")
 	if err != nil {
 		panic(err)
 	}
 	spew.Dump(response)
-
 }
