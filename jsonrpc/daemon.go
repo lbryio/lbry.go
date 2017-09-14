@@ -5,9 +5,12 @@ import (
 	"errors"
 	"strconv"
 
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
+	"reflect"
+	"strings"
 )
 
 const DefaultPort = 5279
@@ -45,8 +48,20 @@ func decode(data interface{}, targetStruct interface{}) error {
 	return decoder.Decode(data)
 }
 
+func debugParams(params map[string]interface{}) string {
+	var s []string
+	for k, v := range params {
+		r := reflect.ValueOf(v)
+		if r.Kind() == reflect.Ptr && r.IsNil() {
+			continue
+		}
+		s = append(s, fmt.Sprintf("%s=%+v", k, v))
+	}
+	return strings.Join(s, " ")
+}
+
 func (d *Client) callNoDecode(command string, params map[string]interface{}) (interface{}, error) {
-	log.Debugln("Calling " + command)
+	log.Debugln("jsonrpc: " + command + " " + debugParams(params))
 	r, err := d.conn.CallNamed(command, params)
 	if err != nil {
 		return nil, err
