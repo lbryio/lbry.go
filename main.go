@@ -9,5 +9,8 @@ func main() {
 
 	//franklin()
 
-	ytsync()
+	err := ytsync()
+	if err != nil {
+		panic(err)
+	}
 }

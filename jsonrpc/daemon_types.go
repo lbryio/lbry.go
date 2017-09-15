@@ -8,6 +8,20 @@ import (
 	lbryschema "github.com/lbryio/lbryschema.go/pb"
 )
 
+type Currency string
+
+const (
+	CurrencyLBC = Currency("LBC")
+	CurrencyUSD = Currency("USD")
+	CurrencyBTC = Currency("BTC")
+)
+
+type Fee struct {
+	Currency Currency `json:"currency"`
+	Amount   float64  `json:"amount"`
+	Address  *string  `json:"address"`
+}
+
 type Support struct {
 	Amount float64 `json:"amount"`
 	Nout   int     `json:"nout"`
@@ -212,4 +226,41 @@ type ResolveResponseItem struct {
 	Certificate     *Claim  `json:"certificate,omitempty"`
 	Claim           *Claim  `json:"claim,omitempty"`
 	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
+	Error           *string `json:"error,omitempty"`
+}
+
+type ChannelNewResponse struct {
+	ClaimID string `json:"claim_id"`
+	Fee     string `json:"fee"`
+	Nout    int    `json:"nout"`
+	Success bool   `json:"success"`
+	Tx      string `json:"tx"`
+	Txid    string `json:"txid"`
+}
+
+type ChannelListMineResponse []struct {
+	Address            string            `json:"address"`
+	Amount             float64           `json:"amount"`
+	BlocksToExpiration int               `json:"blocks_to_expiration"`
+	CanSign            bool              `json:"can_sign"`
+	Category           string            `json:"category"`
+	ClaimID            string            `json:"claim_id"`
+	Confirmations      int               `json:"confirmations"`
+	DecodedClaim       bool              `json:"decoded_claim"`
+	ExpirationHeight   int               `json:"expiration_height"`
+	Expired            bool              `json:"expired"`
+	HasSignature       bool              `json:"has_signature"`
+	Height             int               `json:"height"`
+	Hex                string            `json:"hex"`
+	IsPending          bool              `json:"is_pending"`
+	IsSpent            bool              `json:"is_spent"`
+	Name               string            `json:"name"`
+	Nout               int               `json:"nout"`
+	Txid               string            `json:"txid"`
+	Value              *lbryschema.Claim `json:"value"`
+}
+
+type WalletListResponse []string
+
+type PublishResponse struct {
 }

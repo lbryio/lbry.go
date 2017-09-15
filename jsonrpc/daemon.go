@@ -52,8 +52,11 @@ func debugParams(params map[string]interface{}) string {
 	var s []string
 	for k, v := range params {
 		r := reflect.ValueOf(v)
-		if r.Kind() == reflect.Ptr && r.IsNil() {
-			continue
+		if r.Kind() == reflect.Ptr {
+			if r.IsNil() {
+				continue
+			}
+			v = r.Elem().Interface()
 		}
 		s = append(s, fmt.Sprintf("%s=%+v", k, v))
 	}
@@ -239,7 +242,60 @@ func (d *Client) Resolve(url string) (*ResolveResponse, error) {
 	})
 }
 
-//func (d *Client) Publish() (*PublishResponse, error) {
-//	response := new(PublishResponse)
-//	return response, d.call(response, "publish")
-//}
+func (d *Client) ChannelNew(name string, amount float64) (*ChannelNewResponse, error) {
+	response := new(ChannelNewResponse)
+	return response, d.call(response, "channel_new", map[string]interface{}{
+		"channel_name": name,
+		"amount":       amount,
+	})
+}
+
+func (d *Client) ChannelListMine() (*ChannelListMineResponse, error) {
+	response := new(ChannelListMineResponse)
+	return response, d.call(response, "channel_list_mine", map[string]interface{}{})
+}
+
+func (d *Client) WalletList() (*WalletListResponse, error) {
+	response := new(WalletListResponse)
+	return response, d.call(response, "wallet_list", map[string]interface{}{})
+}
+
+type PublishOptions struct {
+	Fee           *Fee
+	Title         *string
+	Description   *string
+	Author        *string
+	Language      *string
+	License       *string
+	LicenseURL    *string
+	Thumbnail     *string
+	Preview       *string
+	NSFW          *bool
+	ChannelName   *string
+	ChannelID     *string
+	ClaimAddress  *string
+	ChangeAddress *string
+}
+
+func (d *Client) Publish(name, filePath string, bid float64, options PublishOptions) (*PublishResponse, error) {
+	response := new(PublishResponse)
+	return response, d.call(response, "publish", map[string]interface{}{
+		"name":           name,
+		"file_path":      filePath,
+		"bid":            bid,
+		"fee":            options.Fee,
+		"title":          options.Title,
+		"description":    options.Description,
+		"author":         options.Author,
+		"language":       options.Language,
+		"license":        options.License,
+		"license_url":    options.LicenseURL,
+		"thumbnail":      options.Thumbnail,
+		"preview":        options.Preview,
+		"nsfw":           options.NSFW,
+		"channel_name":   options.ChannelName,
+		"channel_id":     options.ChannelID,
+		"claim_address":  options.ClaimAddress,
+		"change_address": options.ChangeAddress,
+	})
+}
