@@ -44,7 +44,6 @@ var (
 	daemon          *jsonrpc.Client
 	channelID       string
 	lbryChannelName string
-	claimChannel    bool
 	claimAddress    string
 	videoDirectory  string
 	ytAPIKey        string
@@ -57,7 +56,6 @@ func ytsync() error {
 	flag.StringVar(&ytAPIKey, "ytApiKey", "", "Youtube API key (required)")
 	flag.StringVar(&channelID, "channelID", "", "ID of the youtube channel to sync (required)")
 	flag.StringVar(&lbryChannelName, "lbryChannel", "", "Publish videos into this channel")
-	flag.BoolVar(&claimChannel, "claimChannel", false, "Claim channel if we do not own it")
 	flag.Parse()
 
 	if channelID == "" || ytAPIKey == "" {
@@ -156,10 +154,6 @@ func ensureChannelOwnership() error {
 
 	if !channelNotFound {
 		return fmt.Errorf("Channel exists and we don't own it. Pick another channel.")
-	}
-
-	if !claimChannel {
-		return fmt.Errorf("Channel does not exist. Create it with -claimChannel")
 	}
 
 	_, err = daemon.ChannelNew(lbryChannelName, 0.01)
