@@ -15,6 +15,7 @@ import (
 
 	"github.com/lbryio/lbry.go/jsonrpc"
 
+	"github.com/garyburd/redigo/redis"
 	ytdl "github.com/kkdai/youtube"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/googleapi/transport"
@@ -23,6 +24,8 @@ import (
 
 const (
 	concurrentVideos = 1
+	redisHashKey     = "ytsync"
+	redisSyncedVal   = "t"
 )
 
 type video struct {
@@ -33,6 +36,10 @@ type video struct {
 	description  string
 }
 
+func (v video) getFilename() string {
+	return videoDirectory + "/" + v.id + ".mp4"
+}
+
 var (
 	daemon          *jsonrpc.Client
 	channelID       string
@@ -41,6 +48,7 @@ var (
 	claimAddress    string
 	videoDirectory  string
 	ytAPIKey        string
+	redisPool       *redis.Pool
 )
 
 func ytsync() error {
@@ -55,6 +63,19 @@ func ytsync() error {
 	if channelID == "" || ytAPIKey == "" {
 		flag.Usage()
 		return nil
+	}
+
+	redisPool = &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 5 * time.Minute,
+		Dial:        func() (redis.Conn, error) { return redis.Dial("tcp", ":6379") },
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			if time.Since(t) < time.Minute {
+				return nil
+			}
+			_, err := c.Do("PING")
+			return err
+		},
 	}
 
 	var wg sync.WaitGroup
@@ -221,8 +242,20 @@ func enqueueVideosFromChannel(channelID string, videoChan *chan video) error {
 func processVideo(v video) error {
 	log.Println("Processing " + v.id)
 
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	alreadyPublished, err := redis.String(conn.Do("HGET", redisHashKey, v.id))
+	if err != nil && err != redis.ErrNil {
+		return fmt.Errorf("redis error: %s", err.Error())
+	}
+	if alreadyPublished == redisSyncedVal {
+		log.Println(v.id + " already published")
+		return nil
+	}
+
 	//download and thumbnail can be done in parallel
-	err := downloadVideo(v.id)
+	err = downloadVideo(v)
 	if err != nil {
 		return fmt.Errorf("download error: %s", err.Error())
 	}
@@ -232,7 +265,7 @@ func processVideo(v video) error {
 		return fmt.Errorf("thumbnail error: %s", err.Error())
 	}
 
-	err = publish(v)
+	err = publish(v, conn)
 	if err != nil {
 		return fmt.Errorf("publish error: %s", err.Error())
 	}
@@ -240,20 +273,20 @@ func processVideo(v video) error {
 	return nil
 }
 
-func downloadVideo(videoID string) error {
+func downloadVideo(v video) error {
 	verbose := false
-	videoPath := videoDirectory + "/" + videoID + ".mp4"
+	videoPath := v.getFilename()
 
 	_, err := os.Stat(videoPath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	} else if err == nil {
-		log.Println(videoID + " already exists at " + videoPath)
+		log.Println(v.id + " already exists at " + videoPath)
 		return nil
 	}
 
 	downloader := ytdl.NewYoutube(verbose)
-	err = downloader.DecodeURL("https://www.youtube.com/watch?v=" + videoID)
+	err = downloader.DecodeURL("https://www.youtube.com/watch?v=" + v.id)
 	if err != nil {
 		return err
 	}
@@ -261,7 +294,7 @@ func downloadVideo(videoID string) error {
 	if err != nil {
 		return err
 	}
-	log.Debugln("Downloaded " + videoID)
+	log.Debugln("Downloaded " + v.id)
 	return nil
 }
 
@@ -335,31 +368,37 @@ func titleToClaimName(name string) string {
 	return name
 }
 
-func publish(v video) error {
-	maxDescLines := 10
-	descriptionLines := strings.Split(v.description, "\n")
-	var description string
-	if len(descriptionLines) > maxDescLines {
-		description = strings.Join(descriptionLines[:maxDescLines], "\n") + "\n..."
-	} else {
-		description = strings.Join(descriptionLines, "\n")
+func limitDescription(description string) string {
+	maxLines := 10
+	description = strings.TrimSpace(description)
+	if strings.Count(description, "\n") < maxLines {
+		return description
 	}
+	return strings.Join(strings.Split(description, "\n")[:maxLines], "\n") + "\n..."
+}
 
+func publish(v video, conn redis.Conn) error {
 	options := jsonrpc.PublishOptions{
 		Title:        &v.title,
 		Author:       &v.channelTitle,
-		Description:  &description,
+		Description:  strPtr(limitDescription(v.description)),
 		Language:     strPtr("en"),
 		ClaimAddress: &claimAddress,
 		Thumbnail:    strPtr("http://berk.ninja/thumbnails/" + v.id),
-		License:      strPtr("Copyrighted (Contact Author)"),
+		License:      strPtr("Copyrighted (contact author)"),
 	}
 	if lbryChannelName != "" {
 		options.ChannelName = &lbryChannelName
 	}
-	_, err := daemon.Publish(titleToClaimName(v.title), videoDirectory+"/"+v.id+".mp4", 0.01, options)
+
+	_, err := daemon.Publish(titleToClaimName(v.title), v.getFilename(), 0.01, options)
 	if err != nil {
 		return err
+	}
+
+	_, err = redis.Bool(conn.Do("HSET", redisHashKey, v.id, redisSyncedVal))
+	if err != nil {
+		return fmt.Errorf("redis error: %s", err.Error())
 	}
 
 	return nil

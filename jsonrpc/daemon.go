@@ -3,14 +3,14 @@ package jsonrpc
 import (
 	"encoding/json"
 	"errors"
-	"strconv"
-
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
-	"reflect"
-	"strings"
 )
 
 const DefaultPort = 5279
