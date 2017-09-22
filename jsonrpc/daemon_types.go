@@ -263,4 +263,7 @@ type ChannelListMineResponse []struct {
 type WalletListResponse []string
 
 type PublishResponse struct {
+	// TODO
 }
+
+type BlobAnnounceResponse bool

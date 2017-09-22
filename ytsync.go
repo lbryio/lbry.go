@@ -50,9 +50,8 @@ var (
 	redisPool       *redis.Pool
 )
 
-func ytsync() error {
+func ytsync() {
 	var err error
-
 	flag.StringVar(&ytAPIKey, "ytApiKey", "", "Youtube API key (required)")
 	flag.StringVar(&channelID, "channelID", "", "ID of the youtube channel to sync (required)")
 	flag.StringVar(&lbryChannelName, "lbryChannel", "", "Publish videos into this channel")
@@ -60,7 +59,7 @@ func ytsync() error {
 
 	if channelID == "" || ytAPIKey == "" {
 		flag.Usage()
-		return nil
+		return
 	}
 
 	redisPool = &redis.Pool{
@@ -82,25 +81,25 @@ func ytsync() error {
 	daemon = jsonrpc.NewClient("")
 	videoDirectory, err = ioutil.TempDir("", "ytsync")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if lbryChannelName != "" {
 		err = ensureChannelOwnership()
 		if err != nil {
-			return err
+			panic(err)
 		}
 	}
 
 	addresses, err := daemon.WalletList()
 	if err != nil {
-		return err
+		panic(err)
 	} else if addresses == nil || len(*addresses) == 0 {
-		return fmt.Errorf("Could not find an address in wallet")
+		panic(fmt.Errorf("Could not find an address in wallet"))
 	}
 	claimAddress = (*addresses)[0]
 	if claimAddress == "" {
-		return fmt.Errorf("Found blank claim address")
+		panic(fmt.Errorf("Found blank claim address"))
 	}
 
 	for i := 0; i < concurrentVideos; i++ {
@@ -123,12 +122,11 @@ func ytsync() error {
 
 	err = enqueueVideosFromChannel(channelID, &videoQueue)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	close(videoQueue)
 
 	wg.Wait()
-	return nil
 }
 
 func ensureChannelOwnership() error {

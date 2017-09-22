@@ -299,3 +299,12 @@ func (d *Client) Publish(name, filePath string, bid float64, options PublishOpti
 		"change_address": options.ChangeAddress,
 	})
 }
+
+func (d *Client) BlobAnnounce(blobHash, sdHash, streamHash *string) (*BlobAnnounceResponse, error) {
+	response := new(BlobAnnounceResponse)
+	return response, d.call(response, "blob_announce", map[string]interface{}{
+		"blob_hash":   blobHash,
+		"stream_hash": streamHash,
+		"sd_hash":     sdHash,
+	})
+}
