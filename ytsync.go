@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,16 +31,31 @@ const (
 )
 
 type video struct {
-	id           string
-	channelID    string
-	channelTitle string
-	title        string
-	description  string
+	id               string
+	channelID        string
+	channelTitle     string
+	title            string
+	description      string
+	playlistPosition int64
+	publishedAt      time.Time
 }
 
 func (v video) getFilename() string {
 	return videoDirectory + "/" + v.id + ".mp4"
 }
+
+// sorting videos
+type byPublishedAt []video
+
+func (a byPublishedAt) Len() int           { return len(a) }
+func (a byPublishedAt) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byPublishedAt) Less(i, j int) bool { return a[i].publishedAt.Before(a[j].publishedAt) }
+
+type byPlaylistPosition []video
+
+func (a byPlaylistPosition) Len() int           { return len(a) }
+func (a byPlaylistPosition) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byPlaylistPosition) Less(i, j int) bool { return a[i].playlistPosition < a[j].playlistPosition }
 
 var (
 	daemon          *jsonrpc.Client
@@ -52,10 +69,12 @@ var (
 
 func ytsync() {
 	var err error
-	flag.StringVar(&ytAPIKey, "ytApiKey", "", "Youtube API key (required)")
-	flag.StringVar(&channelID, "channelID", "", "ID of the youtube channel to sync (required)")
-	flag.StringVar(&lbryChannelName, "lbryChannel", "", "Publish videos into this channel")
-	flag.Parse()
+
+	flagSet := flag.NewFlagSet("", flag.ExitOnError)
+	flagSet.StringVar(&ytAPIKey, "ytApiKey", "", "Youtube API key (required)")
+	flagSet.StringVar(&channelID, "channelID", "", "ID of the youtube channel to sync (required)")
+	flagSet.StringVar(&lbryChannelName, "lbryChannel", "", "Publish videos into this channel")
+	flagSet.Parse(os.Args[2:])
 
 	if channelID == "" || ytAPIKey == "" {
 		flag.Usage()
@@ -95,11 +114,11 @@ func ytsync() {
 	if err != nil {
 		panic(err)
 	} else if addresses == nil || len(*addresses) == 0 {
-		panic(fmt.Errorf("Could not find an address in wallet"))
+		panic(fmt.Errorf("could not find an address in wallet"))
 	}
 	claimAddress = (*addresses)[0]
 	if claimAddress == "" {
-		panic(fmt.Errorf("Found blank claim address"))
+		panic(fmt.Errorf("found blank claim address"))
 	}
 
 	for i := 0; i < concurrentVideos; i++ {
@@ -134,7 +153,7 @@ func ensureChannelOwnership() error {
 	if err != nil {
 		return err
 	} else if channels == nil {
-		return fmt.Errorf("No channels")
+		return fmt.Errorf("no channels")
 	}
 
 	for _, channel := range *channels {
@@ -174,58 +193,78 @@ func enqueueVideosFromChannel(channelID string, videoChan *chan video) error {
 
 	service, err := youtube.New(client)
 	if err != nil {
-		return fmt.Errorf("Error creating YouTube service: %v", err)
+		return fmt.Errorf("error creating YouTube service: %v", err)
 	}
 
 	response, err := service.Channels.List("contentDetails").Id(channelID).Do()
 	if err != nil {
-		return fmt.Errorf("Error getting channels: %v", err)
+		return fmt.Errorf("error getting channels: %v", err)
 	}
 
 	if len(response.Items) < 1 {
-		return fmt.Errorf("Youtube channel not found")
+		return fmt.Errorf("youtube channel not found")
 	}
 
 	if response.Items[0].ContentDetails.RelatedPlaylists == nil {
-		return fmt.Errorf("No related playlists")
+		return fmt.Errorf("no related playlists")
 	}
 
 	playlistID := response.Items[0].ContentDetails.RelatedPlaylists.Uploads
 	if playlistID == "" {
-		return fmt.Errorf("No channel playlist")
+		return fmt.Errorf("no channel playlist")
 	}
 
-	firstRequest := true
-	nextPageToken := ""
+	videos := []video{}
 
-	for firstRequest || nextPageToken != "" {
-		req := service.PlaylistItems.List("snippet").PlaylistId(playlistID).MaxResults(50)
-		if nextPageToken != "" {
-			req.PageToken(nextPageToken)
-		}
+	nextPageToken := ""
+	for {
+		req := service.PlaylistItems.List("snippet").
+			PlaylistId(playlistID).
+			MaxResults(50).
+			PageToken(nextPageToken)
 
 		playlistResponse, err := req.Do()
 		if err != nil {
-			return fmt.Errorf("Error getting playlist items: %v", err)
+			return fmt.Errorf("error getting playlist items: %v", err)
 		}
 
 		if len(playlistResponse.Items) < 1 {
-			return fmt.Errorf("Playlist items not found")
+			return fmt.Errorf("playlist items not found")
 		}
 
 		for _, item := range playlistResponse.Items {
 			// todo: there's thumbnail info here. why did we need lambda???
-			*videoChan <- video{
-				id:           item.Snippet.ResourceId.VideoId,
-				channelID:    channelID,
-				title:        item.Snippet.Title,
-				description:  item.Snippet.Description,
-				channelTitle: item.Snippet.ChannelTitle,
+			publishedAt, err := time.Parse(time.RFC3339Nano, item.Snippet.PublishedAt)
+			if err != nil {
+				return fmt.Errorf("failed to parse time: %v", err.Error())
 			}
+
+			// normally we'd send the video into the channel here, but youtube api doesn't have sorting
+			// so we have to get ALL the videos, then sort them, then send them in
+			videos = append(videos, video{
+				id:               item.Snippet.ResourceId.VideoId,
+				channelID:        channelID,
+				title:            item.Snippet.Title,
+				description:      item.Snippet.Description,
+				channelTitle:     item.Snippet.ChannelTitle,
+				playlistPosition: item.Snippet.Position,
+				publishedAt:      publishedAt,
+			})
 		}
 
+		log.Infoln("Got info for " + strconv.Itoa(len(videos)) + " videos from youtube API")
+
 		nextPageToken = playlistResponse.NextPageToken
-		firstRequest = false
+		if nextPageToken == "" {
+			break
+		}
+	}
+
+	sort.Sort(byPublishedAt(videos))
+	//or sort.Sort(sort.Reverse(byPlaylistPosition(videos)))
+
+	for _, v := range videos {
+		*videoChan <- v
 	}
 
 	return nil
@@ -373,7 +412,7 @@ func publish(v video, conn redis.Conn) error {
 	options := jsonrpc.PublishOptions{
 		Title:        &v.title,
 		Author:       &v.channelTitle,
-		Description:  strPtr(limitDescription(v.description)),
+		Description:  strPtr(limitDescription(v.description) + "\nhttps://www.youtube.com/watch?v=" + v.id),
 		Language:     strPtr("en"),
 		ClaimAddress: &claimAddress,
 		Thumbnail:    strPtr("http://berk.ninja/thumbnails/" + v.id),
