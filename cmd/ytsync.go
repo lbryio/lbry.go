@@ -1,9 +1,8 @@
-package main
+package cmd
 
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,9 +19,20 @@ import (
 	"github.com/garyburd/redigo/redis"
 	ytdl "github.com/kkdai/youtube"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/youtube/v3"
 )
+
+func init() {
+	var ytSyncCmd = &cobra.Command{
+		Use:   "ytsync <youtube_api_key> <youtube_channel_id> [<lbry_channel_name>]",
+		Args:  cobra.RangeArgs(2, 3),
+		Short: "Publish youtube channel into LBRY network.",
+		Run:   ytsync,
+	}
+	RootCmd.AddCommand(ytSyncCmd)
+}
 
 const (
 	concurrentVideos = 1
@@ -58,27 +68,23 @@ func (a byPlaylistPosition) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byPlaylistPosition) Less(i, j int) bool { return a[i].playlistPosition < a[j].playlistPosition }
 
 var (
-	daemon          *jsonrpc.Client
+	ytAPIKey        string
 	channelID       string
 	lbryChannelName string
-	claimAddress    string
-	videoDirectory  string
-	ytAPIKey        string
-	redisPool       *redis.Pool
+
+	daemon         *jsonrpc.Client
+	claimAddress   string
+	videoDirectory string
+	redisPool      *redis.Pool
 )
 
-func ytsync() {
+func ytsync(cmd *cobra.Command, args []string) {
 	var err error
 
-	flagSet := flag.NewFlagSet("", flag.ExitOnError)
-	flagSet.StringVar(&ytAPIKey, "ytApiKey", "", "Youtube API key (required)")
-	flagSet.StringVar(&channelID, "channelID", "", "ID of the youtube channel to sync (required)")
-	flagSet.StringVar(&lbryChannelName, "lbryChannel", "", "Publish videos into this channel")
-	flagSet.Parse(os.Args[2:])
-
-	if channelID == "" || ytAPIKey == "" {
-		flag.Usage()
-		return
+	ytAPIKey = args[0]
+	channelID = args[1]
+	if len(args) > 2 {
+		lbryChannelName = args[2]
 	}
 
 	redisPool = &redis.Pool{

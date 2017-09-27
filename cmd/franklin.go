@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"strconv"
@@ -9,7 +9,19 @@ import (
 
 	"github.com/go-errors/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
+
+func init() {
+	var franklinCmd = &cobra.Command{
+		Use:   "franklin",
+		Short: "Test availability of homepage content",
+		Run: func(cmd *cobra.Command, args []string) {
+			franklin()
+		},
+	}
+	RootCmd.AddCommand(franklinCmd)
+}
 
 const (
 	maxPrice         = float64(999)
