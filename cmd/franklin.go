@@ -8,6 +8,7 @@ import (
 	"github.com/lbryio/lbry.go/jsonrpc"
 
 	"github.com/go-errors/errors"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -102,7 +103,7 @@ func doURL(conn *jsonrpc.Client, url string) (Result, error) {
 		return result, errors.New("could not get price of " + url)
 	}
 
-	if float64(*price) > maxPrice {
+	if decimal.Decimal(*price).Cmp(decimal.NewFromFloat(maxPrice)) == 1 {
 		return result, errors.New("the price of " + url + " is too damn high")
 	}
 

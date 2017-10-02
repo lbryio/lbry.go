@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/go-errors/errors"
 	lbryschema "github.com/lbryio/lbryschema.go/pb"
+
+	"github.com/go-errors/errors"
+	"github.com/shopspring/decimal"
 )
 
 type Currency string
@@ -17,25 +19,25 @@ const (
 )
 
 type Fee struct {
-	Currency Currency `json:"currency"`
-	Amount   float64  `json:"amount"`
-	Address  *string  `json:"address"`
+	Currency Currency        `json:"currency"`
+	Amount   decimal.Decimal `json:"amount"`
+	Address  *string         `json:"address"`
 }
 
 type Support struct {
-	Amount float64 `json:"amount"`
-	Nout   int     `json:"nout"`
-	Txid   string  `json:"txid"`
+	Amount decimal.Decimal `json:"amount"`
+	Nout   int             `json:"nout"`
+	Txid   string          `json:"txid"`
 }
 
 type Claim struct {
 	Address          string           `json:"address"`
-	Amount           float64          `json:"amount"`
+	Amount           decimal.Decimal  `json:"amount"`
 	ClaimID          string           `json:"claim_id"`
 	ClaimSequence    int              `json:"claim_sequence"`
 	DecodedClaim     bool             `json:"decoded_claim"`
 	Depth            int              `json:"depth"`
-	EffectiveAmount  float64          `json:"effective_amount"`
+	EffectiveAmount  decimal.Decimal  `json:"effective_amount"`
 	Height           int              `json:"height"`
 	Hex              string           `json:"hex"`
 	Name             string           `json:"name"`
@@ -62,7 +64,7 @@ type File struct {
 	MimeType          string            `json:"mime_type"`
 	Name              string            `json:"name"`
 	Outpoint          string            `json:"outpoint"`
-	PointsPaid        float64           `json:"points_paid"`
+	PointsPaid        decimal.Decimal   `json:"points_paid"`
 	SdHash            string            `json:"sd_hash"`
 	Stopped           bool              `json:"stopped"`
 	StreamHash        string            `json:"stream_hash"`
@@ -103,6 +105,16 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 		if s, ok := data.(string); ok {
 			return []byte(s), nil
 		}
+
+	case reflect.TypeOf(decimal.Decimal{}):
+		if n, ok := data.(json.Number); ok {
+			val, err := n.Float64()
+			if err != nil {
+				return nil, err
+			}
+			return decimal.NewFromFloat(val), nil
+		}
+
 	case reflect.TypeOf(lbryschema.Metadata_Version(0)):
 		val, err := getEnumVal(lbryschema.Metadata_Version_value, data)
 		return lbryschema.Metadata_Version(val), err
@@ -153,7 +165,7 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 
 type CommandsResponse []string
 
-type WalletBalanceResponse float64
+type WalletBalanceResponse decimal.Decimal
 
 type VersionResponse struct {
 	Build             string `json:"build"`
@@ -216,7 +228,7 @@ type BlobGetResponse struct {
 	SuggestedFileName string `json:"suggested_file_name"`
 }
 
-type StreamCostEstimateResponse float64
+type StreamCostEstimateResponse decimal.Decimal
 
 type GetResponse File
 type FileListResponse []File
@@ -230,17 +242,17 @@ type ResolveResponseItem struct {
 }
 
 type ChannelNewResponse struct {
-	ClaimID string `json:"claim_id"`
-	Fee     string `json:"fee"`
-	Nout    int    `json:"nout"`
-	Success bool   `json:"success"`
-	Tx      string `json:"tx"`
-	Txid    string `json:"txid"`
+	ClaimID string          `json:"claim_id"`
+	Fee     decimal.Decimal `json:"fee"`
+	Nout    int             `json:"nout"`
+	Success bool            `json:"success"`
+	Tx      string          `json:"tx"`
+	Txid    string          `json:"txid"`
 }
 
 type ChannelListMineResponse []struct {
 	Address            string            `json:"address"`
-	Amount             float64           `json:"amount"`
+	Amount             decimal.Decimal   `json:"amount"`
 	BlocksToExpiration int               `json:"blocks_to_expiration"`
 	CanSign            bool              `json:"can_sign"`
 	Category           string            `json:"category"`
@@ -263,7 +275,11 @@ type ChannelListMineResponse []struct {
 type WalletListResponse []string
 
 type PublishResponse struct {
-	// TODO
+	ClaimID string          `json:"claim_id"`
+	Fee     decimal.Decimal `json:"fee"`
+	Nout    int             `json:"nout"`
+	Tx      string          `json:"tx"`
+	Txid    string          `json:"txid"`
 }
 
 type BlobAnnounceResponse bool
