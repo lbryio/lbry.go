@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,7 @@ func debugParams(params map[string]interface{}) string {
 		}
 		s = append(s, fmt.Sprintf("%s=%+v", k, v))
 	}
+	sort.Strings(s)
 	return strings.Join(s, " ")
 }
 

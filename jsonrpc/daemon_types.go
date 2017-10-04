@@ -113,6 +113,12 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 				return nil, err
 			}
 			return decimal.NewFromFloat(val), nil
+		} else if s, ok := data.(string); ok {
+			d, err := decimal.NewFromString(s)
+			if err != nil {
+				return nil, err
+			}
+			return d, nil
 		}
 
 	case reflect.TypeOf(lbryschema.Metadata_Version(0)):

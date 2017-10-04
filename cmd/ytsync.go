@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lbryio/lbry.go/jsonrpc"
@@ -31,6 +32,8 @@ func init() {
 		Short: "Publish youtube channel into LBRY network.",
 		Run:   ytsync,
 	}
+	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a video fails, stop publishing")
+	ytSyncCmd.Flags().BoolVar(&retryErrors, "retry-errors", false, "Retry failed publishes")
 	RootCmd.AddCommand(ytSyncCmd)
 }
 
@@ -71,6 +74,8 @@ var (
 	ytAPIKey        string
 	channelID       string
 	lbryChannelName string
+	stopOnError     bool
+	retryErrors     bool
 
 	daemon         *jsonrpc.Client
 	claimAddress   string
@@ -85,6 +90,11 @@ func ytsync(cmd *cobra.Command, args []string) {
 	channelID = args[1]
 	if len(args) > 2 {
 		lbryChannelName = args[2]
+	}
+
+	if stopOnError && retryErrors {
+		log.Errorln("--stop-on-error and --retry-errors are mutually exclusive")
+		return
 	}
 
 	redisPool = &redis.Pool{
@@ -102,6 +112,15 @@ func ytsync(cmd *cobra.Command, args []string) {
 
 	var wg sync.WaitGroup
 	videoQueue := make(chan video)
+
+	stopEnqueuing := make(chan struct{})
+	sendStopEnqueuing := sync.Once{}
+
+	var videoErrored atomic.Value
+	videoErrored.Store(false)
+	if stopOnError {
+		log.Println("Will stop publishing if an error is detected")
+	}
 
 	daemon = jsonrpc.NewClient("")
 	videoDirectory, err = ioutil.TempDir("", "ytsync")
@@ -137,15 +156,34 @@ func ytsync(cmd *cobra.Command, args []string) {
 				if !more {
 					return
 				}
-				err := processVideo(v)
-				if err != nil {
-					log.Errorln("error processing video: " + err.Error())
+				if stopOnError && videoErrored.Load().(bool) {
+					log.Println("Video errored. Exiting")
+					return
+				}
+
+				for {
+					err := processVideo(v)
+					if err != nil {
+						log.Errorln("error processing video: " + err.Error())
+						if stopOnError {
+							videoErrored.Store(true)
+							sendStopEnqueuing.Do(func() {
+								stopEnqueuing <- struct{}{}
+							})
+						}
+					}
+					if err != nil && retryErrors {
+						log.Println("Retrying")
+					} else {
+						break
+					}
+
 				}
 			}
 		}()
 	}
 
-	err = enqueueVideosFromChannel(channelID, &videoQueue)
+	err = enqueueVideosFromChannel(channelID, &videoQueue, &stopEnqueuing)
 	if err != nil {
 		panic(err)
 	}
@@ -192,7 +230,7 @@ func ensureChannelOwnership() error {
 	return nil
 }
 
-func enqueueVideosFromChannel(channelID string, videoChan *chan video) error {
+func enqueueVideosFromChannel(channelID string, videoChan *chan video, stopEnqueuing *chan struct{}) error {
 	client := &http.Client{
 		Transport: &transport.APIKey{Key: ytAPIKey},
 	}
@@ -270,14 +308,18 @@ func enqueueVideosFromChannel(channelID string, videoChan *chan video) error {
 	//or sort.Sort(sort.Reverse(byPlaylistPosition(videos)))
 
 	for _, v := range videos {
-		*videoChan <- v
+		select {
+		case *videoChan <- v:
+		case <-*stopEnqueuing:
+			return nil
+		}
 	}
 
 	return nil
 }
 
 func processVideo(v video) error {
-	log.Println("Processing " + v.id)
+	log.Println("Processing " + v.id + " (" + strconv.Itoa(int(v.playlistPosition)) + " in channel)")
 
 	conn := redisPool.Get()
 	defer conn.Close()
