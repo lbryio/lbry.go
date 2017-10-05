@@ -1,0 +1,82 @@
+
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
+
+[[constraint]]
+  name = "github.com/davecgh/go-spew"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/garyburd/redigo"
+  version = "1.1.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-errors/errors"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kkdai/youtube"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/lbryio/lbryschema.go"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/go-homedir"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/mapstructure"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shopspring/decimal"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.0.3"
+
+[[constraint]]
+  name = "github.com/spf13/cast"
+  version = "1.1.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/spf13/cobra"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ybbus/jsonrpc"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/zeebo/bencode"
+
+[[constraint]]
+  branch = "master"
+  name = "google.golang.org/api"
