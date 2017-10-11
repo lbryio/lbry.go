@@ -20,15 +20,17 @@ func init() {
 	RootCmd.AddCommand(testCmd)
 }
 
+func strPtr(s string) *string { return &s }
+
 func test(cmd *cobra.Command, args []string) {
-	daemon = jsonrpc.NewClient("")
+	daemon := jsonrpc.NewClient("")
 	addresses, err := daemon.WalletList()
 	if err != nil {
 		panic(err)
 	} else if addresses == nil || len(*addresses) == 0 {
 		panic(fmt.Errorf("could not find an address in wallet"))
 	}
-	claimAddress = (*addresses)[0]
+	claimAddress := (*addresses)[0]
 	if claimAddress == "" {
 		panic(fmt.Errorf("found blank claim address"))
 	}
