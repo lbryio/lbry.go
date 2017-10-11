@@ -32,8 +32,8 @@ func init() {
 		Short: "Publish youtube channel into LBRY network.",
 		Run:   ytsync,
 	}
-	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a video fails, stop publishing")
-	ytSyncCmd.Flags().BoolVar(&retryErrors, "retry-errors", false, "Retry failed publishes")
+	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
+	ytSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
 	RootCmd.AddCommand(ytSyncCmd)
 }
 
@@ -41,6 +41,7 @@ const (
 	concurrentVideos = 1
 	redisHashKey     = "ytsync"
 	redisSyncedVal   = "t"
+	defaultMaxTries  = 1
 )
 
 type video struct {
@@ -75,7 +76,7 @@ var (
 	channelID       string
 	lbryChannelName string
 	stopOnError     bool
-	retryErrors     bool
+	maxTries        int
 
 	daemon         *jsonrpc.Client
 	claimAddress   string
@@ -92,8 +93,12 @@ func ytsync(cmd *cobra.Command, args []string) {
 		lbryChannelName = args[2]
 	}
 
-	if stopOnError && retryErrors {
-		log.Errorln("--stop-on-error and --retry-errors are mutually exclusive")
+	if stopOnError && maxTries != defaultMaxTries {
+		log.Errorln("--stop-on-error and --max-tries are mutually exclusive")
+		return
+	}
+	if maxTries < 1 {
+		log.Errorln("setting --max-tries less than 1 doesn't make sense")
 		return
 	}
 
@@ -161,8 +166,11 @@ func ytsync(cmd *cobra.Command, args []string) {
 					return
 				}
 
+				tryCount := 0
 				for {
+					tryCount++
 					err := processVideo(v)
+
 					if err != nil {
 						log.Errorln("error processing video: " + err.Error())
 						if stopOnError {
@@ -170,14 +178,19 @@ func ytsync(cmd *cobra.Command, args []string) {
 							sendStopEnqueuing.Do(func() {
 								stopEnqueuing <- struct{}{}
 							})
+						} else if maxTries != defaultMaxTries {
+							if strings.Contains(err.Error(), "non 200 status code received") ||
+								strings.Contains(err.Error(), " reason: 'This video contains content from") {
+								log.Println("This error should not be retried at all")
+							} else if tryCount >= maxTries {
+								log.Println("Video failed after " + strconv.Itoa(maxTries) + " retries, moving on")
+							} else {
+								log.Println("Retrying")
+								continue
+							}
 						}
 					}
-					if err != nil && retryErrors {
-						log.Println("Retrying")
-					} else {
-						break
-					}
-
+					break
 				}
 			}
 		}()
@@ -319,6 +332,7 @@ func enqueueVideosFromChannel(channelID string, videoChan *chan video, stopEnque
 }
 
 func processVideo(v video) error {
+	log.Println("========================================")
 	log.Println("Processing " + v.id + " (" + strconv.Itoa(int(v.playlistPosition)) + " in channel)")
 
 	conn := redisPool.Get()
