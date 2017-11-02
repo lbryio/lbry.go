@@ -3,6 +3,7 @@ package cmd
 import (
 	sync "github.com/lbryio/lbry.go/ytsync"
 
+	"github.com/go-errors/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -54,6 +55,10 @@ func ytsync(cmd *cobra.Command, args []string) {
 
 	err := s.Go()
 	if err != nil {
-		panic(err)
+		if wrappedError, ok := err.(*errors.Error); ok {
+			log.Error(wrappedError.Error() + "\n" + string(wrappedError.Stack()))
+		} else {
+			panic(err)
+		}
 	}
 }

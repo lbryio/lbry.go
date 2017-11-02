@@ -95,7 +95,7 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 		if n, ok := data.(json.Number); ok {
 			val, err := n.Int64()
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, 0)
 			} else if val < 0 {
 				return nil, errors.New("must be unsigned int")
 			}
@@ -110,13 +110,13 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 		if n, ok := data.(json.Number); ok {
 			val, err := n.Float64()
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, 0)
 			}
 			return decimal.NewFromFloat(val), nil
 		} else if s, ok := data.(string); ok {
 			d, err := decimal.NewFromString(s)
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, 0)
 			}
 			return d, nil
 		}
@@ -289,3 +289,21 @@ type PublishResponse struct {
 }
 
 type BlobAnnounceResponse bool
+
+type WalletPrefillAddressesResponse struct {
+	Broadcast bool   `json:"broadcast"`
+	Complete  bool   `json:"complete"`
+	Hex       string `json:"hex"`
+}
+
+type UTXOListResponse []struct {
+	Address    string          `json:"address"`
+	Amount     decimal.Decimal `json:"amount"`
+	Height     int             `json:"height"`
+	IsClaim    bool            `json:"is_claim"`
+	IsCoinbase bool            `json:"is_coinbase"`
+	IsSupport  bool            `json:"is_support"`
+	IsUpdate   bool            `json:"is_update"`
+	Nout       int             `json:"nout"`
+	Txid       string          `json:"txid"`
+}

@@ -3,10 +3,8 @@ BINARY=lbry
 DIR = $(shell cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 VENDOR_DIR = vendor
 
-VERSION=$(shell git --git-dir=${DIR}/.git describe --dirty --always)
-COMMIT=$(shell git --git-dir=${DIR}/.git rev-parse --short HEAD)
-BRANCH=$(shell git --git-dir=${DIR}/.git rev-parse --abbrev-ref HEAD)
-LDFLAGS = -ldflags "-X main.VERSION=${VERSION} -X main.COMMIT=${COMMIT} -X main.BRANCH=${BRANCH}"
+VERSION=$(shell git --git-dir=${DIR}/.git describe --dirty --always --long --abbrev=7)
+LDFLAGS = -ldflags "-X main.Version=${VERSION}"
 
 
 .PHONY: build dep clean

@@ -2,14 +2,15 @@ package jsonrpc
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/go-errors/errors"
 	"github.com/mitchellh/mapstructure"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
@@ -43,10 +44,34 @@ func decode(data interface{}, targetStruct interface{}) error {
 
 	decoder, err := mapstructure.NewDecoder(config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 
-	return decoder.Decode(data)
+	err = decoder.Decode(data)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return nil
+}
+
+func decodeNumber(data interface{}) (decimal.Decimal, error) {
+	var number string
+
+	switch d := data.(type) {
+	case json.Number:
+		number = d.String()
+	case string:
+		number = d
+	default:
+		return decimal.Decimal{}, errors.New("unexpected number type")
+	}
+
+	dec, err := decimal.NewFromString(number)
+	if err != nil {
+		return decimal.Decimal{}, errors.Wrap(err, 0)
+	}
+
+	return dec, nil
 }
 
 func debugParams(params map[string]interface{}) string {
@@ -69,7 +94,7 @@ func (d *Client) callNoDecode(command string, params map[string]interface{}) (in
 	log.Debugln("jsonrpc: " + command + " " + debugParams(params))
 	r, err := d.conn.CallNamed(command, params)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	if r.Error != nil {
@@ -98,8 +123,28 @@ func (d *Client) Status() (*StatusResponse, error) {
 }
 
 func (d *Client) WalletBalance() (*WalletBalanceResponse, error) {
-	response := new(WalletBalanceResponse)
-	return response, d.call(response, "wallet_balance", map[string]interface{}{})
+	rawResponse, err := d.callNoDecode("wallet_balance", map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
+
+	dec, err := decodeNumber(rawResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	response := WalletBalanceResponse(dec)
+	return &response, nil
+}
+
+func (d *Client) WalletList() (*WalletListResponse, error) {
+	response := new(WalletListResponse)
+	return response, d.call(response, "wallet_list", map[string]interface{}{})
+}
+
+func (d *Client) UTXOList() (*UTXOListResponse, error) {
+	response := new(UTXOListResponse)
+	return response, d.call(response, "utxo_list", map[string]interface{}{})
 }
 
 func (d *Client) Version() (*VersionResponse, error) {
@@ -172,7 +217,7 @@ func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, er
 
 		portNum, err := port.Int64()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		} else if portNum < 0 {
 			return nil, errors.New("invalid port in peer_list response")
 		}
@@ -207,11 +252,21 @@ func (d *Client) BlobGet(blobHash string, encoding *string, timeout *uint) (*Blo
 }
 
 func (d *Client) StreamCostEstimate(url string, size *uint64) (*StreamCostEstimateResponse, error) {
-	response := new(StreamCostEstimateResponse)
-	return response, d.call(response, "stream_cost_estimate", map[string]interface{}{
+	rawResponse, err := d.callNoDecode("stream_cost_estimate", map[string]interface{}{
 		"uri":  url,
 		"size": size,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	dec, err := decodeNumber(rawResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	response := StreamCostEstimateResponse(dec)
+	return &response, nil
 }
 
 type FileListOptions struct {
@@ -255,11 +310,6 @@ func (d *Client) ChannelNew(name string, amount float64) (*ChannelNewResponse, e
 func (d *Client) ChannelListMine() (*ChannelListMineResponse, error) {
 	response := new(ChannelListMineResponse)
 	return response, d.call(response, "channel_list_mine", map[string]interface{}{})
-}
-
-func (d *Client) WalletList() (*WalletListResponse, error) {
-	response := new(WalletListResponse)
-	return response, d.call(response, "wallet_list", map[string]interface{}{})
 }
 
 type PublishOptions struct {
@@ -308,5 +358,17 @@ func (d *Client) BlobAnnounce(blobHash, sdHash, streamHash *string) (*BlobAnnoun
 		"blob_hash":   blobHash,
 		"stream_hash": streamHash,
 		"sd_hash":     sdHash,
+	})
+}
+
+func (d *Client) WalletPrefillAddresses(numAddresses int, amount decimal.Decimal, broadcast bool) (*WalletPrefillAddressesResponse, error) {
+	if numAddresses < 1 {
+		return nil, errors.New("must create at least 1 address")
+	}
+	response := new(WalletPrefillAddressesResponse)
+	return response, d.call(response, "wallet_prefill_addresses", map[string]interface{}{
+		"num_addresses": numAddresses,
+		"amount":        amount,
+		"no_broadcast":  !broadcast,
 	})
 }
