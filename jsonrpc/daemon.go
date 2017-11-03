@@ -372,3 +372,33 @@ func (d *Client) WalletPrefillAddresses(numAddresses int, amount decimal.Decimal
 		"no_broadcast":  !broadcast,
 	})
 }
+
+func (d *Client) WalletNewAddress() (*WalletNewAddressResponse, error) {
+	rawResponse, err := d.callNoDecode("wallet_new_address", map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
+
+	address, ok := rawResponse.(string)
+	if !ok {
+		return nil, errors.New("unexpected response")
+	}
+
+	response := WalletNewAddressResponse(address)
+	return &response, nil
+}
+
+func (d *Client) WalletUnusedAddress() (*WalletUnusedAddressResponse, error) {
+	rawResponse, err := d.callNoDecode("wallet_unused_address", map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
+
+	address, ok := rawResponse.(string)
+	if !ok {
+		return nil, errors.New("unexpected response")
+	}
+
+	response := WalletUnusedAddressResponse(address)
+	return &response, nil
+}

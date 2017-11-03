@@ -53,7 +53,7 @@ func ytsync(cmd *cobra.Command, args []string) {
 		ConcurrentVideos: 1,
 	}
 
-	err := s.Go()
+	err := s.FullCycle()
 	if err != nil {
 		if wrappedError, ok := err.(*errors.Error); ok {
 			log.Error(wrappedError.Error() + "\n" + string(wrappedError.Stack()))

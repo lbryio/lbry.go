@@ -1,4 +1,4 @@
-package jsonrpc
+package lbrycrd
 
 import (
 	"encoding/json"
