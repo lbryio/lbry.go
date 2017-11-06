@@ -17,14 +17,16 @@ func init() {
 	}
 	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
 	ytSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
+	ytSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
 	RootCmd.AddCommand(ytSyncCmd)
 }
 
 const defaultMaxTries = 1
 
 var (
-	stopOnError bool
-	maxTries    int
+	stopOnError             bool
+	maxTries                int
+	takeOverExistingChannel bool
 )
 
 func ytsync(cmd *cobra.Command, args []string) {
@@ -45,12 +47,13 @@ func ytsync(cmd *cobra.Command, args []string) {
 	}
 
 	s := sync.Sync{
-		YoutubeAPIKey:    ytAPIKey,
-		YoutubeChannelID: channelID,
-		LbryChannelName:  lbryChannelName,
-		StopOnError:      stopOnError,
-		MaxTries:         maxTries,
-		ConcurrentVideos: 1,
+		YoutubeAPIKey:           ytAPIKey,
+		YoutubeChannelID:        channelID,
+		LbryChannelName:         lbryChannelName,
+		StopOnError:             stopOnError,
+		MaxTries:                maxTries,
+		ConcurrentVideos:        1,
+		TakeOverExistingChannel: takeOverExistingChannel,
 	}
 
 	err := s.FullCycle()
