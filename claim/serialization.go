@@ -1,21 +1,42 @@
 package claim
 
 import (
-	"../pb"
 	"errors"
 	"github.com/golang/protobuf/proto"
 	"encoding/hex"
+	"../pb"
 )
 
-func (claim *Claim) Serialized() ([]byte, error) {
-	serialized := claim.protobuf.String()
+func (claim *ClaimHelper) Serialized() ([]byte, error) {
+	serialized := claim.String()
 	if serialized == "" {
 		return nil, errors.New("not initialized")
 	}
-	return proto.Marshal(&claim.protobuf)
+	v := claim.GetVersion()
+	t := claim.GetClaimType()
+
+	return proto.Marshal(
+		&pb.Claim{
+			Version: &v,
+			ClaimType: &t,
+			Stream: claim.GetStream(),
+			Certificate: claim.GetCertificate(),
+			PublisherSignature: claim.GetPublisherSignature()})
 }
 
-func (claim *Claim) SerializedHexString() (string, error) {
+func (claim *ClaimHelper) GetProtobuf() (*pb.Claim) {
+	v := claim.GetVersion()
+	t := claim.GetClaimType()
+
+	return &pb.Claim{
+		Version: &v,
+		ClaimType: &t,
+		Stream: claim.GetStream(),
+		Certificate: claim.GetCertificate(),
+		PublisherSignature: claim.GetPublisherSignature()}
+}
+
+func (claim *ClaimHelper) SerializedHexString() (string, error) {
 	serialized, err := claim.Serialized()
 	if err != nil {
 		return "", err
@@ -24,11 +45,11 @@ func (claim *Claim) SerializedHexString() (string, error) {
 	return serialized_hex, nil
 }
 
-func (claim *Claim) SerializedNoSignature() ([]byte, error) {
-	if claim.protobuf.String() == "" {
+func (claim *ClaimHelper) SerializedNoSignature() ([]byte, error) {
+	if claim.String() == "" {
 		return nil, errors.New("not initialized")
 	}
-	if claim.protobuf.GetPublisherSignature() == nil {
+	if claim.GetPublisherSignature() == nil {
 		serialized, err := claim.Serialized()
 		if err != nil {
 			return nil, err
@@ -36,7 +57,7 @@ func (claim *Claim) SerializedNoSignature() ([]byte, error) {
 		return serialized, nil
 	} else {
 		clone := &pb.Claim{}
-		proto.Merge(clone, &claim.protobuf)
+		proto.Merge(clone, claim.GetProtobuf())
 		proto.ClearAllExtensions(clone.PublisherSignature)
 		clone.PublisherSignature = nil
 		return proto.Marshal(clone)

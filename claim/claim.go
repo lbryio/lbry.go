@@ -7,27 +7,29 @@ import (
 	"errors"
 )
 
-type Claim struct {
-	protobuf pb.Claim
+type ClaimHelper struct {
+	*pb.Claim
 }
 
-func (claim *Claim) LoadFromBytes(raw_claim []byte) (error) {
-	if claim.protobuf.String() != "" {
+func (claim *ClaimHelper) LoadFromBytes(raw_claim []byte) (error) {
+	if claim.String() != "" {
 		return errors.New("already initialized")
 	}
 	if len(raw_claim) < 1 {
 		return errors.New("there is nothing to decode")
 	}
+
 	claim_pb := &pb.Claim{}
 	err := proto.Unmarshal(raw_claim, claim_pb)
 	if err != nil {
 		return err
 	}
-	claim.protobuf = *claim_pb
+	*claim = ClaimHelper{claim_pb}
+
 	return nil
 }
 
-func (claim *Claim) LoadFromHexString(claim_hex string) (error) {
+func (claim *ClaimHelper) LoadFromHexString(claim_hex string) (error) {
 	buf, err := hex.DecodeString(claim_hex)
 	if err != nil {
 		return err
@@ -35,8 +37,8 @@ func (claim *Claim) LoadFromHexString(claim_hex string) (error) {
 	return claim.LoadFromBytes(buf)
 }
 
-func DecodeClaimBytes(serialized []byte) (*Claim, error) {
-	claim := &Claim{}
+func DecodeClaimBytes(serialized []byte) (*ClaimHelper, error) {
+	claim := &ClaimHelper{&pb.Claim{}}
 	err := claim.LoadFromBytes(serialized)
 	if err != nil {
 		return nil, err
@@ -44,10 +46,31 @@ func DecodeClaimBytes(serialized []byte) (*Claim, error) {
 	return claim, nil
 }
 
-func DecodeClaimHex(serialized string) (*Claim, error) {
+func DecodeClaimHex(serialized string) (*ClaimHelper, error) {
 	claim_bytes, err := hex.DecodeString(serialized)
 	if err != nil {
 		return nil, err
 	}
 	return DecodeClaimBytes(claim_bytes)
+}
+
+func (m *ClaimHelper) GetStream() *pb.Stream {
+	if m != nil {
+		return m.Stream
+	}
+	return nil
+}
+
+func (m *ClaimHelper) GetCertificate() *pb.Certificate {
+	if m != nil {
+		return m.Certificate
+	}
+	return nil
+}
+
+func (m *ClaimHelper) GetPublisherSignature() *pb.Signature {
+	if m != nil {
+		return m.PublisherSignature
+	}
+	return nil
 }

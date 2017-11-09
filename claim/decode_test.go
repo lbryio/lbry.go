@@ -14,13 +14,8 @@ var raw_claims = []string{
 
 func TestDecodeClaims(t *testing.T) {
 	for _, claim_hex := range(raw_claims) {
-		claim := Claim{}
-		err := claim.LoadFromHexString(claim_hex)
+		claim, err := DecodeClaimHex(claim_hex)
 		if err != nil {
-			t.Error(err)
-		}
-		err = claim.LoadFromHexString(claim_hex)
-		if err.Error() != "already initialized" {
 			t.Error(err)
 		}
 		serialized_hex, err := claim.SerializedHexString()
@@ -35,8 +30,7 @@ func TestDecodeClaims(t *testing.T) {
 
 func TestStripSignature(t *testing.T) {
 	claim_hex := raw_claims[1]
-	claim := Claim{}
-	err := claim.LoadFromHexString(claim_hex)
+	claim, err := DecodeClaimHex(claim_hex)
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,6 +39,6 @@ func TestStripSignature(t *testing.T) {
 		t.Error(err)
 	}
 	if hex.EncodeToString(no_sig) != raw_claims[2] {
-		t.Error("Failed to remove signature")
+		t.Error("failed to remove signature")
 	}
 }
