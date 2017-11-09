@@ -1,2 +1,4 @@
 .idea/
 lbryschema-cli
+lbryschema-python-binding.h
+lbryschema-python-binding.so
