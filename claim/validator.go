@@ -4,7 +4,6 @@ import (
 	"../address"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"encoding/asn1"
 	"crypto/x509/pkix"
 	"github.com/btcsuite/btcd/btcec"
@@ -30,22 +29,21 @@ func GetClaimSignatureDigest(claimAddress [25]byte, certificateId [20]byte, seri
 	return [32]byte(digest)
 }
 
-func (claim *ClaimHelper) GetCertificatePublicKey() (btcec.PublicKey, error) {
+func (claim *ClaimHelper) GetCertificatePublicKey() (*btcec.PublicKey, error) {
 	derBytes := claim.GetCertificate().GetPublicKey()
 	pub := publicKeyInfo{}
 	asn1.Unmarshal(derBytes, &pub)
 	pubkey_bytes := []byte(pub.PublicKey.Bytes)
 	p, err := btcec.ParsePubKey(pubkey_bytes, btcec.S256())
 	if err != nil {
-		fmt.Println("parse public key error: ", err)
+		return &btcec.PublicKey{}, err
 	}
-	return *p, err
+	return p, err
 }
 
 func (claim *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte, digest [32]byte) bool {
 	public_key, err := certificate.GetCertificatePublicKey()
 	if err != nil {
-		fmt.Println("parse public key error: ", err)
 		return false
 	}
 
@@ -56,7 +54,6 @@ func (claim *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]b
 		S.SetBytes(signature[32:64])
 		return ecdsa.Verify(public_key.ToECDSA(), digest[:], R, S)
 	}
-	fmt.Println("unknown curve:", claim.PublisherSignature.SignatureType.String())
 	return false
 }
 
