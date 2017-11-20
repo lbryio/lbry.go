@@ -1,16 +1,16 @@
 package main
 
 import (
-	"os"
 	"../claim"
 	"fmt"
+	"os"
 )
 
-func main()  {
+func main() {
 	args := os.Args[1:]
 	if len(args) == 1 {
 		claim_bytes := []byte(args[0])
-		decoded, err := claim.DecodeClaimBytes(claim_bytes)
+		decoded, err := claim.DecodeClaimBytes(claim_bytes, "lbrycrd_main")
 		if err != nil {
 			fmt.Println("Decoding error:", err)
 			return
@@ -24,7 +24,7 @@ func main()  {
 		return
 	} else if (len(args) == 2) && (args[1] == "--decode_hex") {
 		claim_hex := args[0]
-		decoded, err := claim.DecodeClaimHex(claim_hex)
+		decoded, err := claim.DecodeClaimHex(claim_hex, "lbrycrd_main")
 		if err != nil {
 			fmt.Println("Decoding error:", err)
 			return

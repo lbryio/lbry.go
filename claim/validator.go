@@ -2,14 +2,14 @@ package claim
 
 import (
 	"../address"
+	"crypto/ecdsa"
 	"crypto/sha256"
-	"errors"
-	"encoding/asn1"
 	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/hex"
+	"errors"
 	"github.com/btcsuite/btcd/btcec"
 	"math/big"
-	"crypto/ecdsa"
-	"encoding/hex"
 )
 
 type publicKeyInfo struct {
@@ -21,10 +21,16 @@ type publicKeyInfo struct {
 const SECP256k1 = "SECP256k1"
 
 func GetClaimSignatureDigest(claimAddress [25]byte, certificateId [20]byte, serializedNoSig []byte) [32]byte {
-	combined := []byte{}
-	for _, c := range claimAddress {combined = append(combined, c)}
-	for _, c := range serializedNoSig {combined = append(combined, c)}
-	for _, c := range certificateId {combined = append(combined, c)}
+	var combined []byte
+	for _, c := range claimAddress {
+		combined = append(combined, c)
+	}
+	for _, c := range serializedNoSig {
+		combined = append(combined, c)
+	}
+	for _, c := range certificateId {
+		combined = append(combined, c)
+	}
 	digest := sha256.Sum256(combined)
 	return [32]byte(digest)
 }
@@ -57,7 +63,7 @@ func (claim *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]b
 	return false
 }
 
-func (claim *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, claimAddress [25]byte, certificateId [20]byte) (bool, error) {
+func (claim *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, claimAddress [25]byte, certificateId [20]byte, blockchainName string) (bool, error) {
 	signature := claim.GetPublisherSignature()
 	if signature == nil {
 		return false, errors.New("claim does not have a signature")
@@ -68,7 +74,7 @@ func (claim *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, 
 		signatureBytes[i] = signatureSlice[i]
 	}
 
-	claimAddress, err := address.ValidateAddress(claimAddress)
+	claimAddress, err := address.ValidateAddress(claimAddress, blockchainName)
 	if err != nil {
 		return false, errors.New("invalid address")
 	}
@@ -82,8 +88,8 @@ func (claim *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, 
 	return claim.VerifyDigest(certificate, signatureBytes, claimDigest), nil
 }
 
-func (claim *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, claimAddress string, certificateId string) (bool, error) {
-	addressBytes, err := address.DecodeAddress(claimAddress)
+func (claim *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, claimAddress string, certificateId string, blockchainName string) (bool, error) {
+	addressBytes, err := address.DecodeAddress(claimAddress, blockchainName)
 	if err != nil {
 		return false, err
 	}
@@ -95,5 +101,5 @@ func (claim *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, claim
 	for i := range certificateIdBytes {
 		certificateIdBytes[i] = certificateIdSlice[i]
 	}
-	return claim.ValidateClaimSignatureBytes(certificate, addressBytes, certificateIdBytes)
+	return claim.ValidateClaimSignatureBytes(certificate, addressBytes, certificateIdBytes, blockchainName)
 }

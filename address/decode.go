@@ -1,11 +1,11 @@
 package address
 
 import (
-	"errors"
 	"./base58"
+	"errors"
 )
 
-func DecodeAddress(address string) ([address_length]byte, error) {
+func DecodeAddress(address string, blockchainName string) ([address_length]byte, error) {
 	decoded, err := base58.DecodeBase58(address, address_length)
 	if err != nil {
 		return [address_length]byte{}, errors.New("failed to decode")
@@ -14,5 +14,5 @@ func DecodeAddress(address string) ([address_length]byte, error) {
 	for i, b := range decoded {
 		buf[i] = b
 	}
-	return ValidateAddress(buf)
+	return ValidateAddress(buf, blockchainName)
 }

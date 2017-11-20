@@ -1,16 +1,28 @@
 package claim
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/golang/protobuf/jsonpb"
 )
 
-func marshalToString(claim *ClaimHelper) (string, error) {
+func marshalToString(c *ClaimHelper) (string, error) {
 	m_pb := &jsonpb.Marshaler{}
-	return m_pb.MarshalToString(claim)
+	return m_pb.MarshalToString(c)
 }
 
-func (claim *ClaimHelper) RenderJSON() (string, error) {
-	return marshalToString(claim)
+func (c *ClaimHelper) RenderJSON() (string, error) {
+	r, err := marshalToString(c)
+	if err != nil {
+		fmt.Println("err")
+		return "", err
+	}
+	var dat map[string]interface{}
+	err = json.Unmarshal([]byte(r), &dat)
+	if err != nil {
+		return "", err
+	}
+	return r, nil
 }
 
 //TODO: encode byte arrays with b58 for addresses and b16 for source hashes instead of the default of b64
