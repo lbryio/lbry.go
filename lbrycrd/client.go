@@ -64,6 +64,12 @@ func New(lbrycrdURL string) (*Client, error) {
 		return nil, errors.Wrap(err, 0)
 	}
 
+	// make sure lbrycrd is running and responsive
+	_, err = client.GetInfo()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
 	return &Client{client}, nil
 }
 
