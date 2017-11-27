@@ -35,8 +35,8 @@ func GetClaimSignatureDigest(claimAddress [25]byte, certificateId [20]byte, seri
 	return [32]byte(digest)
 }
 
-func (claim *ClaimHelper) GetCertificatePublicKey() (*btcec.PublicKey, error) {
-	derBytes := claim.GetCertificate().GetPublicKey()
+func (c *ClaimHelper) GetCertificatePublicKey() (*btcec.PublicKey, error) {
+	derBytes := c.GetCertificate().GetPublicKey()
 	pub := publicKeyInfo{}
 	asn1.Unmarshal(derBytes, &pub)
 	pubkey_bytes := []byte(pub.PublicKey.Bytes)
@@ -47,13 +47,13 @@ func (claim *ClaimHelper) GetCertificatePublicKey() (*btcec.PublicKey, error) {
 	return p, err
 }
 
-func (claim *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte, digest [32]byte) bool {
+func (c *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte, digest [32]byte) bool {
 	public_key, err := certificate.GetCertificatePublicKey()
 	if err != nil {
 		return false
 	}
 
-	if claim.PublisherSignature.SignatureType.String() == SECP256k1 {
+	if c.PublisherSignature.SignatureType.String() == SECP256k1 {
 		R := &big.Int{}
 		S := &big.Int{}
 		R.SetBytes(signature[0:32])
@@ -63,8 +63,8 @@ func (claim *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]b
 	return false
 }
 
-func (claim *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, claimAddress [25]byte, certificateId [20]byte, blockchainName string) (bool, error) {
-	signature := claim.GetPublisherSignature()
+func (c *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, claimAddress [25]byte, certificateId [20]byte, blockchainName string) (bool, error) {
+	signature := c.GetPublisherSignature()
 	if signature == nil {
 		return false, errors.New("claim does not have a signature")
 	}
@@ -79,16 +79,16 @@ func (claim *ClaimHelper) ValidateClaimSignatureBytes(certificate *ClaimHelper, 
 		return false, errors.New("invalid address")
 	}
 
-	serializedNoSig, err := claim.SerializedNoSignature()
+	serializedNoSig, err := c.SerializedNoSignature()
 	if err != nil {
 		return false, errors.New("serialization error")
 	}
 
 	claimDigest := GetClaimSignatureDigest(claimAddress, certificateId, serializedNoSig)
-	return claim.VerifyDigest(certificate, signatureBytes, claimDigest), nil
+	return c.VerifyDigest(certificate, signatureBytes, claimDigest), nil
 }
 
-func (claim *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, claimAddress string, certificateId string, blockchainName string) (bool, error) {
+func (c *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, claimAddress string, certificateId string, blockchainName string) (bool, error) {
 	addressBytes, err := address.DecodeAddress(claimAddress, blockchainName)
 	if err != nil {
 		return false, err
@@ -101,5 +101,5 @@ func (claim *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, claim
 	for i := range certificateIdBytes {
 		certificateIdBytes[i] = certificateIdSlice[i]
 	}
-	return claim.ValidateClaimSignatureBytes(certificate, addressBytes, certificateIdBytes, blockchainName)
+	return c.ValidateClaimSignatureBytes(certificate, addressBytes, certificateIdBytes, blockchainName)
 }

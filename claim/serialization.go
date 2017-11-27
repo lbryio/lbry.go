@@ -1,43 +1,43 @@
 package claim
 
 import (
+	"../pb"
+	"encoding/hex"
 	"errors"
 	"github.com/golang/protobuf/proto"
-	"encoding/hex"
-	"../pb"
 )
 
-func (claim *ClaimHelper) Serialized() ([]byte, error) {
-	serialized := claim.String()
+func (c *ClaimHelper) Serialized() ([]byte, error) {
+	serialized := c.String()
 	if serialized == "" {
 		return nil, errors.New("not initialized")
 	}
-	v := claim.GetVersion()
-	t := claim.GetClaimType()
+	v := c.GetVersion()
+	t := c.GetClaimType()
 
 	return proto.Marshal(
 		&pb.Claim{
-			Version: &v,
-			ClaimType: &t,
-			Stream: claim.GetStream(),
-			Certificate: claim.GetCertificate(),
-			PublisherSignature: claim.GetPublisherSignature()})
+			Version:            &v,
+			ClaimType:          &t,
+			Stream:             c.GetStream(),
+			Certificate:        c.GetCertificate(),
+			PublisherSignature: c.GetPublisherSignature()})
 }
 
-func (claim *ClaimHelper) GetProtobuf() (*pb.Claim) {
-	v := claim.GetVersion()
-	t := claim.GetClaimType()
+func (c *ClaimHelper) GetProtobuf() *pb.Claim {
+	v := c.GetVersion()
+	t := c.GetClaimType()
 
 	return &pb.Claim{
-		Version: &v,
-		ClaimType: &t,
-		Stream: claim.GetStream(),
-		Certificate: claim.GetCertificate(),
-		PublisherSignature: claim.GetPublisherSignature()}
+		Version:            &v,
+		ClaimType:          &t,
+		Stream:             c.GetStream(),
+		Certificate:        c.GetCertificate(),
+		PublisherSignature: c.GetPublisherSignature()}
 }
 
-func (claim *ClaimHelper) SerializedHexString() (string, error) {
-	serialized, err := claim.Serialized()
+func (c *ClaimHelper) SerializedHexString() (string, error) {
+	serialized, err := c.Serialized()
 	if err != nil {
 		return "", err
 	}
@@ -45,19 +45,19 @@ func (claim *ClaimHelper) SerializedHexString() (string, error) {
 	return serialized_hex, nil
 }
 
-func (claim *ClaimHelper) SerializedNoSignature() ([]byte, error) {
-	if claim.String() == "" {
+func (c *ClaimHelper) SerializedNoSignature() ([]byte, error) {
+	if c.String() == "" {
 		return nil, errors.New("not initialized")
 	}
-	if claim.GetPublisherSignature() == nil {
-		serialized, err := claim.Serialized()
+	if c.GetPublisherSignature() == nil {
+		serialized, err := c.Serialized()
 		if err != nil {
 			return nil, err
 		}
 		return serialized, nil
 	} else {
 		clone := &pb.Claim{}
-		proto.Merge(clone, claim.GetProtobuf())
+		proto.Merge(clone, c.GetProtobuf())
 		proto.ClearAllExtensions(clone.PublisherSignature)
 		clone.PublisherSignature = nil
 		return proto.Marshal(clone)
