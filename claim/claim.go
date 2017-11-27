@@ -34,6 +34,22 @@ func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
 	return nil
 }
 
+func (c *ClaimHelper) ValidateCertificate() error {
+	certificate := c.GetCertificate()
+	if certificate == nil {
+		return nil
+	}
+	keyType := certificate.GetKeyType()
+	_, err := c.GetCertificatePublicKey()
+	if err != nil {
+		return err
+	}
+	if keyType.String() != SECP256k1 {
+		return errors.New("wrong curve: " + keyType.String())
+	}
+	return nil
+}
+
 func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) error {
 	if c.String() != "" {
 		return errors.New("already initialized")
@@ -48,7 +64,15 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 		return err
 	}
 	*c = ClaimHelper{claim_pb}
-	c.ValidateAddresses(blockchainName)
+	err = c.ValidateAddresses(blockchainName)
+	if err != nil {
+		return err
+	}
+	err = c.ValidateCertificate()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
