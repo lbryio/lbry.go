@@ -1,8 +1,8 @@
 package base58
 
 import (
-	"math/big"
 	"errors"
+	"math/big"
 )
 
 func DecodeBase58(value string, size int64) ([]byte, error) {
@@ -12,7 +12,7 @@ func DecodeBase58(value string, size int64) ([]byte, error) {
 	for i := int64(len(buf) - 1); i >= 0; i-- {
 		to_add := big.NewInt(0)
 		to_add = to_add.Exp(big.NewInt(58), big.NewInt(i), to_add)
-		c, err := CharacterIndex(buf[int64(len(buf)) - i - 1])
+		c, err := CharacterIndex(buf[int64(len(buf))-i-1])
 		if err != nil {
 			return result, err
 		}
@@ -31,6 +31,9 @@ func DecodeBase58(value string, size int64) ([]byte, error) {
 	}
 	if long_value.Int64() != 0 {
 		return result, errors.New("cannot decode to the given size")
+	}
+	if size != int64(len(result)) {
+		return result, errors.New("length mismatch")
 	}
 	return result, nil
 }

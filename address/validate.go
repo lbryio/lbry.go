@@ -1,7 +1,7 @@
 package address
 
 import (
-	"crypto/sha256"
+	"./base58"
 	"errors"
 )
 
@@ -48,19 +48,8 @@ func PubKeyIsValid(address [address_length]byte) bool {
 	return true
 }
 
-func ChecksumIsValid(address [address_length]byte) bool {
-	checksum := [checksum_length]byte{}
-	for i := range checksum {
-		checksum[i] = address[prefix_length+pubkey_length+i]
-	}
-	real_checksum := sha256.Sum256(address[:prefix_length+pubkey_length])
-	real_checksum = sha256.Sum256(real_checksum[:])
-	for i, c := range checksum {
-		if c != real_checksum[i] {
-			return false
-		}
-	}
-	return true
+func AddressChecksumIsValid(address [address_length]byte) bool {
+	return base58.VerifyBase58Checksum(address[:])
 }
 
 func ValidateAddress(address [address_length]byte, blockchainName string) ([address_length]byte, error) {
@@ -73,7 +62,7 @@ func ValidateAddress(address [address_length]byte, blockchainName string) ([addr
 	if !PubKeyIsValid(address) {
 		return address, errors.New("invalid pubkey")
 	}
-	if !ChecksumIsValid(address) {
+	if !AddressChecksumIsValid(address) {
 		return address, errors.New("invalid address checksum")
 	}
 	return address, nil

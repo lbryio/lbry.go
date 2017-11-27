@@ -4,13 +4,13 @@ import (
 	"math/big"
 )
 
-func EncodeBase58(data []byte) (string) {
+func EncodeBase58(data []byte) string {
 	long_value := big.NewInt(0)
 	result := ""
 	for i := 0; i < len(data); i++ {
 		to_add := big.NewInt(0)
 		to_add = to_add.Exp(big.NewInt(256), big.NewInt(int64(i)), to_add)
-		to_add = to_add.Mul(big.NewInt(int64(data[24 - i])), to_add)
+		to_add = to_add.Mul(big.NewInt(int64(data[24-i])), to_add)
 		long_value = long_value.Add(to_add, long_value)
 	}
 	i := 0

@@ -14,5 +14,6 @@ func DecodeAddress(address string, blockchainName string) ([address_length]byte,
 	for i, b := range decoded {
 		buf[i] = b
 	}
+
 	return ValidateAddress(buf, blockchainName)
 }
