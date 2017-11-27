@@ -5,6 +5,7 @@ import (
 	"../pb"
 	"encoding/hex"
 	"errors"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -16,10 +17,10 @@ func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
 	// check the validity of a fee address
 	if c.GetClaimType() == pb.Claim_streamType {
 		fee := c.GetStream().GetMetadata().GetFee()
-		if fee.String() != "" {
+		if fee != nil {
 			tmp_addr := fee.GetAddress()
 			if len(tmp_addr) != 25 {
-				return errors.New("invalid address length")
+				return errors.New("invalid address length: " + string(len(tmp_addr)) + "!")
 			}
 			addr := [25]byte{}
 			for i := range addr {
@@ -99,6 +100,15 @@ func DecodeClaimHex(serialized string, blockchainName string) (*ClaimHelper, err
 		return nil, err
 	}
 	return DecodeClaimBytes(claim_bytes, blockchainName)
+}
+
+func DecodeClaimJSON(claimJSON string, blockchainName string) (*ClaimHelper, error) {
+	c := &pb.Claim{}
+	err := jsonpb.UnmarshalString(claimJSON, c)
+	if err != nil {
+		return nil, err
+	}
+	return &ClaimHelper{c}, nil
 }
 
 func (c *ClaimHelper) GetStream() *pb.Stream {
