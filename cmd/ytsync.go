@@ -35,6 +35,10 @@ func ytsync(cmd *cobra.Command, args []string) {
 	lbryChannelName := ""
 	if len(args) > 2 {
 		lbryChannelName = args[2]
+		if string(lbryChannelName[0]) != "@" {
+			log.Errorln("LBRY channel name must start with an @")
+			return
+		}
 	}
 
 	if stopOnError && maxTries != defaultMaxTries {
