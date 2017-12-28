@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/mitchellh/mapstructure"
@@ -31,6 +32,17 @@ func NewClient(address string) *Client {
 	d.conn = jsonrpc.NewRPCClient(address)
 
 	return &d
+}
+
+func NewClientAndWait(address string) *Client {
+	d := NewClient(address)
+	for {
+		_, err := d.WalletBalance()
+		if err == nil {
+			return d
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func decode(data interface{}, targetStruct interface{}) error {
@@ -401,4 +413,25 @@ func (d *Client) WalletUnusedAddress() (*WalletUnusedAddressResponse, error) {
 
 	response := WalletUnusedAddressResponse(address)
 	return &response, nil
+}
+
+func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
+	response := new(NumClaimsInChannelResponse)
+	err := d.call(response, "claim_list_by_channel", map[string]interface{}{
+		"uri": url,
+	})
+	if err != nil {
+		return 0, err
+	} else if response == nil {
+		return 0, errors.New("no response")
+	}
+
+	channel, ok := (*response)[url]
+	if !ok {
+		return 0, errors.New("url not in response")
+	}
+	if channel.Error != "" {
+		return 0, errors.New(channel.Error)
+	}
+	return channel.ClaimsInChannel, nil
 }

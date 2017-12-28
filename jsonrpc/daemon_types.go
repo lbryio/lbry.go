@@ -311,3 +311,8 @@ type UTXOListResponse []struct {
 type WalletNewAddressResponse string
 
 type WalletUnusedAddressResponse string
+
+type NumClaimsInChannelResponse map[string]struct {
+	ClaimsInChannel uint64 `json:"claims_in_channel,omitempty"`
+	Error           string `json:"error,omitempty"`
+}
