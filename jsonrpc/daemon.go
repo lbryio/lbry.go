@@ -431,6 +431,9 @@ func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
 		return 0, errors.New("url not in response")
 	}
 	if channel.Error != "" {
+		if strings.Contains(channel.Error, "cannot be resolved") {
+			return 0, nil
+		}
 		return 0, errors.New(channel.Error)
 	}
 	return channel.ClaimsInChannel, nil

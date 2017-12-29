@@ -96,10 +96,13 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 	}
 
 	hash, err := c.Client.SendFromMinConf("", decodedAddress, lbcAmount, 0)
-	if err != nil && err.Error() == "-6: Insufficient funds" {
-		err = errors.Wrap(errInsufficientFunds, 0)
+	if err != nil {
+		if err.Error() == "-6: Insufficient funds" {
+			err = errors.Wrap(errInsufficientFunds, 0)
+		}
+		return nil, err
 	}
-	return hash, errors.Wrap(err, 0)
+	return hash, nil
 }
 
 //func (c *Client) SendWithSplit(toAddress string, amount float64, numUTXOs int) (*chainhash.Hash, error) {
