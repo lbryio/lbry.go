@@ -10,7 +10,7 @@ import (
 
 func init() {
 	var ytSyncCmd = &cobra.Command{
-		Use:   "ytsync <youtube_api_key> <youtube_channel_id> [<lbry_channel_name>]",
+		Use:   "ytsync <youtube_api_key> <lbry_channel_name> [<youtube_channel_id>]",
 		Args:  cobra.RangeArgs(2, 3),
 		Short: "Publish youtube channel into LBRY network.",
 		Run:   ytsync,
@@ -21,7 +21,7 @@ func init() {
 	RootCmd.AddCommand(ytSyncCmd)
 }
 
-const defaultMaxTries = 1
+const defaultMaxTries = 3
 
 var (
 	stopOnError             bool
@@ -31,14 +31,15 @@ var (
 
 func ytsync(cmd *cobra.Command, args []string) {
 	ytAPIKey := args[0]
-	channelID := args[1]
-	lbryChannelName := ""
+	lbryChannelName := args[1]
+	if string(lbryChannelName[0]) != "@" {
+		log.Errorln("LBRY channel name must start with an @")
+		return
+	}
+
+	channelID := ""
 	if len(args) > 2 {
-		lbryChannelName = args[2]
-		if string(lbryChannelName[0]) != "@" {
-			log.Errorln("LBRY channel name must start with an @")
-			return
-		}
+		channelID = args[2]
 	}
 
 	if stopOnError && maxTries != defaultMaxTries {
@@ -61,6 +62,7 @@ func ytsync(cmd *cobra.Command, args []string) {
 	}
 
 	err := s.FullCycle()
+
 	if err != nil {
 		if wrappedError, ok := err.(*errors.Error); ok {
 			log.Error(wrappedError.Error() + "\n" + string(wrappedError.Stack()))
