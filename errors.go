@@ -39,8 +39,17 @@ func Prefix(prefix string, err interface{}) error {
 	return errors.WrapPrefix(Err(err), prefix, 0)
 }
 
-// Trace returns the error message and the stack trace
+// Trace returns the stack trace
 func Trace(err error) string {
+	if err == nil {
+		return ""
+	}
+	return string(errors.Wrap(Err(err), 0).Stack())
+}
+
+
+// FullTrace returns the error type, message, and stack trace
+func FullTrace(err error) string {
 	if err == nil {
 		return ""
 	}
