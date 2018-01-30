@@ -1,6 +1,8 @@
 package query
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -79,4 +81,41 @@ func InterpolateParams(query string, args ...interface{}) (string, error) {
 	query = strings.Replace(query, "\t", "    ", -1)
 
 	return query, nil
+}
+
+// Qs is a shortcut for one group of positional placeholders
+func Qs(count int) string {
+	return placeholders(false, count, 1, 1)
+}
+
+// placeholders creates indexed or positional placeholders, in groups, with different starts
+func placeholders(indexPlaceholders bool, count int, start int, group int) string {
+	buf := bytes.Buffer{}
+
+	if start == 0 || group == 0 {
+		panic("invalid start or group numbers supplied.")
+	}
+
+	if group > 1 {
+		buf.WriteByte('(')
+	}
+	for i := 0; i < count; i++ {
+		if i != 0 {
+			if group > 1 && i%group == 0 {
+				buf.WriteString("),(")
+			} else {
+				buf.WriteByte(',')
+			}
+		}
+		if indexPlaceholders {
+			buf.WriteString(fmt.Sprintf("$%d", start+i))
+		} else {
+			buf.WriteByte('?')
+		}
+	}
+	if group > 1 {
+		buf.WriteByte(')')
+	}
+
+	return buf.String()
 }
