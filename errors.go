@@ -42,7 +42,14 @@ func Wrap(err interface{}, skip int) *errors.Error {
 }
 
 // Is compares two wrapped errors to determine if the underlying errors are the same
+// It also interops with errors from pkg/errors
 func Is(e error, original error) bool {
+	if c, ok := e.(causer); ok {
+		e = c.Cause()
+	}
+	if c, ok := original.(causer); ok {
+		original = c.Cause()
+	}
 	return errors.Is(e, original)
 }
 
