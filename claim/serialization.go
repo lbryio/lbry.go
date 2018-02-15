@@ -1,7 +1,7 @@
 package claim
 
 import (
-	"../pb"
+	"github.com/lbryio/lbryschema.go/pb"
 	"encoding/hex"
 	"errors"
 	"github.com/golang/protobuf/proto"

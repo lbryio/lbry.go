@@ -1,16 +1,16 @@
 package address
 
 import (
-	"./base58"
 	"errors"
+	"github.com/lbryio/lbryschema.go/address/base58"
 )
 
-func DecodeAddress(address string, blockchainName string) ([address_length]byte, error) {
-	decoded, err := base58.DecodeBase58(address, address_length)
+func DecodeAddress(address string, blockchainName string) ([addressLength]byte, error) {
+	decoded, err := base58.DecodeBase58(address, addressLength)
 	if err != nil {
-		return [address_length]byte{}, errors.New("failed to decode")
+		return [addressLength]byte{}, errors.New("failed to decode")
 	}
-	buf := [address_length]byte{}
+	buf := [addressLength]byte{}
 	for i, b := range decoded {
 		buf[i] = b
 	}

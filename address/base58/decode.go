@@ -7,7 +7,7 @@ import (
 
 func DecodeBase58(value string, size int64) ([]byte, error) {
 	buf := []byte(value)
-	long_value := big.NewInt(0)
+	longValue := big.NewInt(0)
 	result := make([]byte, size)
 	for i := int64(len(buf) - 1); i >= 0; i-- {
 		to_add := big.NewInt(0)
@@ -17,11 +17,11 @@ func DecodeBase58(value string, size int64) ([]byte, error) {
 			return result, err
 		}
 		to_add = to_add.Mul(c, to_add)
-		long_value = long_value.Add(to_add, long_value)
+		longValue = longValue.Add(to_add, longValue)
 	}
 	for i := size - 1; i >= 0; i-- {
 		m := big.NewInt(0)
-		long_value, m = long_value.DivMod(long_value, big.NewInt(256), m)
+		longValue, m = longValue.DivMod(longValue, big.NewInt(256), m)
 		bs := m.Bytes()
 		if len(bs) == 0 {
 			bs = append(bs, 0x00)
@@ -29,7 +29,7 @@ func DecodeBase58(value string, size int64) ([]byte, error) {
 		b := byte(bs[0])
 		result[i] = b
 	}
-	if long_value.Int64() != 0 {
+	if longValue.Int64() != 0 {
 		return result, errors.New("cannot decode to the given size")
 	}
 	if size != int64(len(result)) {

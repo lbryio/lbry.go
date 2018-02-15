@@ -1,8 +1,8 @@
 package claim
 
 import (
-	"../address"
-	"../pb"
+	"github.com/lbryio/lbryschema.go/address"
+	"github.com/lbryio/lbryschema.go/pb"
 	"encoding/hex"
 	"errors"
 	"github.com/golang/protobuf/jsonpb"

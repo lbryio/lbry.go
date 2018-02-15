@@ -1,10 +1,10 @@
 package address
 
 import (
-	"./base58"
+	"github.com/lbryio/lbryschema.go/address/base58"
 )
 
-func EncodeAddress(address [address_length]byte, blockchainName string) (string, error) {
+func EncodeAddress(address [addressLength]byte, blockchainName string) (string, error) {
 	buf, err := ValidateAddress(address, blockchainName)
 	if err != nil {
 		return "", err

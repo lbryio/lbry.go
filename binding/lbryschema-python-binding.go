@@ -1,10 +1,10 @@
 package main
 
 import (
-	"../address"
-	"../claim"
 	"C"
 	"encoding/hex"
+	"github.com/lbryio/lbryschema.go/address"
+	"github.com/lbryio/lbryschema.go/claim"
 )
 
 //export VerifySignature

@@ -1,59 +1,59 @@
 package address
 
 import (
-	"./base58"
 	"errors"
+	"github.com/lbryio/lbryschema.go/address/base58"
 )
 
-const lbrycrd_main_pubkey_prefix = byte(85)
-const lbrycrd_main_script_prefix = byte(122)
-const lbrycrd_testnet_pubkey_prefix = byte(111)
-const lbrycrd_testnet_script_prefix = byte(196)
-const lbrycrd_regtest_pubkey_prefix = byte(111)
-const lbrycrd_regtest_script_prefix = byte(196)
+const lbrycrdMainPubkeyPrefix = byte(85)
+const lbrycrdMainScriptPrefix = byte(122)
+const lbrycrdTestnetPubkeyPrefix = byte(111)
+const lbrycrdTestnetScriptPrefix = byte(196)
+const lbrycrdRegtestPubkeyPrefix = byte(111)
+const lbrycrdRegtestScriptPrefix = byte(196)
 
-const prefix_length = 1
-const pubkey_length = 20
-const checksum_length = 4
-const address_length = prefix_length + pubkey_length + checksum_length
-const lbrycrd_main = "lbrycrd_main"
-const lbrycrd_testnet = "lbrycrd_testnet"
-const lbrycrd_regtest = "lbrycrd_regtest"
+const prefixLength = 1
+const pubkeyLength = 20
+const checksumLength = 4
+const addressLength = prefixLength + pubkeyLength + checksumLength
+const lbrycrdMain = "lbrycrd_main"
+const lbrycrdTestnet = "lbrycrd_testnet"
+const lbrycrdRegtest = "lbrycrd_regtest"
 
-var address_prefixes = map[string][2]byte{}
+var addressPrefixes = map[string][2]byte{}
 
 func SetPrefixes() {
-	address_prefixes[lbrycrd_main] = [2]byte{lbrycrd_main_pubkey_prefix, lbrycrd_main_script_prefix}
-	address_prefixes[lbrycrd_testnet] = [2]byte{lbrycrd_testnet_pubkey_prefix, lbrycrd_testnet_script_prefix}
-	address_prefixes[lbrycrd_regtest] = [2]byte{lbrycrd_regtest_pubkey_prefix, lbrycrd_regtest_script_prefix}
+	addressPrefixes[lbrycrdMain] = [2]byte{lbrycrdMainPubkeyPrefix, lbrycrdMainScriptPrefix}
+	addressPrefixes[lbrycrdTestnet] = [2]byte{lbrycrdTestnetPubkeyPrefix, lbrycrdTestnetScriptPrefix}
+	addressPrefixes[lbrycrdRegtest] = [2]byte{lbrycrdRegtestPubkeyPrefix, lbrycrdRegtestScriptPrefix}
 }
 
-func PrefixIsValid(address [address_length]byte, blockchainName string) bool {
+func PrefixIsValid(address [addressLength]byte, blockchainName string) bool {
 	SetPrefixes()
 	prefix := address[0]
-	for _, addr_prefix := range address_prefixes[blockchainName] {
-		if addr_prefix == prefix {
+	for _, addrPrefix := range addressPrefixes[blockchainName] {
+		if addrPrefix == prefix {
 			return true
 		}
 	}
 	return false
 }
 
-func PubKeyIsValid(address [address_length]byte) bool {
-	pubkey := address[prefix_length : pubkey_length+prefix_length]
+func PubKeyIsValid(address [addressLength]byte) bool {
+	pubkey := address[prefixLength : pubkeyLength+prefixLength]
 	// TODO: validate this for real
-	if len(pubkey) != pubkey_length {
+	if len(pubkey) != pubkeyLength {
 		return false
 	}
 	return true
 }
 
-func AddressChecksumIsValid(address [address_length]byte) bool {
+func ChecksumIsValid(address [addressLength]byte) bool {
 	return base58.VerifyBase58Checksum(address[:])
 }
 
-func ValidateAddress(address [address_length]byte, blockchainName string) ([address_length]byte, error) {
-	if blockchainName != lbrycrd_main && blockchainName != lbrycrd_testnet && blockchainName != lbrycrd_regtest {
+func ValidateAddress(address [addressLength]byte, blockchainName string) ([addressLength]byte, error) {
+	if blockchainName != lbrycrdMain && blockchainName != lbrycrdTestnet && blockchainName != lbrycrdRegtest {
 		return address, errors.New("invalid blockchain name")
 	}
 	if !PrefixIsValid(address, blockchainName) {
@@ -62,7 +62,7 @@ func ValidateAddress(address [address_length]byte, blockchainName string) ([addr
 	if !PubKeyIsValid(address) {
 		return address, errors.New("invalid pubkey")
 	}
-	if !AddressChecksumIsValid(address) {
+	if !ChecksumIsValid(address) {
 		return address, errors.New("invalid address checksum")
 	}
 	return address, nil

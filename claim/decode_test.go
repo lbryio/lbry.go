@@ -17,27 +17,28 @@ func TestDecodeClaims(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		serialized_hex, err := claim.SerializedHexString()
+		serializedHex, err := claim.SerializedHexString()
 		if err != nil {
 			t.Error(err)
 		}
-		if serialized_hex != claim_hex {
+		if serializedHex != claim_hex {
 			t.Error("failed to re-serialize")
 		}
+
 	}
 }
 
 func TestStripSignature(t *testing.T) {
-	claim_hex := raw_claims[1]
-	claim, err := DecodeClaimHex(claim_hex, "lbrycrd_main")
+	claimHex := raw_claims[1]
+	claim, err := DecodeClaimHex(claimHex, "lbrycrd_main")
 	if err != nil {
 		t.Error(err)
 	}
-	no_sig, err := claim.SerializedNoSignature()
+	noSig, err := claim.SerializedNoSignature()
 	if err != nil {
 		t.Error(err)
 	}
-	if hex.EncodeToString(no_sig) != raw_claims[2] {
+	if hex.EncodeToString(noSig) != raw_claims[2] {
 		t.Error("failed to remove signature")
 	}
 }

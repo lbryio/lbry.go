@@ -1,7 +1,6 @@
 package claim
 
 import (
-	"../address"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509/pkix"
@@ -9,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/lbryio/lbryschema.go/address"
 	"math/big"
 )
 
@@ -19,6 +19,9 @@ type publicKeyInfo struct {
 }
 
 const SECP256k1 = "SECP256k1"
+
+//const NIST256p = "NIST256p"
+//const NIST384p = "NIST384p"
 
 func GetClaimSignatureDigest(claimAddress [25]byte, certificateId [20]byte, serializedNoSig []byte) [32]byte {
 	var combined []byte
@@ -39,8 +42,8 @@ func (c *ClaimHelper) GetCertificatePublicKey() (*btcec.PublicKey, error) {
 	derBytes := c.GetCertificate().GetPublicKey()
 	pub := publicKeyInfo{}
 	asn1.Unmarshal(derBytes, &pub)
-	pubkey_bytes := []byte(pub.PublicKey.Bytes)
-	p, err := btcec.ParsePubKey(pubkey_bytes, btcec.S256())
+	pubkeyBytes := []byte(pub.PublicKey.Bytes)
+	p, err := btcec.ParsePubKey(pubkeyBytes, btcec.S256())
 	if err != nil {
 		return &btcec.PublicKey{}, err
 	}
@@ -48,7 +51,7 @@ func (c *ClaimHelper) GetCertificatePublicKey() (*btcec.PublicKey, error) {
 }
 
 func (c *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte, digest [32]byte) bool {
-	public_key, err := certificate.GetCertificatePublicKey()
+	publicKey, err := certificate.GetCertificatePublicKey()
 	if err != nil {
 		return false
 	}
@@ -58,7 +61,7 @@ func (c *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte,
 		S := &big.Int{}
 		R.SetBytes(signature[0:32])
 		S.SetBytes(signature[32:64])
-		return ecdsa.Verify(public_key.ToECDSA(), digest[:], R, S)
+		return ecdsa.Verify(publicKey.ToECDSA(), digest[:], R, S)
 	}
 	return false
 }
