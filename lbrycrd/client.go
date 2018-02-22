@@ -1,16 +1,16 @@
 package lbrycrd
 
 import (
-	e "errors"
 	"net/url"
 	"os"
 	"strconv"
+
+	"github.com/lbryio/lbry.go/errors"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcrpcclient"
 	"github.com/btcsuite/btcutil"
-	"github.com/go-errors/errors"
 	"github.com/go-ini/ini"
 )
 
@@ -42,11 +42,11 @@ func New(lbrycrdURL string) (*Client, error) {
 
 	u, err := url.Parse(lbrycrdURL)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.Err(err)
 	}
 
 	if u.User == nil {
-		return nil, errors.New("no userinfo")
+		return nil, errors.Err("no userinfo")
 	}
 
 	password, _ := u.User.Password()
@@ -61,13 +61,13 @@ func New(lbrycrdURL string) (*Client, error) {
 	// Notice the notification parameter is nil since notifications are not supported in HTTP POST mode.
 	client, err := btcrpcclient.New(connCfg, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.Err(err)
 	}
 
 	// make sure lbrycrd is running and responsive
 	_, err = client.GetInfo()
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.Err(err)
 	}
 
 	return &Client{client}, nil
@@ -81,26 +81,26 @@ func NewWithDefaultURL() (*Client, error) {
 	return New(url)
 }
 
-var errInsufficientFunds = e.New("insufficient funds")
+var errInsufficientFunds = errors.Base("insufficient funds")
 
 // SimpleSend is a convenience function to send credits to an address (0 min confirmations)
 func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, error) {
 	decodedAddress, err := btcutil.DecodeAddress(toAddress, &MainNetParams)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.Err(err)
 	}
 
 	lbcAmount, err := btcutil.NewAmount(amount)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.Err(err)
 	}
 
 	hash, err := c.Client.SendFromMinConf("", decodedAddress, lbcAmount, 0)
 	if err != nil {
 		if err.Error() == "-6: Insufficient funds" {
-			err = errors.Wrap(errInsufficientFunds, 0)
+			err = errors.Err(errInsufficientFunds)
 		}
-		return nil, err
+		return nil, errors.Err(err)
 	}
 	return hash, nil
 }
@@ -131,22 +131,22 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 
 func getLbrycrdURLFromConfFile() (string, error) {
 	if os.Getenv("HOME") == "" {
-		return "", errors.New("no $HOME var found")
+		return "", errors.Err("no $HOME var found")
 	}
 
 	defaultConfFile := os.Getenv("HOME") + "/.lbrycrd/lbrycrd.conf"
 	if _, err := os.Stat(defaultConfFile); os.IsNotExist(err) {
-		return "", errors.New("default lbrycrd conf file not found")
+		return "", errors.Err("default lbrycrd conf file not found")
 	}
 
 	cfg, err := ini.Load(defaultConfFile)
 	if err != nil {
-		return "", errors.Wrap(err, 0)
+		return "", errors.Err(err)
 	}
 
 	section, err := cfg.GetSection("")
 	if err != nil {
-		return "", errors.Wrap(err, 0)
+		return "", errors.Err(err)
 	}
 
 	username := section.Key("rpcuser").String()
