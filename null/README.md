@@ -1,5 +1,7 @@
 ## null-extended [![GoDoc](https://godoc.org/github.com/nullbio/null?status.svg)](https://godoc.org/github.com/nullbio/null) [![Coverage](http://gocover.io/_badge/github.com/nullbio/null)](http://gocover.io/github.com/nullbio/null)
 
+*Forked from https://github.com/nullbio/null*
+
 null-extended is a library with reasonable options for dealing with nullable SQL and JSON values
 
 Types in `null` will only be considered null on null input, and will JSON encode to `null`.
