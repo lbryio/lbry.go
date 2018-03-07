@@ -2,6 +2,47 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcd"
+  packages = [
+    "btcec",
+    "btcjson",
+    "chaincfg",
+    "chaincfg/chainhash",
+    "rpcclient",
+    "wire"
+  ]
+  revision = "2be2f12b358dc57d70b8f501b00be450192efbc3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btclog"
+  packages = ["."]
+  revision = "84c8d2346e9fc8c7b947e243b9c24e6df9fd206a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcutil"
+  packages = [
+    ".",
+    "base58",
+    "bech32"
+  ]
+  revision = "501929d3d046174c3d39f0ea54ece471aa17238c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/go-socks"
+  packages = ["socks"]
+  revision = "4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/websocket"
+  packages = ["."]
+  revision = "31079b6807923eb23992c421b114992b95131b55"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -15,15 +56,24 @@
 
 [[projects]]
   name = "github.com/garyburd/redigo"
-  packages = ["internal","redis"]
+  packages = [
+    "internal",
+    "redis"
+  ]
   revision = "433969511232c397de61b1442f9fd49ec06ae9ba"
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/go-errors/errors"
   packages = ["."]
-  revision = "8fa88b06e5974e97fbf9899a7f86a344bfd1f105"
+  revision = "3afebba5a48dbc89b574d890b6b34d9ee10b4785"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/go-ini/ini"
+  packages = ["."]
+  revision = "32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a"
+  version = "v1.32.0"
 
 [[projects]]
   branch = "master"
@@ -34,7 +84,17 @@
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/hcl"
-  packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
+  packages = [
+    ".",
+    "hcl/ast",
+    "hcl/parser",
+    "hcl/scanner",
+    "hcl/strconv",
+    "hcl/token",
+    "json/parser",
+    "json/scanner",
+    "json/token"
+  ]
   revision = "68e816d1c783414e79bc65b3994d9ab6b0a722ab"
 
 [[projects]]
@@ -94,7 +154,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/spf13/afero"
-  packages = [".","mem"]
+  packages = [
+    ".",
+    "mem"
+  ]
   revision = "3de492c3cda9570c77bc1f495857bfbf4b760efd"
 
 [[projects]]
@@ -142,32 +205,84 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "ripemd160",
+    "ssh/terminal"
+  ]
   revision = "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context","context/ctxhttp"]
+  packages = [
+    "context",
+    "context/ctxhttp"
+  ]
   revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/oauth2"
+  packages = [
+    ".",
+    "github",
+    "internal"
+  ]
+  revision = "2f32c3ac0fa4fb807a0fcefb0b6f2468a0d99bd0"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "314a259e304ff91bd6985da2a7149bbf91237993"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
-  packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
+  packages = [
+    "internal/gen",
+    "internal/triegen",
+    "internal/ucd",
+    "transform",
+    "unicode/cldr",
+    "unicode/norm"
+  ]
   revision = "d82c1812e304abfeeabd31e995a115a2855bf642"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/api"
-  packages = ["gensupport","googleapi","googleapi/internal/uritemplates","googleapi/transport","youtube/v3"]
+  packages = [
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
+    "googleapi/transport",
+    "youtube/v3"
+  ]
   revision = "7a7376eff6a51c6a053fcf8e9e50bf01a20f2673"
+
+[[projects]]
+  name = "google.golang.org/appengine"
+  packages = [
+    "internal",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/remote_api",
+    "internal/urlfetch",
+    "urlfetch"
+  ]
+  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "gopkg.in/nullbio/null.v6"
+  packages = ["convert"]
+  revision = "40264a2e6b7972d183906cf17663983c23231c82"
+  version = "v6.3"
 
 [[projects]]
   branch = "v2"
@@ -178,6 +293,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "23be144b9c949e092cb3dbf80a620c561d59604c1d34f54ed8d5447dd1409fa7"
+  inputs-digest = "8e3276bbdd8ea81f46de26542543d0b164a33dbb03c436c2400745a067a25b33"
   solver-name = "gps-cdcl"
   solver-version = 1

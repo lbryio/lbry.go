@@ -9,7 +9,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcrpcclient"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcutil"
 	"github.com/go-ini/ini"
 )
@@ -33,7 +33,7 @@ func init() {
 
 // Client connects to a lbrycrd instance
 type Client struct {
-	*btcrpcclient.Client
+	*rpcclient.Client
 }
 
 // New initializes a new Client
@@ -51,7 +51,7 @@ func New(lbrycrdURL string) (*Client, error) {
 
 	password, _ := u.User.Password()
 
-	connCfg := &btcrpcclient.ConnConfig{
+	connCfg := &rpcclient.ConnConfig{
 		Host:         u.Host,
 		User:         u.User.Username(),
 		Pass:         password,
@@ -59,7 +59,7 @@ func New(lbrycrdURL string) (*Client, error) {
 		DisableTLS:   true, // Bitcoin core does not provide TLS by default
 	}
 	// Notice the notification parameter is nil since notifications are not supported in HTTP POST mode.
-	client, err := btcrpcclient.New(connCfg, nil)
+	client, err := rpcclient.New(connCfg, nil)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
@@ -74,11 +74,11 @@ func New(lbrycrdURL string) (*Client, error) {
 }
 
 func NewWithDefaultURL() (*Client, error) {
-	url, err := getLbrycrdURLFromConfFile()
+	urlLocal, err := getLbrycrdURLFromConfFile()
 	if err != nil {
 		return nil, err
 	}
-	return New(url)
+	return New(urlLocal)
 }
 
 var errInsufficientFunds = errors.Base("insufficient funds")
