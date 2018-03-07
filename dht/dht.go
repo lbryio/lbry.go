@@ -52,6 +52,7 @@ type DHT struct {
 	node         *Node
 	routingTable *RoutingTable
 	packets      chan packet
+	store        *peerStore
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -72,6 +73,7 @@ func New(config *Config) *DHT {
 		node:         node,
 		routingTable: NewRoutingTable(node),
 		packets:      make(chan packet),
+		store:        newPeerStore(),
 	}
 }
 
@@ -150,39 +152,33 @@ func handle(dht *DHT, pkt packet) {
 	var data map[string]interface{}
 	err := bencode.DecodeBytes(pkt.data, &data)
 	if err != nil {
-		log.Errorf("Error decoding data: %s\n%s", err, pkt.data)
+		log.Errorf("error decoding data: %s\n%s", err, pkt.data)
 		return
 	}
 
 	msgType, ok := data[headerTypeField]
 	if !ok {
-		log.Errorf("Decoded data has no message type: %s", data)
+		log.Errorf("decoded data has no message type: %s", data)
 		return
 	}
 
 	switch msgType.(int64) {
 	case requestType:
-		request := Request{
-			ID:     data[headerMessageIDField].(string),
-			NodeID: data[headerNodeIDField].(string),
-			Method: data[headerPayloadField].(string),
-			Args:   getArgs(data[headerArgsField]),
+		request := Request{}
+		err = bencode.DecodeBytes(pkt.data, &request)
+		if err != nil {
+			return
 		}
-		log.Infof("%s: Received from %s: %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(request.NodeID))[:8], request.Method, argsToString(request.Args))
+		log.Debugf("[%s] query %s: received request from %s: %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(request.ID))[:8], hex.EncodeToString([]byte(request.NodeID))[:8], request.Method, argsToString(request.Args))
 		handleRequest(dht, pkt.raddr, request)
 
 	case responseType:
-		response := Response{
-			ID:     data[headerMessageIDField].(string),
-			NodeID: data[headerNodeIDField].(string),
+		response := Response{}
+		err = bencode.DecodeBytes(pkt.data, &response)
+		if err != nil {
+			return
 		}
-
-		if reflect.TypeOf(data[headerPayloadField]).Kind() == reflect.String {
-			response.Data = data[headerPayloadField].(string)
-		} else {
-			response.FindNodeData = getFindNodeResponse(data[headerPayloadField])
-		}
-
+		log.Debugf("[%s] query %s: received response from %s: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(response.ID))[:8], hex.EncodeToString([]byte(response.NodeID))[:8], response.Data)
 		handleResponse(dht, pkt.raddr, response)
 
 	case errorType:
@@ -192,6 +188,7 @@ func handle(dht *DHT, pkt packet) {
 			ExceptionType: data[headerPayloadField].(string),
 			Response:      getArgs(data[headerArgsField]),
 		}
+		log.Debugf("[%s] query %s: received error from %s: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(e.ID))[:8], hex.EncodeToString([]byte(e.NodeID))[:8], e.ExceptionType)
 		handleError(dht, pkt.raddr, e)
 
 	default:
@@ -202,7 +199,6 @@ func handle(dht *DHT, pkt packet) {
 
 // handleRequest handles the requests received from udp.
 func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) {
-	log.Infoln("handling request")
 	if request.NodeID == dht.node.id.RawString() {
 		log.Warn("ignoring self-request")
 		return
@@ -211,11 +207,16 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 	switch request.Method {
 	case pingMethod:
 		log.Println("ping")
-		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: "pong"})
+		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: pingSuccessResponse})
 	case storeMethod:
 		log.Println("store")
+		node := &Node{id: newBitmapFromHex(request.StoreArgs.Value.LbryID), addr: request.StoreArgs.Value.Port}
+		dht.store.Insert(newBitmapFromHex(request.StoreArgs.BlobHash))
+		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: storeSuccessResponse})
 	case findNodeMethod:
 		log.Println("findnode")
+	case findValueMethod:
+		log.Println("findvalue")
 		//if len(request.Args) < 1 {
 		//	send(dht, addr, Error{ID: request.ID, NodeID: dht.node.id.RawString(), Response: []string{"No target"}})
 		//	return
@@ -244,6 +245,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 
 	default:
 		//		send(dht, addr, makeError(t, protocolError, "invalid q"))
+		log.Errorln("invalid request method")
 		return
 	}
 
@@ -282,11 +284,13 @@ func handleError(dht *DHT, addr *net.UDPAddr, e Error) (success bool) {
 // send sends data to the udp.
 func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 	if req, ok := data.(Request); ok {
-		log.Infof("%s: Sending %s(%s)", hex.EncodeToString([]byte(req.NodeID))[:8], req.Method, argsToString(req.Args))
+		log.Debugf("[%s] query %s: sending request: %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(req.ID))[:8], req.Method, argsToString(req.Args))
+	} else if res, ok := data.(Response); ok {
+		log.Debugf("[%s] query %s: sending response: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(res.ID))[:8], res.Data)
 	} else {
-		log.Infof("%s: Sending %s", data.GetID(), spew.Sdump(data))
+		log.Debugf("[%s] %s", spew.Sdump(data))
 	}
-	encoded, err := data.Encode()
+	encoded, err := bencode.EncodeBytes(data)
 	if err != nil {
 		return err
 	}
@@ -298,46 +302,15 @@ func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 	return err
 }
 
-func getFindNodeResponse(i interface{}) (data []findNodeDatum) {
-	if reflect.TypeOf(i).Kind() != reflect.Slice {
-		return
-	}
-
-	v := reflect.ValueOf(i)
-	for i := 0; i < v.Len(); i++ {
-		if v.Index(i).Kind() != reflect.Interface {
-			continue
-		}
-
-		contact := v.Index(i).Elem()
-		if contact.Type().Kind() != reflect.Slice || contact.Len() != 3 {
-			continue
-		}
-
-		if contact.Index(0).Elem().Kind() != reflect.String ||
-			contact.Index(1).Elem().Kind() != reflect.String ||
-			!(contact.Index(2).Elem().Kind() == reflect.Int64 ||
-				contact.Index(2).Elem().Kind() == reflect.Int) {
-			continue
-		}
-
-		data = append(data, findNodeDatum{
-			ID:   contact.Index(0).Elem().String(),
-			IP:   contact.Index(1).Elem().String(),
-			Port: int(contact.Index(2).Elem().Int()),
-		})
-	}
-	return
-}
-
-func getArgs(argsInt interface{}) (args []string) {
+func getArgs(argsInt interface{}) []string {
+	args := []string{}
 	if reflect.TypeOf(argsInt).Kind() == reflect.Slice {
 		v := reflect.ValueOf(argsInt)
 		for i := 0; i < v.Len(); i++ {
 			args = append(args, cast.ToString(v.Index(i).Interface()))
 		}
 	}
-	return
+	return args
 }
 
 func argsToString(args []string) string {
