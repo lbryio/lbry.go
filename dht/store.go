@@ -1,32 +1,26 @@
 package dht
 
-import (
-	"sync"
-	"time"
-)
+import "sync"
 
 type peer struct {
-	node                *Node
-	lastPublished       time.Time
-	originallyPublished time.Time
-	originalPublisherID bitmap
+	nodeID bitmap
 }
 
 type peerStore struct {
-	data map[bitmap][]peer
+	data map[string][]peer
 	lock sync.RWMutex
 }
 
 func newPeerStore() *peerStore {
 	return &peerStore{
-		data: map[bitmap][]peer{},
+		data: map[string][]peer{},
 	}
 }
 
-func (s *peerStore) Insert(key bitmap, node *Node, lastPublished, originallyPublished time.Time, originaPublisherID bitmap) {
+func (s *peerStore) Insert(key string, nodeId bitmap) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	newPeer := peer{node: node, lastPublished: lastPublished, originallyPublished: originallyPublished, originalPublisherID: originaPublisherID}
+	newPeer := peer{nodeID: nodeId}
 	_, ok := s.data[key]
 	if !ok {
 		s.data[key] = []peer{newPeer}
@@ -35,13 +29,13 @@ func (s *peerStore) Insert(key bitmap, node *Node, lastPublished, originallyPubl
 	}
 }
 
-func (s *peerStore) GetNodes(key bitmap) []*Node {
+func (s *peerStore) Get(key string) []bitmap {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	nodes := []*Node{}
+	nodes := []bitmap{}
 	if peers, ok := s.data[key]; ok {
 		for _, p := range peers {
-			nodes = append(nodes, p.node)
+			nodes = append(nodes, p.nodeID)
 		}
 	}
 	return nodes

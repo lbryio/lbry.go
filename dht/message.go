@@ -36,7 +36,6 @@ const (
 
 type Message interface {
 	bencode.Marshaler
-	GetID() string
 }
 
 type Request struct {
@@ -47,7 +46,6 @@ type Request struct {
 	StoreArgs *storeArgs
 }
 
-func (r Request) GetID() string { return r.ID }
 func (r Request) MarshalBencode() ([]byte, error) {
 	var args interface{}
 	if r.StoreArgs != nil {
@@ -73,7 +71,7 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	}
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {
-		return err
+		return errors.Prefix("request unmarshal", err)
 	}
 
 	r.ID = raw.ID
@@ -81,29 +79,30 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	r.Method = raw.Method
 
 	if r.Method == storeMethod {
+		r.StoreArgs = &storeArgs{} // bencode wont find the unmarshaler on a null pointer. need to fix it.
 		err = bencode.DecodeBytes(raw.Args, &r.StoreArgs)
 	} else {
 		err = bencode.DecodeBytes(raw.Args, &r.Args)
 	}
 	if err != nil {
-		return err
+		return errors.Prefix("request unmarshal", err)
 	}
 
 	return nil
 }
 
 type storeArgs struct {
-	BlobHash string // 48 bytes
+	BlobHash string
 	Value    struct {
 		Token  string `bencode:"token"`
 		LbryID string `bencode:"lbryid"`
 		Port   int    `bencode:"port"`
 	}
-	NodeID    string // 48 bytes
-	SelfStore bool   // this is an int on the wire
+	NodeID    bitmap
+	SelfStore bool // this is an int on the wire
 }
 
-func (s *storeArgs) MarshalBencode() ([]byte, error) {
+func (s storeArgs) MarshalBencode() ([]byte, error) {
 	encodedValue, err := bencode.EncodeString(s.Value)
 	if err != nil {
 		return nil, err
@@ -126,7 +125,7 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	var argsInt []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &argsInt)
 	if err != nil {
-		return err
+		return errors.Prefix("storeArgs unmarshal", err)
 	}
 
 	if len(argsInt) != 4 {
@@ -135,23 +134,23 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 
 	err = bencode.DecodeBytes(argsInt[0], &s.BlobHash)
 	if err != nil {
-		return errors.Err(err)
+		return errors.Prefix("storeArgs unmarshal", err)
 	}
 
 	err = bencode.DecodeBytes(argsInt[1], &s.Value)
 	if err != nil {
-		return errors.Err(err)
+		return errors.Prefix("storeArgs unmarshal", err)
 	}
 
 	err = bencode.DecodeBytes(argsInt[2], &s.NodeID)
 	if err != nil {
-		return errors.Err(err)
+		return errors.Prefix("storeArgs unmarshal", err)
 	}
 
 	var selfStore int
 	err = bencode.DecodeBytes(argsInt[3], &selfStore)
 	if err != nil {
-		return errors.Err(err)
+		return errors.Prefix("storeArgs unmarshal", err)
 	}
 	if selfStore == 0 {
 		s.SelfStore = false
@@ -204,8 +203,6 @@ type Response struct {
 	FindNodeData []findNodeDatum
 }
 
-func (r Response) GetID() string { return r.ID }
-
 func (r Response) MarshalBencode() ([]byte, error) {
 	data := map[string]interface{}{
 		headerTypeField:      responseType,
@@ -246,6 +243,8 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 			return err
 		}
 	}
+
+	return nil
 }
 
 type Error struct {
@@ -255,7 +254,6 @@ type Error struct {
 	ExceptionType string
 }
 
-func (e Error) GetID() string { return e.ID }
 func (e Error) MarshalBencode() ([]byte, error) {
 	return bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      errorType,

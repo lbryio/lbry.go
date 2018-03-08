@@ -58,7 +58,7 @@ func TestBencodeDecodeStoreArgs(t *testing.T) {
 	if hex.EncodeToString([]byte(storeArgs.Value.Token)) != strings.ToLower(token) {
 		t.Error("token mismatch")
 	}
-	if hex.EncodeToString([]byte(storeArgs.NodeID)) != strings.ToLower(nodeID) {
+	if storeArgs.NodeID.Hex() != strings.ToLower(nodeID) {
 		t.Error("node id mismatch")
 	}
 	if !storeArgs.SelfStore {

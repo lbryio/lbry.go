@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"math/rand"
 	"strconv"
+
+	"github.com/zeebo/bencode"
 )
 
 type bitmap [nodeIDLength]byte
@@ -52,6 +54,21 @@ func (b bitmap) PrefixLen() (ret int) {
 		}
 	}
 	return nodeIDLength*8 - 1
+}
+
+func (b *bitmap) UnmarshalBencode(encoded []byte) error {
+	var str string
+	err := bencode.DecodeBytes(encoded, &str)
+	if err != nil {
+		return err
+	}
+	copy(b[:], str)
+	return nil
+}
+
+func (b bitmap) MarshalBencode() ([]byte, error) {
+	str := string(b[:])
+	return bencode.EncodeBytes(str)
 }
 
 func newBitmapFromBytes(data []byte) bitmap {

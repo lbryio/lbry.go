@@ -167,6 +167,7 @@ func handle(dht *DHT, pkt packet) {
 		request := Request{}
 		err = bencode.DecodeBytes(pkt.data, &request)
 		if err != nil {
+			log.Errorln(err)
 			return
 		}
 		log.Debugf("[%s] query %s: received request from %s: %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(request.ID))[:8], hex.EncodeToString([]byte(request.NodeID))[:8], request.Method, argsToString(request.Args))
@@ -206,12 +207,13 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 
 	switch request.Method {
 	case pingMethod:
-		log.Println("ping")
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: pingSuccessResponse})
 	case storeMethod:
-		log.Println("store")
-		node := &Node{id: newBitmapFromHex(request.StoreArgs.Value.LbryID), addr: request.StoreArgs.Value.Port}
-		dht.store.Insert(newBitmapFromHex(request.StoreArgs.BlobHash))
+		if request.StoreArgs.BlobHash == "" {
+			log.Errorln("blobhash is empty")
+			return // nothing to store
+		}
+		dht.store.Insert(request.StoreArgs.BlobHash, request.StoreArgs.NodeID)
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: storeSuccessResponse})
 	case findNodeMethod:
 		log.Println("findnode")

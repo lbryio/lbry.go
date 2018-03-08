@@ -1,6 +1,10 @@
 package dht
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/zeebo/bencode"
+)
 
 func TestBitmap(t *testing.T) {
 	a := bitmap{
@@ -44,5 +48,51 @@ func TestBitmap(t *testing.T) {
 	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	if newBitmapFromHex(id).Hex() != id {
 		t.Error(newBitmapFromHex(id).Hex())
+	}
+}
+
+func TestBitmapMarshal(t *testing.T) {
+	b := newBitmapFromString("123456789012345678901234567890123456789012345678")
+	encoded, err := bencode.EncodeBytes(b)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(encoded) != "48:123456789012345678901234567890123456789012345678" {
+		t.Error("encoding does not match expected")
+	}
+}
+
+func TestBitmapMarshalEmbedded(t *testing.T) {
+	e := struct {
+		A string
+		B bitmap
+		C int
+	}{
+		A: "1",
+		B: newBitmapFromString("222222222222222222222222222222222222222222222222"),
+		C: 3,
+	}
+
+	encoded, err := bencode.EncodeBytes(e)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(encoded) != "d1:A1:11:B48:2222222222222222222222222222222222222222222222221:Ci3ee" {
+		t.Error("encoding does not match expected")
+	}
+}
+
+func TestBitmapMarshalEmbedded2(t *testing.T) {
+	encoded, err := bencode.EncodeBytes([]interface{}{
+		newBitmapFromString("333333333333333333333333333333333333333333333333"),
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(encoded) != "l48:333333333333333333333333333333333333333333333333e" {
+		t.Error("encoding does not match expected")
 	}
 }
