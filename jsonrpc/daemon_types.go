@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/lbryio/lbry.go/errors"
 	lbryschema "github.com/lbryio/lbryschema.go/pb"
 
-	"github.com/go-errors/errors"
 	"github.com/shopspring/decimal"
 )
 
@@ -80,11 +80,11 @@ type File struct {
 func getEnumVal(enum map[string]int32, data interface{}) (int32, error) {
 	s, ok := data.(string)
 	if !ok {
-		return 0, errors.New("expected a string")
+		return 0, errors.Err("expected a string")
 	}
 	val, ok := enum[s]
 	if !ok {
-		return 0, errors.New("invalid enum key")
+		return 0, errors.Err("invalid enum key")
 	}
 	return val, nil
 }
@@ -97,7 +97,7 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 			if err != nil {
 				return nil, errors.Wrap(err, 0)
 			} else if val < 0 {
-				return nil, errors.New("must be unsigned int")
+				return nil, errors.Err("must be unsigned int")
 			}
 			return uint64(val), nil
 		}

@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
+	"github.com/lbryio/lbry.go/errors"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -76,7 +77,7 @@ func decodeNumber(data interface{}) (decimal.Decimal, error) {
 	case string:
 		number = d
 	default:
-		return decimal.Decimal{}, errors.New("unexpected number type")
+		return decimal.Decimal{}, errors.Err("unexpected number type")
 	}
 
 	dec, err := decimal.NewFromString(number)
@@ -111,7 +112,7 @@ func (d *Client) callNoDecode(command string, params map[string]interface{}) (in
 	}
 
 	if r.Error != nil {
-		return nil, errors.New("Error in daemon: " + r.Error.Message)
+		return nil, errors.Err("Error in daemon: " + r.Error.Message)
 	}
 
 	return r.Result, nil
@@ -205,38 +206,38 @@ func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, er
 
 	castResponse, ok := rawResponse.([]interface{})
 	if !ok {
-		return nil, errors.New("invalid peer_list response")
+		return nil, errors.Err("invalid peer_list response")
 	}
 
 	peers := []PeerListResponsePeer{}
 	for _, peer := range castResponse {
 		t, ok := peer.([]interface{})
 		if !ok {
-			return nil, errors.New("invalid peer_list response")
+			return nil, errors.Err("invalid peer_list response")
 		}
 
 		if len(t) != 3 {
-			return nil, errors.New("invalid triplet in peer_list response")
+			return nil, errors.Err("invalid triplet in peer_list response")
 		}
 
 		ip, ok := t[0].(string)
 		if !ok {
-			return nil, errors.New("invalid ip in peer_list response")
+			return nil, errors.Err("invalid ip in peer_list response")
 		}
 		port, ok := t[1].(json.Number)
 		if !ok {
-			return nil, errors.New("invalid port in peer_list response")
+			return nil, errors.Err("invalid port in peer_list response")
 		}
 		available, ok := t[2].(bool)
 		if !ok {
-			return nil, errors.New("invalid is_available in peer_list response")
+			return nil, errors.Err("invalid is_available in peer_list response")
 		}
 
 		portNum, err := port.Int64()
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		} else if portNum < 0 {
-			return nil, errors.New("invalid port in peer_list response")
+			return nil, errors.Err("invalid port in peer_list response")
 		}
 
 		peers = append(peers, PeerListResponsePeer{
@@ -380,7 +381,7 @@ func (d *Client) BlobAnnounce(blobHash, sdHash, streamHash *string) (*BlobAnnoun
 
 func (d *Client) WalletPrefillAddresses(numAddresses int, amount decimal.Decimal, broadcast bool) (*WalletPrefillAddressesResponse, error) {
 	if numAddresses < 1 {
-		return nil, errors.New("must create at least 1 address")
+		return nil, errors.Err("must create at least 1 address")
 	}
 	response := new(WalletPrefillAddressesResponse)
 	return response, d.call(response, "wallet_prefill_addresses", map[string]interface{}{
@@ -398,7 +399,7 @@ func (d *Client) WalletNewAddress() (*WalletNewAddressResponse, error) {
 
 	address, ok := rawResponse.(string)
 	if !ok {
-		return nil, errors.New("unexpected response")
+		return nil, errors.Err("unexpected response")
 	}
 
 	response := WalletNewAddressResponse(address)
@@ -413,7 +414,7 @@ func (d *Client) WalletUnusedAddress() (*WalletUnusedAddressResponse, error) {
 
 	address, ok := rawResponse.(string)
 	if !ok {
-		return nil, errors.New("unexpected response")
+		return nil, errors.Err("unexpected response")
 	}
 
 	response := WalletUnusedAddressResponse(address)
@@ -428,18 +429,18 @@ func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	} else if response == nil {
-		return 0, errors.New("no response")
+		return 0, errors.Err("no response")
 	}
 
 	channel, ok := (*response)[url]
 	if !ok {
-		return 0, errors.New("url not in response")
+		return 0, errors.Err("url not in response")
 	}
 	if channel.Error != "" {
 		if strings.Contains(channel.Error, "cannot be resolved") {
 			return 0, nil
 		}
-		return 0, errors.New(channel.Error)
+		return 0, errors.Err(channel.Error)
 	}
 	return channel.ClaimsInChannel, nil
 }

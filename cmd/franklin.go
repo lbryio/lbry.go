@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/jsonrpc"
 
-	"github.com/go-errors/errors"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -100,11 +100,11 @@ func doURL(conn *jsonrpc.Client, url string) (Result, error) {
 	}
 
 	if price == nil {
-		return result, errors.New("could not get price of " + url)
+		return result, errors.Err("could not get price of " + url)
 	}
 
 	if decimal.Decimal(*price).Cmp(decimal.NewFromFloat(maxPrice)) == 1 {
-		return result, errors.New("the price of " + url + " is too damn high")
+		return result, errors.Err("the price of " + url + " is too damn high")
 	}
 
 	startTime := time.Now()
@@ -112,7 +112,7 @@ func doURL(conn *jsonrpc.Client, url string) (Result, error) {
 	if err != nil {
 		return result, err
 	} else if get == nil {
-		return result, errors.New("received no response for 'get' of " + url)
+		return result, errors.Err("received no response for 'get' of " + url)
 	}
 
 	if get.Completed {

@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"github.com/lbryio/lbry.go/errors"
 	sync "github.com/lbryio/lbry.go/ytsync"
 
-	"github.com/go-errors/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -64,10 +64,6 @@ func ytsync(cmd *cobra.Command, args []string) {
 	err := s.FullCycle()
 
 	if err != nil {
-		if wrappedError, ok := err.(*errors.Error); ok {
-			log.Error(wrappedError.Error() + "\n" + string(wrappedError.Stack()))
-		} else {
-			panic(err)
-		}
+		log.Error(errors.FullTrace(err))
 	}
 }
