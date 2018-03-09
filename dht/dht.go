@@ -20,7 +20,7 @@ const nodeIDLength = 48 // bytes. this is the constant B in the spec
 const bucketSize = 20   // this is the constant k in the spec
 
 const tExpire = 86400 * time.Second    // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
-const tRefresh = 3600 * time.Second    // after which an otherwise unaccessed bucket must be refreshed
+const tRefresh = 3600 * time.Second    // the time after which an otherwise unaccessed bucket must be refreshed
 const tReplicate = 3600 * time.Second  // the interval between Kademlia replication events, when a node is required to publish its entire database
 const tRepublish = 86400 * time.Second // the time after which the original publisher must republish a key/value pair
 
@@ -46,7 +46,7 @@ type Config struct {
 // NewStandardConfig returns a Config pointer with default values.
 func NewStandardConfig() *Config {
 	return &Config{
-		Address: ":4444",
+		Address: "127.0.0.1:4444",
 		SeedNodes: []string{
 			"lbrynet1.lbry.io:4444",
 			"lbrynet2.lbry.io:4444",
@@ -81,13 +81,21 @@ func New(config *Config) *DHT {
 	ip, port, err := net.SplitHostPort(config.Address)
 	if err != nil {
 		panic(err)
+	} else if ip == "" {
+		panic("address does not contain an IP")
+	} else if port == "" {
+		panic("address does not contain a port")
 	}
+
 	portInt, err := cast.ToIntE(port)
 	if err != nil {
 		panic(err)
 	}
 
-	node := &Node{id: id, ip: ip, port: portInt}
+	node := &Node{id: id, ip: net.ParseIP(ip), port: portInt}
+	if node.ip == nil {
+		panic("invalid ip")
+	}
 	return &DHT{
 		conf:         config,
 		node:         node,
@@ -219,7 +227,7 @@ func handle(dht *DHT, pkt packet) {
 }
 
 // handleRequest handles the requests received from udp.
-func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) {
+func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 	if request.NodeID == dht.node.id.RawString() {
 		log.Warn("ignoring self-request")
 		return
@@ -233,7 +241,9 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 			log.Errorln("blobhash is empty")
 			return // nothing to store
 		}
-		dht.store.Insert(request.StoreArgs.BlobHash, request.StoreArgs.NodeID)
+		// TODO: we should be sending the IP in the request, not just using the sender's IP
+		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
+		dht.store.Insert(request.StoreArgs.BlobHash, Node{id: request.StoreArgs.NodeID, ip: addr.IP, port: request.StoreArgs.Value.Port})
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: storeSuccessResponse})
 	case findNodeMethod:
 		log.Println("findnode")
@@ -245,13 +255,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 			log.Errorln("invalid node id")
 			return
 		}
-		nodeID := newBitmapFromString(request.Args[0])
-		closestNodes := dht.routingTable.FindClosest(nodeID, bucketSize)
-		response := Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: make([]Node, len(closestNodes))}
-		for i, n := range closestNodes {
-			response.FindNodeData[i] = *n
-		}
-		send(dht, addr, response)
+		doFindNodes(dht, addr, request)
 	case findValueMethod:
 		log.Println("findvalue")
 		if len(request.Args) < 1 {
@@ -263,20 +267,14 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 			return
 		}
 
-		nodeIDs := dht.store.Get(request.Args[0])
-		if len(nodeIDs) > 0 {
-			// return node ids
+		if nodes := dht.store.Get(request.Args[0]); len(nodes) > 0 {
+			response := Response{ID: request.ID, NodeID: dht.node.id.RawString()}
+			response.FindValueKey = request.Args[0]
+			response.FindNodeData = nodes
+			send(dht, addr, response)
 		} else {
-			// switch to findNode
+			doFindNodes(dht, addr, request)
 		}
-
-		nodeID := newBitmapFromString(request.Args[0])
-		closestNodes := dht.routingTable.FindClosest(nodeID, bucketSize)
-		response := Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: make([]Node, len(closestNodes))}
-		for i, n := range closestNodes {
-			response.FindNodeData[i] = *n
-		}
-		send(dht, addr, response)
 
 	default:
 		//		send(dht, addr, makeError(t, protocolError, "invalid q"))
@@ -284,38 +282,37 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 		return
 	}
 
-	node := &Node{id: newBitmapFromString(request.NodeID), ip: addr.IP.String(), port: addr.Port}
+	node := &Node{id: newBitmapFromString(request.NodeID), ip: addr.IP, port: addr.Port}
 	dht.routingTable.Update(node)
-	return true
+}
+
+func doFindNodes(dht *DHT, addr *net.UDPAddr, request Request) {
+	nodeID := newBitmapFromString(request.Args[0])
+	closestNodes := dht.routingTable.FindClosest(nodeID, bucketSize)
+	if len(closestNodes) > 0 {
+		response := Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: make([]Node, len(closestNodes))}
+		for i, n := range closestNodes {
+			response.FindNodeData[i] = *n
+		}
+		send(dht, addr, response)
+	}
 }
 
 // handleResponse handles responses received from udp.
-func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) (success bool) {
+func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) {
 	spew.Dump(response)
 
-	//switch trans.request.Method {
-	//case pingMethod:
-	//case findNodeMethod:
-	//	target := trans.request.Args[0]
-	//	if findOn(dht, response.FindNodeData, newBitmapFromString(target), findNodeMethod) != nil {
-	//		return
-	//	}
-	//default:
-	//	return
-	//}
+	// TODO: find transaction by message id, pass along response
 
-	node := &Node{id: newBitmapFromString(response.NodeID), ip: addr.IP.String(), port: addr.Port}
+	node := &Node{id: newBitmapFromString(response.NodeID), ip: addr.IP, port: addr.Port}
 	dht.routingTable.Update(node)
-
-	return true
 }
 
 // handleError handles errors received from udp.
-func handleError(dht *DHT, addr *net.UDPAddr, e Error) (success bool) {
+func handleError(dht *DHT, addr *net.UDPAddr, e Error) {
 	spew.Dump(e)
-	node := &Node{id: newBitmapFromString(e.NodeID), ip: addr.IP.String(), port: addr.Port}
+	node := &Node{id: newBitmapFromString(e.NodeID), ip: addr.IP, port: addr.Port}
 	dht.routingTable.Update(node)
-	return true
 }
 
 // send sends data to the udp.

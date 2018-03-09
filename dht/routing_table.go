@@ -31,7 +31,7 @@ func (n Node) MarshalCompact() ([]byte, error) {
 	buf.WriteByte(byte(n.port))
 	buf.Write(n.id[:])
 
-	if buf.Len() != nodeIDLength+6 {
+	if buf.Len() != compactNodeInfoLength {
 		return nil, errors.Err("i dont know how this happened")
 	}
 
@@ -39,14 +39,11 @@ func (n Node) MarshalCompact() ([]byte, error) {
 }
 
 func (n *Node) UnmarshalCompact(b []byte) error {
-	if len(b) != 6 {
-		return errors.Err("invalid compact ip/port")
+	if len(b) != compactNodeInfoLength {
+		return errors.Err("invalid compact length")
 	}
-	copy(n.ip, b[0:4])
+	n.ip = net.IPv4(b[0], b[1], b[2], b[3])
 	n.port = int(uint16(b[5]) | uint16(b[4])<<8)
-	if n.port < 0 || n.port > 65535 {
-		return errors.Err("invalid port")
-	}
 	n.id = newBitmapFromBytes(b[6:])
 	return nil
 }

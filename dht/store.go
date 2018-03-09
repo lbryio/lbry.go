@@ -3,7 +3,7 @@ package dht
 import "sync"
 
 type peer struct {
-	nodeID bitmap
+	node Node
 }
 
 type peerStore struct {
@@ -17,10 +17,10 @@ func newPeerStore() *peerStore {
 	}
 }
 
-func (s *peerStore) Insert(key string, nodeId bitmap) {
+func (s *peerStore) Insert(key string, node Node) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	newPeer := peer{nodeID: nodeId}
+	newPeer := peer{node: node}
 	_, ok := s.data[key]
 	if !ok {
 		s.data[key] = []peer{newPeer}
@@ -29,13 +29,13 @@ func (s *peerStore) Insert(key string, nodeId bitmap) {
 	}
 }
 
-func (s *peerStore) Get(key string) []bitmap {
+func (s *peerStore) Get(key string) []Node {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	var nodes []bitmap
+	var nodes []Node
 	if peers, ok := s.data[key]; ok {
 		for _, p := range peers {
-			nodes = append(nodes, p.nodeID)
+			nodes = append(nodes, p.node)
 		}
 	}
 	return nodes

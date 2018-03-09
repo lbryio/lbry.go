@@ -1,11 +1,10 @@
 package dht
 
 import (
-	"encoding/hex"
+	"net"
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/zeebo/bencode"
 )
@@ -17,7 +16,7 @@ func TestPing(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: ":21216", NodeID: dhtNodeID.Hex()})
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
@@ -45,8 +44,7 @@ func TestPing(t *testing.T) {
 		var response map[string]interface{}
 		err := bencode.DecodeBytes(resp.data, &response)
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
 		}
 
 		if len(response) != 4 {
@@ -109,7 +107,7 @@ func TestStore(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: ":21216", NodeID: dhtNodeID.Hex()})
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
@@ -149,8 +147,7 @@ func TestStore(t *testing.T) {
 
 	data, err := bencode.EncodeBytes(storeRequest)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	conn.toRead <- testUDPPacket{addr: conn.addr, data: data}
@@ -159,13 +156,11 @@ func TestStore(t *testing.T) {
 	var response map[string]interface{}
 	select {
 	case <-timer.C:
-		t.Error("timeout")
-		return
+		t.Fatal("timeout")
 	case resp := <-conn.writes:
 		err := bencode.DecodeBytes(resp.data, &response)
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
 		}
 	}
 
@@ -191,7 +186,7 @@ func TestStore(t *testing.T) {
 	if len(items) != 1 {
 		t.Error("list created in store, but nothing in list")
 	}
-	if !items[0].Equals(testNodeID) {
+	if !items[0].id.Equals(testNodeID) {
 		t.Error("wrong value stored")
 	}
 }
@@ -202,7 +197,7 @@ func TestFindNode(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: ":21216", NodeID: dhtNodeID.Hex()})
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
@@ -210,7 +205,7 @@ func TestFindNode(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Node
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: newRandomBitmap(), ip: "127.0.0.1", port: 10000 + i}
+		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.routingTable.Update(&n)
 	}
@@ -227,8 +222,7 @@ func TestFindNode(t *testing.T) {
 
 	data, err := bencode.EncodeBytes(request)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	conn.toRead <- testUDPPacket{addr: conn.addr, data: data}
@@ -237,13 +231,11 @@ func TestFindNode(t *testing.T) {
 	var response map[string]interface{}
 	select {
 	case <-timer.C:
-		t.Error("timeout")
-		return
+		t.Fatal("timeout")
 	case resp := <-conn.writes:
 		err := bencode.DecodeBytes(resp.data, &response)
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
 		}
 	}
 
@@ -251,45 +243,176 @@ func TestFindNode(t *testing.T) {
 
 	_, ok := response[headerPayloadField]
 	if !ok {
-		t.Error("missing payload field")
-	} else {
-		contacts, ok := response[headerPayloadField].([]interface{})
-		if !ok {
-			t.Error("payload is not a list")
-		} else {
-			verifyContacts(t, contacts, nodes)
-		}
+		t.Fatal("missing payload field")
 	}
+
+	payload, ok := response[headerPayloadField].(map[string]interface{})
+	if !ok {
+		t.Fatal("payload is not a dictionary")
+	}
+
+	contactsList, ok := payload["contacts"]
+	if !ok {
+		t.Fatal("payload is missing 'contacts' key")
+	}
+
+	contacts, ok := contactsList.([]interface{})
+	if !ok {
+		t.Fatal("'contacts' is not a list")
+	}
+
+	verifyContacts(t, contacts, nodes)
 }
 
-func TestFindValue(t *testing.T) {
+func TestFindValueExisting(t *testing.T) {
 	dhtNodeID := newRandomBitmap()
+	testNodeID := newRandomBitmap()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: ":21216", NodeID: dhtNodeID.Hex()})
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
 
-	data, _ := hex.DecodeString("64313a30693065313a3132303a7de8e57d34e316abbb5a8a8da50dcd1ad4c80e0f313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33393a66696e6456616c7565313a346c34383aa47624b8e7ee1e54df0c45e2eb858feb0b705bd2a78d8b739be31ba188f4bd6f56b371c51fecc5280d5fd26ba4168e966565")
+	nodesToInsert := 3
+	var nodes []Node
+	for i := 0; i < nodesToInsert; i++ {
+		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		nodes = append(nodes, n)
+		dht.routingTable.Update(&n)
+	}
+
+	//data, _ := hex.DecodeString("64313a30693065313a3132303a7de8e57d34e316abbb5a8a8da50dcd1ad4c80e0f313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33393a66696e6456616c7565313a346c34383aa47624b8e7ee1e54df0c45e2eb858feb0b705bd2a78d8b739be31ba188f4bd6f56b371c51fecc5280d5fd26ba4168e966565")
+
+	messageID := newRandomBitmap().RawString()
+	valueToFind := newRandomBitmap().RawString()
+
+	nodeToFind := Node{id: newRandomBitmap(), ip: net.ParseIP("1.2.3.4"), port: 1286}
+	dht.store.Insert(valueToFind, nodeToFind)
+
+	request := Request{
+		ID:     messageID,
+		NodeID: testNodeID.RawString(),
+		Method: findValueMethod,
+		Args:   []string{valueToFind},
+	}
+
+	data, err := bencode.EncodeBytes(request)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	conn.toRead <- testUDPPacket{addr: conn.addr, data: data}
 	timer := time.NewTimer(3 * time.Second)
 
+	var response map[string]interface{}
 	select {
 	case <-timer.C:
-		t.Error("timeout")
+		t.Fatal("timeout")
 	case resp := <-conn.writes:
-		var response map[string]interface{}
 		err := bencode.DecodeBytes(resp.data, &response)
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
 		}
-
-		spew.Dump(response)
 	}
+
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+
+	_, ok := response[headerPayloadField]
+	if !ok {
+		t.Fatal("missing payload field")
+	}
+
+	payload, ok := response[headerPayloadField].(map[string]interface{})
+	if !ok {
+		t.Fatal("payload is not a dictionary")
+	}
+
+	compactContacts, ok := payload[valueToFind]
+	if !ok {
+		t.Fatal("payload is missing key for search value")
+	}
+
+	contacts, ok := compactContacts.([]interface{})
+	if !ok {
+		t.Fatal("search results are not a list")
+	}
+
+	verifyCompactContacts(t, contacts, []Node{nodeToFind})
+}
+
+func TestFindValueFallbackToFindNode(t *testing.T) {
+	dhtNodeID := newRandomBitmap()
+	testNodeID := newRandomBitmap()
+
+	conn := newTestUDPConn("127.0.0.1:21217")
+
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	dht.conn = conn
+	dht.listen()
+	go dht.runHandler()
+
+	nodesToInsert := 3
+	var nodes []Node
+	for i := 0; i < nodesToInsert; i++ {
+		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		nodes = append(nodes, n)
+		dht.routingTable.Update(&n)
+	}
+
+	messageID := newRandomBitmap().RawString()
+	valueToFind := newRandomBitmap().RawString()
+
+	request := Request{
+		ID:     messageID,
+		NodeID: testNodeID.RawString(),
+		Method: findValueMethod,
+		Args:   []string{valueToFind},
+	}
+
+	data, err := bencode.EncodeBytes(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conn.toRead <- testUDPPacket{addr: conn.addr, data: data}
+	timer := time.NewTimer(3 * time.Second)
+
+	var response map[string]interface{}
+	select {
+	case <-timer.C:
+		t.Fatal("timeout")
+	case resp := <-conn.writes:
+		err := bencode.DecodeBytes(resp.data, &response)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+
+	_, ok := response[headerPayloadField]
+	if !ok {
+		t.Fatal("missing payload field")
+	}
+
+	payload, ok := response[headerPayloadField].(map[string]interface{})
+	if !ok {
+		t.Fatal("payload is not a dictionary")
+	}
+
+	contactsList, ok := payload["contacts"]
+	if !ok {
+		t.Fatal("payload is missing 'contacts' key")
+	}
+
+	contacts, ok := contactsList.([]interface{})
+	if !ok {
+		t.Fatal("'contacts' is not a list")
+	}
+
+	verifyContacts(t, contacts, nodes)
 }
 
 func verifyResponse(t *testing.T, resp map[string]interface{}, messageID, dhtNodeID string) {
@@ -382,8 +505,8 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Node) {
 		ip, ok := contact[1].(string)
 		if !ok {
 			t.Error("contact IP is not a string")
-		} else if ip != currNode.ip {
-			t.Errorf("contact IP mismatch. got %s; expected %s", ip, currNode.ip)
+		} else if !currNode.ip.Equal(net.ParseIP(ip)) {
+			t.Errorf("contact IP mismatch. got %s; expected %s", ip, currNode.ip.String())
 		}
 
 		port, ok := contact[2].(int64)
@@ -391,6 +514,58 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Node) {
 			t.Error("contact port is not an int")
 		} else if int(port) != currNode.port {
 			t.Errorf("contact port mismatch. got %d; expected %d", port, currNode.port)
+		}
+	}
+}
+
+func verifyCompactContacts(t *testing.T, contacts []interface{}, nodes []Node) {
+	if len(contacts) != len(nodes) {
+		t.Errorf("got %d contacts; expected %d", len(contacts), len(nodes))
+		return
+	}
+
+	foundNodes := make(map[string]bool)
+
+	for _, c := range contacts {
+		compact, ok := c.(string)
+		if !ok {
+			t.Error("contact is not a string")
+			return
+		}
+
+		contact := Node{}
+		err := contact.UnmarshalCompact([]byte(compact))
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		var currNode Node
+		currNodeFound := false
+
+		if _, ok := foundNodes[contact.id.Hex()]; ok {
+			t.Errorf("contact %s appears multiple times", contact.id.Hex())
+			continue
+		}
+		for _, n := range nodes {
+			if n.id.Equals(contact.id) {
+				currNode = n
+				currNodeFound = true
+				foundNodes[contact.id.Hex()] = true
+				break
+			}
+		}
+		if !currNodeFound {
+			t.Errorf("unexpected contact %s", contact.id.Hex())
+			continue
+		}
+
+		if !currNode.ip.Equal(contact.ip) {
+			t.Errorf("contact IP mismatch. got %s; expected %s", contact.ip.String(), currNode.ip.String())
+		}
+
+		if contact.port != currNode.port {
+			t.Errorf("contact port mismatch. got %d; expected %d", contact.port, currNode.port)
 		}
 	}
 }

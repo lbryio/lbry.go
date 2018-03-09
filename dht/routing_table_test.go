@@ -2,9 +2,8 @@ package dht
 
 import (
 	"net"
+	"reflect"
 	"testing"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func TestRoutingTable(t *testing.T) {
@@ -40,8 +39,8 @@ func TestRoutingTable(t *testing.T) {
 func TestCompactEncoding(t *testing.T) {
 	n := Node{
 		id:   newBitmapFromHex("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41"),
-		ip:   net.ParseIP("255.1.0.155"),
-		port: 66666,
+		ip:   net.ParseIP("1.2.3.4"),
+		port: int(55<<8 + 66),
 	}
 
 	var compact []byte
@@ -50,9 +49,11 @@ func TestCompactEncoding(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(compact) != nodeIDLength+6 {
-		t.Fatalf("got length of %d; expected %d", len(compact), nodeIDLength+6)
+	if len(compact) != compactNodeInfoLength {
+		t.Fatalf("got length of %d; expected %d", len(compact), compactNodeInfoLength)
 	}
 
-	spew.Dump(compact)
+	if !reflect.DeepEqual(compact, append([]byte{1, 2, 3, 4, 55, 66}, n.id[:]...)) {
+		t.Errorf("compact bytes not encoded correctly")
+	}
 }

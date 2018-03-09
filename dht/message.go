@@ -179,8 +179,18 @@ func (r Response) MarshalBencode() ([]byte, error) {
 	}
 	if r.Data != "" {
 		data[headerPayloadField] = r.Data
+	} else if r.FindValueKey != "" {
+		var contacts [][]byte
+		for _, n := range r.FindNodeData {
+			compact, err := n.MarshalCompact()
+			if err != nil {
+				return nil, err
+			}
+			contacts = append(contacts, compact)
+		}
+		data[headerPayloadField] = map[string][][]byte{r.FindValueKey: contacts}
 	} else {
-		data[headerPayloadField] = r.FindNodeData
+		data[headerPayloadField] = map[string][]Node{"contacts": r.FindNodeData}
 	}
 
 	return bencode.EncodeBytes(data)
