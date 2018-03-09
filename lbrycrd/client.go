@@ -74,11 +74,11 @@ func New(lbrycrdURL string) (*Client, error) {
 }
 
 func NewWithDefaultURL() (*Client, error) {
-	urlLocal, err := getLbrycrdURLFromConfFile()
+	url, err := getLbrycrdURLFromConfFile()
 	if err != nil {
 		return nil, err
 	}
-	return New(urlLocal)
+	return New(url)
 }
 
 var errInsufficientFunds = errors.Base("insufficient funds")
