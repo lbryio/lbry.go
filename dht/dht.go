@@ -14,8 +14,18 @@ import (
 )
 
 const network = "udp4"
-const bucketSize = 20
+
+const alpha = 3         // this is the constant alpha in the spec
+const nodeIDLength = 48 // bytes. this is the constant B in the spec
+const bucketSize = 20   // this is the constant k in the spec
+
+const tExpire = 86400 * time.Second    // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
+const tRefresh = 3600 * time.Second    // after which an otherwise unaccessed bucket must be refreshed
+const tReplicate = 3600 * time.Second  // the interval between Kademlia replication events, when a node is required to publish its entire database
+const tRepublish = 86400 * time.Second // the time after which the original publisher must republish a key/value pair
+
 const numBuckets = nodeIDLength * 8
+const compactNodeInfoLength = nodeIDLength + 6
 
 // packet represents the information receive from udp.
 type packet struct {
@@ -67,11 +77,21 @@ func New(config *Config) *DHT {
 	} else {
 		id = newBitmapFromHex(config.NodeID)
 	}
-	node := &Node{id: id, addr: config.Address}
+
+	ip, port, err := net.SplitHostPort(config.Address)
+	if err != nil {
+		panic(err)
+	}
+	portInt, err := cast.ToIntE(port)
+	if err != nil {
+		panic(err)
+	}
+
+	node := &Node{id: id, ip: ip, port: portInt}
 	return &DHT{
 		conf:         config,
 		node:         node,
-		routingTable: NewRoutingTable(node),
+		routingTable: newRoutingTable(node),
 		packets:      make(chan packet),
 		store:        newPeerStore(),
 	}
@@ -217,33 +237,46 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), Data: storeSuccessResponse})
 	case findNodeMethod:
 		log.Println("findnode")
+		if len(request.Args) < 1 {
+			log.Errorln("nothing to find")
+			return
+		}
+		if len(request.Args[0]) != nodeIDLength {
+			log.Errorln("invalid node id")
+			return
+		}
+		nodeID := newBitmapFromString(request.Args[0])
+		closestNodes := dht.routingTable.FindClosest(nodeID, bucketSize)
+		response := Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: make([]Node, len(closestNodes))}
+		for i, n := range closestNodes {
+			response.FindNodeData[i] = *n
+		}
+		send(dht, addr, response)
 	case findValueMethod:
 		log.Println("findvalue")
-		//if len(request.Args) < 1 {
-		//	send(dht, addr, Error{ID: request.ID, NodeID: dht.node.id.RawString(), Response: []string{"No target"}})
-		//	return
-		//}
-		//
-		//target := request.Args[0]
-		//if len(target) != nodeIDLength {
-		//	send(dht, addr, Error{ID: request.ID, NodeID: dht.node.id.RawString(), Response: []string{"Invalid target"}})
-		//	return
-		//}
-		//
-		//nodes := []findNodeDatum{}
-		//targetID := newBitmapFromString(target)
-		//
-		//no, _ := dht.routingTable.GetNodeKBucktByID(targetID)
-		//if no != nil {
-		//	nodes = []findNodeDatum{{ID: no.id.RawString(), IP: no.addr.IP.String(), Port: no.addr.Port}}
-		//} else {
-		//	neighbors := dht.routingTable.GetNeighbors(targetID, dht.K)
-		//	for _, n := range neighbors {
-		//		nodes = append(nodes, findNodeDatum{ID: n.id.RawString(), IP: n.addr.IP.String(), Port: n.addr.Port})
-		//	}
-		//}
-		//
-		//send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: nodes})
+		if len(request.Args) < 1 {
+			log.Errorln("nothing to find")
+			return
+		}
+		if len(request.Args[0]) != nodeIDLength {
+			log.Errorln("invalid node id")
+			return
+		}
+
+		nodeIDs := dht.store.Get(request.Args[0])
+		if len(nodeIDs) > 0 {
+			// return node ids
+		} else {
+			// switch to findNode
+		}
+
+		nodeID := newBitmapFromString(request.Args[0])
+		closestNodes := dht.routingTable.FindClosest(nodeID, bucketSize)
+		response := Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: make([]Node, len(closestNodes))}
+		for i, n := range closestNodes {
+			response.FindNodeData[i] = *n
+		}
+		send(dht, addr, response)
 
 	default:
 		//		send(dht, addr, makeError(t, protocolError, "invalid q"))
@@ -251,7 +284,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) (success bool) 
 		return
 	}
 
-	node := &Node{id: newBitmapFromString(request.NodeID), addr: addr.String()}
+	node := &Node{id: newBitmapFromString(request.NodeID), ip: addr.IP.String(), port: addr.Port}
 	dht.routingTable.Update(node)
 	return true
 }
@@ -271,7 +304,7 @@ func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) (success boo
 	//	return
 	//}
 
-	node := &Node{id: newBitmapFromString(response.NodeID), addr: addr.String()}
+	node := &Node{id: newBitmapFromString(response.NodeID), ip: addr.IP.String(), port: addr.Port}
 	dht.routingTable.Update(node)
 
 	return true
@@ -280,6 +313,8 @@ func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) (success boo
 // handleError handles errors received from udp.
 func handleError(dht *DHT, addr *net.UDPAddr, e Error) (success bool) {
 	spew.Dump(e)
+	node := &Node{id: newBitmapFromString(e.NodeID), ip: addr.IP.String(), port: addr.Port}
+	dht.routingTable.Update(node)
 	return true
 }
 
@@ -288,7 +323,7 @@ func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 	if req, ok := data.(Request); ok {
 		log.Debugf("[%s] query %s: sending request: %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(req.ID))[:8], req.Method, argsToString(req.Args))
 	} else if res, ok := data.(Response); ok {
-		log.Debugf("[%s] query %s: sending response: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(res.ID))[:8], res.Data)
+		log.Debugf("[%s] query %s: sending response: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(res.ID))[:8], spew.Sdump(res.Data))
 	} else {
 		log.Debugf("[%s] %s", spew.Sdump(data))
 	}
@@ -305,7 +340,7 @@ func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 }
 
 func getArgs(argsInt interface{}) []string {
-	args := []string{}
+	var args []string
 	if reflect.TypeOf(argsInt).Kind() == reflect.Slice {
 		v := reflect.ValueOf(argsInt)
 		for i := 0; i < v.Len(); i++ {
@@ -316,10 +351,12 @@ func getArgs(argsInt interface{}) []string {
 }
 
 func argsToString(args []string) string {
-	for k, v := range args {
+	argsCopy := make([]string, len(args))
+	copy(argsCopy, args)
+	for k, v := range argsCopy {
 		if len(v) == nodeIDLength {
-			args[k] = hex.EncodeToString([]byte(v))[:8]
+			argsCopy[k] = hex.EncodeToString([]byte(v))[:8]
 		}
 	}
-	return strings.Join(args, ", ")
+	return strings.Join(argsCopy, ", ")
 }

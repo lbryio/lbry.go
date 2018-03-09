@@ -13,7 +13,7 @@ type peerStore struct {
 
 func newPeerStore() *peerStore {
 	return &peerStore{
-		data: map[string][]peer{},
+		data: make(map[string][]peer),
 	}
 }
 
@@ -32,7 +32,7 @@ func (s *peerStore) Insert(key string, nodeId bitmap) {
 func (s *peerStore) Get(key string) []bitmap {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	nodes := []bitmap{}
+	var nodes []bitmap
 	if peers, ok := s.data[key]; ok {
 		for _, p := range peers {
 			nodes = append(nodes, p.nodeID)

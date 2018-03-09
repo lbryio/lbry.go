@@ -169,47 +169,9 @@ func TestStore(t *testing.T) {
 		}
 	}
 
-	if len(response) != 4 {
-		t.Errorf("expected 4 response fields, got %d", len(response))
-	}
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
 
-	_, ok := response[headerTypeField]
-	if !ok {
-		t.Error("missing type field")
-	} else {
-		rType, ok := response[headerTypeField].(int64)
-		if !ok {
-			t.Error("type is not an integer")
-		} else if rType != responseType {
-			t.Error("unexpected response type")
-		}
-	}
-
-	_, ok = response[headerMessageIDField]
-	if !ok {
-		t.Error("missing message id field")
-	} else {
-		rMessageID, ok := response[headerMessageIDField].(string)
-		if !ok {
-			t.Error("message ID is not a string")
-		} else if rMessageID != messageID {
-			t.Error("unexpected message ID")
-		}
-	}
-
-	_, ok = response[headerNodeIDField]
-	if !ok {
-		t.Error("missing node id field")
-	} else {
-		rNodeID, ok := response[headerNodeIDField].(string)
-		if !ok {
-			t.Error("node ID is not a string")
-		} else if rNodeID != dhtNodeID.RawString() {
-			t.Error("unexpected node ID")
-		}
-	}
-
-	_, ok = response[headerPayloadField]
+	_, ok := response[headerPayloadField]
 	if !ok {
 		t.Error("missing payload field")
 	} else {
@@ -236,6 +198,7 @@ func TestStore(t *testing.T) {
 
 func TestFindNode(t *testing.T) {
 	dhtNodeID := newRandomBitmap()
+	testNodeID := newRandomBitmap()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
@@ -244,23 +207,58 @@ func TestFindNode(t *testing.T) {
 	dht.listen()
 	go dht.runHandler()
 
-	data, _ := hex.DecodeString("64313a30693065313a3132303a2afdf2272981651a2c64e39ab7f04ec2d3b5d5d2313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33383a66696e644e6f6465313a346c34383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b6565")
+	nodesToInsert := 3
+	var nodes []Node
+	for i := 0; i < nodesToInsert; i++ {
+		n := Node{id: newRandomBitmap(), ip: "127.0.0.1", port: 10000 + i}
+		nodes = append(nodes, n)
+		dht.routingTable.Update(&n)
+	}
+
+	messageID := newRandomBitmap().RawString()
+	blobHashToFind := newRandomBitmap().RawString()
+
+	request := Request{
+		ID:     messageID,
+		NodeID: testNodeID.RawString(),
+		Method: findNodeMethod,
+		Args:   []string{blobHashToFind},
+	}
+
+	data, err := bencode.EncodeBytes(request)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	conn.toRead <- testUDPPacket{addr: conn.addr, data: data}
 	timer := time.NewTimer(3 * time.Second)
 
+	var response map[string]interface{}
 	select {
 	case <-timer.C:
 		t.Error("timeout")
+		return
 	case resp := <-conn.writes:
-		var response map[string]interface{}
 		err := bencode.DecodeBytes(resp.data, &response)
 		if err != nil {
 			t.Error(err)
 			return
 		}
+	}
 
-		spew.Dump(response)
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+
+	_, ok := response[headerPayloadField]
+	if !ok {
+		t.Error("missing payload field")
+	} else {
+		contacts, ok := response[headerPayloadField].([]interface{})
+		if !ok {
+			t.Error("payload is not a list")
+		} else {
+			verifyContacts(t, contacts, nodes)
+		}
 	}
 }
 
@@ -291,5 +289,108 @@ func TestFindValue(t *testing.T) {
 		}
 
 		spew.Dump(response)
+	}
+}
+
+func verifyResponse(t *testing.T, resp map[string]interface{}, messageID, dhtNodeID string) {
+	if len(resp) != 4 {
+		t.Errorf("expected 4 response fields, got %d", len(resp))
+	}
+
+	_, ok := resp[headerTypeField]
+	if !ok {
+		t.Error("missing type field")
+	} else {
+		rType, ok := resp[headerTypeField].(int64)
+		if !ok {
+			t.Error("type is not an integer")
+		} else if rType != responseType {
+			t.Error("unexpected response type")
+		}
+	}
+
+	_, ok = resp[headerMessageIDField]
+	if !ok {
+		t.Error("missing message id field")
+	} else {
+		rMessageID, ok := resp[headerMessageIDField].(string)
+		if !ok {
+			t.Error("message ID is not a string")
+		} else if rMessageID != messageID {
+			t.Error("unexpected message ID")
+		}
+	}
+
+	_, ok = resp[headerNodeIDField]
+	if !ok {
+		t.Error("missing node id field")
+	} else {
+		rNodeID, ok := resp[headerNodeIDField].(string)
+		if !ok {
+			t.Error("node ID is not a string")
+		} else if rNodeID != dhtNodeID {
+			t.Error("unexpected node ID")
+		}
+	}
+}
+
+func verifyContacts(t *testing.T, contacts []interface{}, nodes []Node) {
+	if len(contacts) != len(nodes) {
+		t.Errorf("got %d contacts; expected %d", len(contacts), len(nodes))
+		return
+	}
+
+	foundNodes := make(map[string]bool)
+
+	for _, c := range contacts {
+		contact, ok := c.([]interface{})
+		if !ok {
+			t.Error("contact is not a list")
+			return
+		}
+
+		if len(contact) != 3 {
+			t.Error("contact must be 3 items")
+			return
+		}
+
+		var currNode Node
+		currNodeFound := false
+
+		id, ok := contact[0].(string)
+		if !ok {
+			t.Error("contact id is not a string")
+		} else {
+			if _, ok := foundNodes[id]; ok {
+				t.Errorf("contact %s appears multiple times", id)
+				continue
+			}
+			for _, n := range nodes {
+				if n.id.RawString() == id {
+					currNode = n
+					currNodeFound = true
+					foundNodes[id] = true
+					break
+				}
+			}
+			if !currNodeFound {
+				t.Errorf("unexpected contact %s", id)
+				continue
+			}
+		}
+
+		ip, ok := contact[1].(string)
+		if !ok {
+			t.Error("contact IP is not a string")
+		} else if ip != currNode.ip {
+			t.Errorf("contact IP mismatch. got %s; expected %s", ip, currNode.ip)
+		}
+
+		port, ok := contact[2].(int64)
+		if !ok {
+			t.Error("contact port is not an int")
+		} else if int(port) != currNode.port {
+			t.Errorf("contact port mismatch. got %d; expected %d", port, currNode.port)
+		}
 	}
 }

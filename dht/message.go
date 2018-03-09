@@ -163,44 +163,12 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-type findNodeDatum struct {
-	ID   bitmap
-	IP   string
-	Port int
-}
-
-func (f *findNodeDatum) UnmarshalBencode(b []byte) error {
-	var contact []bencode.RawMessage
-	err := bencode.DecodeBytes(b, &contact)
-	if err != nil {
-		return err
-	}
-
-	if len(contact) != 3 {
-		return errors.Err("invalid-sized contact")
-	}
-
-	err = bencode.DecodeBytes(contact[0], &f.ID)
-	if err != nil {
-		return err
-	}
-	err = bencode.DecodeBytes(contact[1], &f.IP)
-	if err != nil {
-		return err
-	}
-	err = bencode.DecodeBytes(contact[2], &f.Port)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 type Response struct {
 	ID           string
 	NodeID       string
 	Data         string
-	FindNodeData []findNodeDatum
+	FindNodeData []Node
+	FindValueKey string
 }
 
 func (r Response) MarshalBencode() ([]byte, error) {
@@ -212,11 +180,7 @@ func (r Response) MarshalBencode() ([]byte, error) {
 	if r.Data != "" {
 		data[headerPayloadField] = r.Data
 	} else {
-		var nodes []interface{}
-		for _, n := range r.FindNodeData {
-			nodes = append(nodes, []interface{}{n.ID, n.IP, n.Port})
-		}
-		data[headerPayloadField] = nodes
+		data[headerPayloadField] = r.FindNodeData
 	}
 
 	return bencode.EncodeBytes(data)
@@ -226,7 +190,7 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID     string             `bencode:"1"`
 		NodeID string             `bencode:"2"`
-		Data   bencode.RawMessage `bencode:"2"`
+		Data   bencode.RawMessage `bencode:"3"`
 	}
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {

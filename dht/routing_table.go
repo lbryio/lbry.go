@@ -1,16 +1,113 @@
 package dht
 
 import (
+	"bytes"
 	"container/list"
+	"net"
 	"sort"
+
+	"github.com/lbryio/errors.go"
+
+	"github.com/zeebo/bencode"
 )
+
+type Node struct {
+	id   bitmap
+	ip   net.IP
+	port int
+}
+
+func (n Node) MarshalCompact() ([]byte, error) {
+	if n.ip.To4() == nil {
+		return nil, errors.Err("ip not set")
+	}
+	if n.port < 0 || n.port > 65535 {
+		return nil, errors.Err("invalid port")
+	}
+
+	var buf bytes.Buffer
+	buf.Write(n.ip.To4())
+	buf.WriteByte(byte(n.port >> 8))
+	buf.WriteByte(byte(n.port))
+	buf.Write(n.id[:])
+
+	if buf.Len() != nodeIDLength+6 {
+		return nil, errors.Err("i dont know how this happened")
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (n *Node) UnmarshalCompact(b []byte) error {
+	if len(b) != 6 {
+		return errors.Err("invalid compact ip/port")
+	}
+	copy(n.ip, b[0:4])
+	n.port = int(uint16(b[5]) | uint16(b[4])<<8)
+	if n.port < 0 || n.port > 65535 {
+		return errors.Err("invalid port")
+	}
+	n.id = newBitmapFromBytes(b[6:])
+	return nil
+}
+
+func (n Node) MarshalBencode() ([]byte, error) {
+	return bencode.EncodeBytes([]interface{}{n.id, n.ip.String(), n.port})
+}
+
+func (n *Node) UnmarshalBencode(b []byte) error {
+	var raw []bencode.RawMessage
+	err := bencode.DecodeBytes(b, &raw)
+	if err != nil {
+		return err
+	}
+
+	if len(raw) != 3 {
+		return errors.Err("contact must have 3 elements; got %d", len(raw))
+	}
+
+	err = bencode.DecodeBytes(raw[0], &n.id)
+	if err != nil {
+		return err
+	}
+
+	var ipStr string
+	err = bencode.DecodeBytes(raw[1], &ipStr)
+	if err != nil {
+		return err
+	}
+	n.ip = net.ParseIP(ipStr).To4()
+	if n.ip == nil {
+		return errors.Err("invalid IP")
+	}
+
+	err = bencode.DecodeBytes(raw[2], &n.port)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type SortedNode struct {
+	node                *Node
+	xorDistanceToTarget bitmap
+}
+
+type byXorDistance []*SortedNode
+
+func (a byXorDistance) Len() int      { return len(a) }
+func (a byXorDistance) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byXorDistance) Less(i, j int) bool {
+	return a[i].xorDistanceToTarget.Less(a[j].xorDistanceToTarget)
+}
 
 type RoutingTable struct {
 	node    Node
 	buckets [numBuckets]*list.List
 }
 
-func NewRoutingTable(node *Node) *RoutingTable {
+func newRoutingTable(node *Node) *RoutingTable {
 	var rt RoutingTable
 	for i := range rt.buckets {
 		rt.buckets[i] = list.New()
@@ -35,26 +132,26 @@ func (rt *RoutingTable) Update(node *Node) {
 }
 
 func (rt *RoutingTable) FindClosest(target bitmap, count int) []*Node {
-	toSort := []*SortedNode{}
+	var toSort []*SortedNode
 
 	prefixLength := target.Xor(rt.node.id).PrefixLen()
 	bucket := rt.buckets[prefixLength]
-	appendNodes(bucket.Front(), nil, &toSort, target)
+	toSort = appendNodes(toSort, bucket.Front(), nil, target)
 
 	for i := 1; (prefixLength-i >= 0 || prefixLength+i < nodeIDLength*8) && len(toSort) < count; i++ {
 		if prefixLength-i >= 0 {
 			bucket = rt.buckets[prefixLength-i]
-			appendNodes(bucket.Front(), nil, &toSort, target)
+			toSort = appendNodes(toSort, bucket.Front(), nil, target)
 		}
 		if prefixLength+i < nodeIDLength*8 {
 			bucket = rt.buckets[prefixLength+i]
-			appendNodes(bucket.Front(), nil, &toSort, target)
+			toSort = appendNodes(toSort, bucket.Front(), nil, target)
 		}
 	}
 
 	sort.Sort(byXorDistance(toSort))
 
-	nodes := []*Node{}
+	var nodes []*Node
 	for _, c := range toSort {
 		nodes = append(nodes, c.node)
 	}
@@ -71,9 +168,10 @@ func findInList(bucket *list.List, value bitmap) *list.Element {
 	return nil
 }
 
-func appendNodes(start, end *list.Element, nodes *[]*SortedNode, target bitmap) {
+func appendNodes(nodes []*SortedNode, start, end *list.Element, target bitmap) []*SortedNode {
 	for curr := start; curr != end; curr = curr.Next() {
 		node := curr.Value.(*Node)
-		*nodes = append(*nodes, &SortedNode{node, node.id.Xor(target)})
+		nodes = append(nodes, &SortedNode{node, node.id.Xor(target)})
 	}
+	return nodes
 }
