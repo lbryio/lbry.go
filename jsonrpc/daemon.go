@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"sort"
 	"strconv"
@@ -122,6 +123,10 @@ func (d *Client) call(response interface{}, command string, params map[string]in
 		return err
 	}
 	return decode(result, response)
+}
+
+func (d *Client) SetRPCTimeout(timeout time.Duration) {
+	d.conn.SetHTTPClient(&http.Client{Timeout: timeout})
 }
 
 func (d *Client) Commands() (*CommandsResponse, error) {
