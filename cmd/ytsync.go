@@ -18,6 +18,7 @@ func init() {
 	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
 	ytSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
 	ytSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
+	ytSyncCmd.Flags().IntVar(&refill, "refill", 0, "Also add this many credits to the wallet")
 	RootCmd.AddCommand(ytSyncCmd)
 }
 
@@ -27,6 +28,7 @@ var (
 	stopOnError             bool
 	maxTries                int
 	takeOverExistingChannel bool
+	refill                  int
 )
 
 func ytsync(cmd *cobra.Command, args []string) {
@@ -59,6 +61,7 @@ func ytsync(cmd *cobra.Command, args []string) {
 		MaxTries:                maxTries,
 		ConcurrentVideos:        1,
 		TakeOverExistingChannel: takeOverExistingChannel,
+		Refill:                  refill,
 	}
 
 	err := s.FullCycle()
