@@ -2,7 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -21,7 +20,6 @@
     "aws/request",
     "aws/session",
     "aws/signer/v4",
-    "internal/sdkrand",
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/query",
@@ -34,7 +32,8 @@
     "service/s3/s3manager",
     "service/sts"
   ]
-  revision = "d856824058f17a35c61cabdfb1c40559ce070cd9"
+  revision = "b69f447375c7fa0047ebcdd8ae5d585d5aac2f71"
+  version = "v1.10.51"
 
 [[projects]]
   branch = "master"
@@ -89,8 +88,8 @@
     "internal",
     "redis"
   ]
-  revision = "433969511232c397de61b1442f9fd49ec06ae9ba"
-  version = "v1.1.0"
+  revision = "a69d19351219b6dd56f274f96d85a7014a2ec34e"
+  version = "v1.6.0"
 
 [[projects]]
   name = "github.com/go-errors/errors"
@@ -99,16 +98,16 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/go-ini/ini"
   packages = ["."]
-  revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
-  version = "v1.33.0"
+  revision = "6ecc596bd756a16c6e93e4ef9225ecdb9f54ed2c"
 
 [[projects]]
-  branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "130e6b02ab059e7b717a096f397c5b60111cae74"
+  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -119,7 +118,8 @@
 [[projects]]
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
-  revision = "0b12d6b5"
+  revision = "3433f3ea46d9f8019119e7dd41274e112a2359a9"
+  version = "0.2.2"
 
 [[projects]]
   branch = "master"
@@ -131,37 +131,37 @@
   branch = "master"
   name = "github.com/lbryio/lbryschema.go"
   packages = ["pb"]
-  revision = "c62c175d8b8057768dc8692806a196ed773a0c4b"
+  revision = "dd814b834b5511d65d640bdbb46237f19f38a3e5"
 
 [[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "d0303fe809921458f417bcf828397a65db30a7e4"
+  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
 
 [[projects]]
-  branch = "master"
   name = "github.com/shopspring/decimal"
   packages = ["."]
-  revision = "aed1bfe463fa3c9cc268d60dcc1491db613bff7e"
+  revision = "69b3a8ad1f5f2c8bd855cb6506d18593064a346b"
+  version = "1.0.1"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
-  version = "v1.0.3"
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
 
 [[projects]]
   name = "github.com/spf13/cast"
   packages = ["."]
-  revision = "acbeb36b902d72a7a4c18e8f3241075e7ab763e4"
-  version = "v1.1.0"
+  revision = "8965335b8c7107321228e3e3702cab9832751bac"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "d5bde60e022436203e377c47806e001418c16af3"
+  revision = "c6c44e6fdcc30161c7f4480754da7230d01c06e3"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -173,13 +173,13 @@
   branch = "master"
   name = "github.com/ybbus/jsonrpc"
   packages = ["."]
-  revision = "160c2ef8d9ec3b2d05dd534e08dceada46dfb763"
+  revision = "fc928e733a5753f0fe64b140714c8a6c53de07d8"
 
 [[projects]]
   branch = "master"
   name = "github.com/zeebo/bencode"
   packages = ["."]
-  revision = "0e215062eeb15f2e5bdf04a4535d4ca3b8537e08"
+  revision = "d522839ac797fc43269dae6a04a1f8be475a915d"
 
 [[projects]]
   branch = "master"
@@ -188,7 +188,7 @@
     "ripemd160",
     "ssh/terminal"
   ]
-  revision = "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
+  revision = "c4a91bd4f524f10d064139674cf55852e055ad01"
 
 [[projects]]
   branch = "master"
@@ -197,7 +197,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
+  revision = "803fdb99c0f72e493c28ef2099d250a9c989d8ff"
 
 [[projects]]
   branch = "master"
@@ -206,7 +206,7 @@
     "unix",
     "windows"
   ]
-  revision = "314a259e304ff91bd6985da2a7149bbf91237993"
+  revision = "8c0ece68c28377f4c326d85b94f8df0dace46f80"
 
 [[projects]]
   branch = "master"
@@ -218,7 +218,7 @@
     "googleapi/transport",
     "youtube/v3"
   ]
-  revision = "7a7376eff6a51c6a053fcf8e9e50bf01a20f2673"
+  revision = "c24aa0e5ed34558ea50c016e4fb92c5e9aa69f2c"
 
 [[projects]]
   name = "gopkg.in/nullbio/null.v6"
@@ -229,6 +229,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c704aa4243d8ebe3329b03132a5b1d7f740d5114b8978251d1f4efada84c6e89"
+  inputs-digest = "f682d1d74ea3bad9f49de558985c802ba82f08d8aa6b6593891226d8441e5824"
   solver-name = "gps-cdcl"
   solver-version = 1
