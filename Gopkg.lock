@@ -2,6 +2,18 @@
 
 
 [[projects]]
+  name = "github.com/PuerkitoBio/goquery"
+  packages = ["."]
+  revision = "09540e565986583836b5fc792fe951ec5fd201dd"
+  version = "v1.3.0"
+
+[[projects]]
+  name = "github.com/andybalholm/cascadia"
+  packages = ["."]
+  revision = "901648c87902174f774fac311d7f176f8647bdaa"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -123,12 +135,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/kkdai/youtube"
-  packages = ["."]
-  revision = "ac4c6cefe62a7eb2e894cb37014ee63eb7c12b8e"
-
-[[projects]]
-  branch = "master"
   name = "github.com/lbryio/lbryschema.go"
   packages = ["pb"]
   revision = "dd814b834b5511d65d640bdbb46237f19f38a3e5"
@@ -138,6 +144,12 @@
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/nikooo777/ytdl"
+  packages = ["."]
+  revision = "64fe19bb69f66746824eb7812caf9f382c0e0bd8"
 
 [[projects]]
   name = "github.com/shopspring/decimal"
@@ -195,7 +207,9 @@
   name = "golang.org/x/net"
   packages = [
     "context",
-    "context/ctxhttp"
+    "context/ctxhttp",
+    "html",
+    "html/atom"
   ]
   revision = "803fdb99c0f72e493c28ef2099d250a9c989d8ff"
 
@@ -229,6 +243,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f682d1d74ea3bad9f49de558985c802ba82f08d8aa6b6593891226d8441e5824"
+  inputs-digest = "d09cbc6007ff3e80d5f89504e55bc464289f7dfca50d90b708ee23fcb4577e37"
   solver-name = "gps-cdcl"
   solver-version = 1
