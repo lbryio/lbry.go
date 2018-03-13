@@ -12,7 +12,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/kkdai/youtube"
+  name = "github.com/nikooo777/ytdl"
 
 [[constraint]]
   branch = "master"
