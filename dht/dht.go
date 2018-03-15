@@ -17,7 +17,7 @@ const network = "udp4"
 
 const alpha = 3         // this is the constant alpha in the spec
 const nodeIDLength = 48 // bytes. this is the constant B in the spec
-const bucketSize = 20   // this is the constant k in the spec
+const bucketSize = 8    // this is the constant k in the spec
 
 const tExpire = 86400 * time.Second    // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
 const tRefresh = 3600 * time.Second    // the time after which an otherwise unaccessed bucket must be refreshed

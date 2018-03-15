@@ -135,12 +135,12 @@ func (rt *RoutingTable) FindClosest(target bitmap, count int) []*Node {
 	bucket := rt.buckets[prefixLength]
 	toSort = appendNodes(toSort, bucket.Front(), nil, target)
 
-	for i := 1; (prefixLength-i >= 0 || prefixLength+i < nodeIDLength*8) && len(toSort) < count; i++ {
+	for i := 1; (prefixLength-i >= 0 || prefixLength+i < numBuckets) && len(toSort) < count; i++ {
 		if prefixLength-i >= 0 {
 			bucket = rt.buckets[prefixLength-i]
 			toSort = appendNodes(toSort, bucket.Front(), nil, target)
 		}
-		if prefixLength+i < nodeIDLength*8 {
+		if prefixLength+i < numBuckets {
 			bucket = rt.buckets[prefixLength+i]
 			toSort = appendNodes(toSort, bucket.Front(), nil, target)
 		}

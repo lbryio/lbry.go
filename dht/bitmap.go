@@ -53,7 +53,7 @@ func (b bitmap) PrefixLen() (ret int) {
 			}
 		}
 	}
-	return nodeIDLength*8 - 1
+	return numBuckets
 }
 
 func (b *bitmap) UnmarshalBencode(encoded []byte) error {

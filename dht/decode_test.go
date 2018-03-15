@@ -29,6 +29,9 @@ func TestDecode(t *testing.T) {
 			continue
 		}
 
+		t.Error("TODO")
+		continue
+
 		spew.Dump(decoded)
 	}
 }
