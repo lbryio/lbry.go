@@ -256,7 +256,7 @@ type ChannelNewResponse struct {
 	Txid    string          `json:"txid"`
 }
 
-type ChannelListMineResponse []struct {
+type ChannelListResponse []struct {
 	Address            string            `json:"address"`
 	Amount             decimal.Decimal   `json:"amount"`
 	BlocksToExpiration int               `json:"blocks_to_expiration"`

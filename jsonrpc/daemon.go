@@ -325,9 +325,9 @@ func (d *Client) ChannelNew(name string, amount float64) (*ChannelNewResponse, e
 	})
 }
 
-func (d *Client) ChannelListMine() (*ChannelListMineResponse, error) {
-	response := new(ChannelListMineResponse)
-	return response, d.call(response, "channel_list_mine", map[string]interface{}{})
+func (d *Client) ChannelList() (*ChannelListResponse, error) {
+	response := new(ChannelListResponse)
+	return response, d.call(response, "channel_list", map[string]interface{}{})
 }
 
 type PublishOptions struct {
