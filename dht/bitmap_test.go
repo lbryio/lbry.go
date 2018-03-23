@@ -3,7 +3,7 @@ package dht
 import (
 	"testing"
 
-	"github.com/zeebo/bencode"
+	"github.com/lyoshenka/bencode"
 )
 
 func TestBitmap(t *testing.T) {

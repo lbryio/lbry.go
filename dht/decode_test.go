@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/zeebo/bencode"
+	"github.com/lyoshenka/bencode"
 )
 
 func TestDecode(t *testing.T) {

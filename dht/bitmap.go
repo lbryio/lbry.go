@@ -1,11 +1,11 @@
 package dht
 
 import (
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
 	"strconv"
 
-	"github.com/zeebo/bencode"
+	"github.com/lyoshenka/bencode"
 )
 
 type bitmap [nodeIDLength]byte
@@ -45,7 +45,7 @@ func (b bitmap) Xor(other bitmap) bitmap {
 }
 
 // PrefixLen returns the number of leading 0 bits
-func (b bitmap) PrefixLen() (ret int) {
+func (b bitmap) PrefixLen() int {
 	for i := range b {
 		for j := 0; j < 8; j++ {
 			if (b[i]>>uint8(7-j))&0x1 != 0 {
@@ -95,8 +95,9 @@ func newBitmapFromHex(hexStr string) bitmap {
 
 func newRandomBitmap() bitmap {
 	var id bitmap
-	for k := range id {
-		id[k] = uint8(rand.Intn(256))
+	_, err := rand.Read(id[:])
+	if err != nil {
+		panic(err)
 	}
 	return id
 }

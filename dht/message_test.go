@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lyoshenka/bencode"
 	log "github.com/sirupsen/logrus"
-	"github.com/zeebo/bencode"
 )
 
 func TestBencodeDecodeStoreArgs(t *testing.T) {

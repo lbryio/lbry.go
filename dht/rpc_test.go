@@ -2,12 +2,60 @@ package dht
 
 import (
 	"net"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/lyoshenka/bencode"
 	log "github.com/sirupsen/logrus"
-	"github.com/zeebo/bencode"
 )
+
+type testUDPPacket struct {
+	data []byte
+	addr *net.UDPAddr
+}
+
+type testUDPConn struct {
+	addr   *net.UDPAddr
+	toRead chan testUDPPacket
+	writes chan testUDPPacket
+}
+
+func newTestUDPConn(addr string) *testUDPConn {
+	parts := strings.Split(addr, ":")
+	if len(parts) != 2 {
+		panic("addr needs ip and port")
+	}
+	port, err := strconv.Atoi(parts[1])
+	if err != nil {
+		panic(err)
+	}
+	return &testUDPConn{
+		addr:   &net.UDPAddr{IP: net.IP(parts[0]), Port: port},
+		toRead: make(chan testUDPPacket),
+		writes: make(chan testUDPPacket),
+	}
+}
+
+func (t testUDPConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
+	select {
+	case packet := <-t.toRead:
+		n := copy(b, packet.data)
+		return n, packet.addr, nil
+		//default:
+		//	return 0, nil, nil
+	}
+}
+
+func (t testUDPConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
+	t.writes <- testUDPPacket{data: b, addr: addr}
+	return len(b), nil
+}
+
+func (t testUDPConn) SetWriteDeadline(tm time.Time) error {
+	return nil
+}
 
 func TestPing(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
@@ -16,12 +64,15 @@ func TestPing(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
 
-	messageID := newRandomBitmap().RawString()
+	messageID := newMessageID()
 
 	data, err := bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      requestType,
@@ -107,12 +158,16 @@ func TestStore(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
 
-	messageID := newRandomBitmap().RawString()
+	messageID := newMessageID()
 	blobHashToStore := newRandomBitmap().RawString()
 
 	storeRequest := Request{
@@ -178,7 +233,7 @@ func TestStore(t *testing.T) {
 		}
 	}
 
-	if len(dht.store.data) != 1 {
+	if len(dht.store.nodeIDs) != 1 {
 		t.Error("dht store has wrong number of items")
 	}
 
@@ -197,7 +252,10 @@ func TestFindNode(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
@@ -207,10 +265,10 @@ func TestFindNode(t *testing.T) {
 	for i := 0; i < nodesToInsert; i++ {
 		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
-		dht.routingTable.Update(&n)
+		dht.rt.Update(&n)
 	}
 
-	messageID := newRandomBitmap().RawString()
+	messageID := newMessageID()
 	blobHashToFind := newRandomBitmap().RawString()
 
 	request := Request{
@@ -270,7 +328,11 @@ func TestFindValueExisting(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
@@ -280,16 +342,18 @@ func TestFindValueExisting(t *testing.T) {
 	for i := 0; i < nodesToInsert; i++ {
 		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
-		dht.routingTable.Update(&n)
+		dht.rt.Update(&n)
 	}
 
 	//data, _ := hex.DecodeString("64313a30693065313a3132303a7de8e57d34e316abbb5a8a8da50dcd1ad4c80e0f313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33393a66696e6456616c7565313a346c34383aa47624b8e7ee1e54df0c45e2eb858feb0b705bd2a78d8b739be31ba188f4bd6f56b371c51fecc5280d5fd26ba4168e966565")
 
-	messageID := newRandomBitmap().RawString()
+	messageID := newMessageID()
 	valueToFind := newRandomBitmap().RawString()
 
 	nodeToFind := Node{id: newRandomBitmap(), ip: net.ParseIP("1.2.3.4"), port: 1286}
-	dht.store.Insert(valueToFind, nodeToFind)
+	dht.store.Upsert(valueToFind, nodeToFind)
+	dht.store.Upsert(valueToFind, nodeToFind)
+	dht.store.Upsert(valueToFind, nodeToFind)
 
 	request := Request{
 		ID:     messageID,
@@ -348,7 +412,11 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dht.conn = conn
 	dht.listen()
 	go dht.runHandler()
@@ -358,10 +426,10 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 	for i := 0; i < nodesToInsert; i++ {
 		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
-		dht.routingTable.Update(&n)
+		dht.rt.Update(&n)
 	}
 
-	messageID := newRandomBitmap().RawString()
+	messageID := newMessageID()
 	valueToFind := newRandomBitmap().RawString()
 
 	request := Request{
@@ -442,6 +510,9 @@ func verifyResponse(t *testing.T, resp map[string]interface{}, messageID, dhtNod
 		} else if rMessageID != messageID {
 			t.Error("unexpected message ID")
 		}
+		if len(rMessageID) != messageIDLength {
+			t.Errorf("message ID should be %d chars long", messageIDLength)
+		}
 	}
 
 	_, ok = resp[headerNodeIDField]
@@ -453,6 +524,9 @@ func verifyResponse(t *testing.T, resp map[string]interface{}, messageID, dhtNod
 			t.Error("node ID is not a string")
 		} else if rNodeID != dhtNodeID {
 			t.Error("unexpected node ID")
+		}
+		if len(rNodeID) != nodeIDLength {
+			t.Errorf("node ID should be %d chars long", nodeIDLength)
 		}
 	}
 }

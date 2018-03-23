@@ -1,10 +1,12 @@
 package dht
 
 import (
+	"encoding/hex"
+
 	"github.com/lbryio/errors.go"
 
+	"github.com/lyoshenka/bencode"
 	"github.com/spf13/cast"
-	"github.com/zeebo/bencode"
 )
 
 const (
@@ -169,6 +171,21 @@ type Response struct {
 	Data         string
 	FindNodeData []Node
 	FindValueKey string
+}
+
+func (r Response) ArgsDebug() string {
+	if len(r.FindNodeData) == 0 {
+		return r.Data
+	}
+
+	str := "contacts "
+	if r.FindValueKey != "" {
+		str += "for " + hex.EncodeToString([]byte(r.FindValueKey))[:8] + " "
+	}
+	for _, c := range r.FindNodeData {
+		str += c.Addr().String() + ":" + c.id.Hex()[:8] + ", "
+	}
+	return str[:len(str)-2] // chomp off last ", "
 }
 
 func (r Response) MarshalBencode() ([]byte, error) {
