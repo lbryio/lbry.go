@@ -94,11 +94,11 @@ func (n *Node) UnmarshalBencode(b []byte) error {
 }
 
 type SortedNode struct {
-	node                *Node
+	node                Node
 	xorDistanceToTarget bitmap
 }
 
-type byXorDistance []*SortedNode
+type byXorDistance []SortedNode
 
 func (a byXorDistance) Len() int      { return len(a) }
 func (a byXorDistance) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -128,9 +128,18 @@ func (rt *RoutingTable) BucketInfo() string {
 
 	bucketInfo := []string{}
 	for i, b := range rt.buckets {
-		count := countInList(b)
+		count := 0
+		ids := ""
+		for curr := b.Front(); curr != nil; curr = curr.Next() {
+			count++
+			if ids != "" {
+				ids += ", "
+			}
+			ids += curr.Value.(Node).id.HexShort()
+		}
+
 		if count > 0 {
-			bucketInfo = append(bucketInfo, fmt.Sprintf("Bucket %d: %d", i, count))
+			bucketInfo = append(bucketInfo, fmt.Sprintf("Bucket %d: (%d) %s", i, count, ids))
 		}
 	}
 	if len(bucketInfo) == 0 {
@@ -139,12 +148,12 @@ func (rt *RoutingTable) BucketInfo() string {
 	return strings.Join(bucketInfo, "\n")
 }
 
-func (rt *RoutingTable) Update(node *Node) {
+func (rt *RoutingTable) Update(node Node) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
 	bucketNum := bucketFor(rt.node.id, node.id)
 	bucket := rt.buckets[bucketNum]
-	element := findInList(bucket, rt.node.id)
+	element := findInList(bucket, node.id)
 	if element == nil {
 		if bucket.Len() >= bucketSize {
 			// TODO: Ping front node first. Only remove if it does not respond
@@ -167,13 +176,19 @@ func (rt *RoutingTable) RemoveByID(id bitmap) {
 	}
 }
 
-func (rt *RoutingTable) FindClosest(target bitmap, limit int) []*Node {
+func (rt *RoutingTable) GetClosest(target bitmap, limit int) []Node {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
 
-	var toSort []*SortedNode
+	var toSort []SortedNode
+	var bucketNum int
 
-	bucketNum := bucketFor(rt.node.id, target)
+	if rt.node.id.Equals(target) {
+		bucketNum = 0
+	} else {
+		bucketNum = bucketFor(rt.node.id, target)
+	}
+
 	bucket := rt.buckets[bucketNum]
 	toSort = appendNodes(toSort, bucket.Front(), target)
 
@@ -190,7 +205,7 @@ func (rt *RoutingTable) FindClosest(target bitmap, limit int) []*Node {
 
 	sort.Sort(byXorDistance(toSort))
 
-	var nodes []*Node
+	var nodes []Node
 	for _, c := range toSort {
 		nodes = append(nodes, c.node)
 		if len(nodes) >= limit {
@@ -203,25 +218,17 @@ func (rt *RoutingTable) FindClosest(target bitmap, limit int) []*Node {
 
 func findInList(bucket *list.List, value bitmap) *list.Element {
 	for curr := bucket.Front(); curr != nil; curr = curr.Next() {
-		if curr.Value.(*Node).id.Equals(value) {
+		if curr.Value.(Node).id.Equals(value) {
 			return curr
 		}
 	}
 	return nil
 }
 
-func countInList(bucket *list.List) int {
-	count := 0
-	for curr := bucket.Front(); curr != nil; curr = curr.Next() {
-		count++
-	}
-	return count
-}
-
-func appendNodes(nodes []*SortedNode, start *list.Element, target bitmap) []*SortedNode {
+func appendNodes(nodes []SortedNode, start *list.Element, target bitmap) []SortedNode {
 	for curr := start; curr != nil; curr = curr.Next() {
-		node := curr.Value.(*Node)
-		nodes = append(nodes, &SortedNode{node, node.id.Xor(target)})
+		node := curr.Value.(Node)
+		nodes = append(nodes, SortedNode{node, node.id.Xor(target)})
 	}
 	return nodes
 }
@@ -231,4 +238,18 @@ func bucketFor(id bitmap, target bitmap) int {
 		panic("nodes do not have a bucket for themselves")
 	}
 	return numBuckets - 1 - target.Xor(id).PrefixLen()
+}
+
+func sortNodesInPlace(nodes []Node, target bitmap) {
+	toSort := make([]SortedNode, len(nodes))
+
+	for i, n := range nodes {
+		toSort[i] = SortedNode{n, n.id.Xor(target)}
+	}
+
+	sort.Sort(byXorDistance(toSort))
+
+	for i, c := range toSort {
+		nodes[i] = c.node
+	}
 }

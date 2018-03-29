@@ -25,12 +25,13 @@ func newMessageID() string {
 
 // handlePacke handles packets received from udp.
 func handlePacket(dht *DHT, pkt packet) {
-	//log.Infof("Received message from %s:%s : %s\n", pkt.raddr.IP.String(), strconv.Itoa(pkt.raddr.Port), hex.EncodeToString(pkt.data))
+	//log.Infof("[%s] Received message from %s:%s : %s\n", dht.node.id.HexShort(), pkt.raddr.IP.String(), strconv.Itoa(pkt.raddr.Port), hex.EncodeToString(pkt.data))
 
 	var data map[string]interface{}
 	err := bencode.DecodeBytes(pkt.data, &data)
 	if err != nil {
-		log.Errorf("error decoding data: %s\n%s", err, pkt.data)
+		log.Errorf("error decoding data: %s", err)
+		log.Errorf(hex.EncodeToString(pkt.data))
 		return
 	}
 
@@ -48,16 +49,17 @@ func handlePacket(dht *DHT, pkt packet) {
 			log.Errorln(err)
 			return
 		}
-		log.Debugf("[%s] query %s: received request from %s: %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(request.ID))[:8], hex.EncodeToString([]byte(request.NodeID))[:8], request.Method, argsToString(request.Args))
+		log.Debugf("[%s] query %s: received request from %s: %s(%s)", dht.node.id.HexShort(), hex.EncodeToString([]byte(request.ID))[:8], hex.EncodeToString([]byte(request.NodeID))[:8], request.Method, argsToString(request.Args))
 		handleRequest(dht, pkt.raddr, request)
 
 	case responseType:
 		response := Response{}
 		err = bencode.DecodeBytes(pkt.data, &response)
 		if err != nil {
+			log.Errorln(err)
 			return
 		}
-		log.Debugf("[%s] query %s: received response from %s: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(response.ID))[:8], hex.EncodeToString([]byte(response.NodeID))[:8], response.Data)
+		log.Debugf("[%s] query %s: received response from %s: %s", dht.node.id.HexShort(), hex.EncodeToString([]byte(response.ID))[:8], hex.EncodeToString([]byte(response.NodeID))[:8], response.ArgsDebug())
 		handleResponse(dht, pkt.raddr, response)
 
 	case errorType:
@@ -67,7 +69,7 @@ func handlePacket(dht *DHT, pkt packet) {
 			ExceptionType: data[headerPayloadField].(string),
 			Response:      getArgs(data[headerArgsField]),
 		}
-		log.Debugf("[%s] query %s: received error from %s: %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(e.ID))[:8], hex.EncodeToString([]byte(e.NodeID))[:8], e.ExceptionType)
+		log.Debugf("[%s] query %s: received error from %s: %s", dht.node.id.HexShort(), hex.EncodeToString([]byte(e.ID))[:8], hex.EncodeToString([]byte(e.NodeID))[:8], e.ExceptionType)
 		handleError(dht, pkt.raddr, e)
 
 	default:
@@ -130,17 +132,17 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 		return
 	}
 
-	node := &Node{id: newBitmapFromString(request.NodeID), ip: addr.IP, port: addr.Port}
+	node := Node{id: newBitmapFromString(request.NodeID), ip: addr.IP, port: addr.Port}
 	dht.rt.Update(node)
 }
 
 func doFindNodes(dht *DHT, addr *net.UDPAddr, request Request) {
 	nodeID := newBitmapFromString(request.Args[0])
-	closestNodes := dht.rt.FindClosest(nodeID, bucketSize)
+	closestNodes := dht.rt.GetClosest(nodeID, bucketSize)
 	if len(closestNodes) > 0 {
 		response := Response{ID: request.ID, NodeID: dht.node.id.RawString(), FindNodeData: make([]Node, len(closestNodes))}
 		for i, n := range closestNodes {
-			response.FindNodeData[i] = *n
+			response.FindNodeData[i] = n
 		}
 		send(dht, addr, response)
 	} else {
@@ -155,25 +157,25 @@ func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) {
 		tx.res <- &response
 	}
 
-	node := &Node{id: newBitmapFromString(response.NodeID), ip: addr.IP, port: addr.Port}
+	node := Node{id: newBitmapFromString(response.NodeID), ip: addr.IP, port: addr.Port}
 	dht.rt.Update(node)
 }
 
 // handleError handles errors received from udp.
 func handleError(dht *DHT, addr *net.UDPAddr, e Error) {
 	spew.Dump(e)
-	node := &Node{id: newBitmapFromString(e.NodeID), ip: addr.IP, port: addr.Port}
+	node := Node{id: newBitmapFromString(e.NodeID), ip: addr.IP, port: addr.Port}
 	dht.rt.Update(node)
 }
 
-// send sends data to the udp.
+// send sends data to a udp address
 func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 	if req, ok := data.(Request); ok {
-		log.Debugf("[%s] query %s: sending request to %s : %s(%s)", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(req.ID))[:8], addr.String(), req.Method, argsToString(req.Args))
+		log.Debugf("[%s] query %s: sending request to %s : %s(%s)", dht.node.id.HexShort(), hex.EncodeToString([]byte(req.ID))[:8], addr.String(), req.Method, argsToString(req.Args))
 	} else if res, ok := data.(Response); ok {
-		log.Debugf("[%s] query %s: sending response to %s : %s", dht.node.id.Hex()[:8], hex.EncodeToString([]byte(res.ID))[:8], addr.String(), res.ArgsDebug())
+		log.Debugf("[%s] query %s: sending response to %s : %s", dht.node.id.HexShort(), hex.EncodeToString([]byte(res.ID))[:8], addr.String(), res.ArgsDebug())
 	} else {
-		log.Debugf("[%s] %s", dht.node.id.Hex()[:8], spew.Sdump(data))
+		log.Debugf("[%s] %s", dht.node.id.HexShort(), spew.Sdump(data))
 	}
 	encoded, err := bencode.EncodeBytes(data)
 	if err != nil {

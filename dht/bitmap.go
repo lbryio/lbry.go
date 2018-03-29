@@ -18,6 +18,10 @@ func (b bitmap) Hex() string {
 	return hex.EncodeToString(b[0:nodeIDLength])
 }
 
+func (b bitmap) HexShort() string {
+	return hex.EncodeToString(b[0:nodeIDLength])[:8]
+}
+
 func (b bitmap) Equals(other bitmap) bool {
 	for k := range b {
 		if b[k] != other[k] {

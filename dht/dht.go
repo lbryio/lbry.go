@@ -1,10 +1,13 @@
 package dht
 
 import (
+	"context"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/lbryio/errors.go"
+	"github.com/lbryio/lbry.go/stopOnce"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
@@ -62,6 +65,7 @@ func NewStandardConfig() *Config {
 type UDPConn interface {
 	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
 	WriteToUDP([]byte, *net.UDPAddr) (int, error)
+	SetReadDeadline(time.Time) error
 	SetWriteDeadline(time.Time) error
 }
 
@@ -74,6 +78,7 @@ type DHT struct {
 	packets chan packet
 	store   *peerStore
 	tm      *transactionManager
+	stop    *stopOnce.Stopper
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -114,6 +119,7 @@ func New(config *Config) (*DHT, error) {
 		rt:      newRoutingTable(node),
 		packets: make(chan packet),
 		store:   newPeerStore(),
+		stop:    stopOnce.New(),
 	}
 	d.tm = newTransactionManager(d)
 	return d, nil
@@ -140,37 +146,52 @@ func (dht *DHT) init() error {
 
 // listen receives message from udp.
 func (dht *DHT) listen() {
-	go func() {
-		buf := make([]byte, 8192)
-		for {
-			n, raddr, err := dht.conn.ReadFromUDP(buf)
-			if err != nil {
-				log.Errorf("udp read error: %v", err)
-				continue
-			} else if raddr == nil {
-				log.Errorf("udp read with no raddr")
-				continue
-			}
-			dht.packets <- packet{data: buf[:n], raddr: raddr}
+	buf := make([]byte, 8192)
+	for {
+		select {
+		case <-dht.stop.Chan():
+			return
+		default:
 		}
-	}()
+
+		dht.conn.SetReadDeadline(time.Now().Add(2 * time.Second)) // need this to periodically check shutdown chan
+
+		n, raddr, err := dht.conn.ReadFromUDP(buf)
+		if err != nil {
+			if e, ok := err.(net.Error); !ok || !e.Timeout() {
+				log.Errorf("udp read error: %v", err)
+			}
+			continue
+		} else if raddr == nil {
+			log.Errorf("udp read with no raddr")
+			continue
+		}
+
+		dht.packets <- packet{data: buf[:n], raddr: raddr}
+	}
 }
 
 // join makes current node join the dht network.
 func (dht *DHT) join() {
+	// get real node IDs and add them to the routing table
 	for _, addr := range dht.conf.SeedNodes {
 		raddr, err := net.ResolveUDPAddr(network, addr)
 		if err != nil {
+			log.Errorln(err)
 			continue
 		}
 
-		_ = raddr
+		tmpNode := Node{id: newRandomBitmap(), ip: raddr.IP, port: raddr.Port}
+		res := dht.tm.Send(tmpNode, &Request{Method: pingMethod})
+		if res == nil {
+			log.Errorf("[%s] join: no response from seed node %s", dht.node.id.HexShort(), addr)
+		}
+	}
 
-		// NOTE: Temporary node has NO node id.
-		//dht.transactionManager.findNode(
-		//	&node{addr: raddr},
-		//	dht.node.id.RawString(),
-		//)
+	// now call iterativeFind on yourself
+	_, err := dht.FindNodes(dht.node.id)
+	if err != nil {
+		log.Error(err)
 	}
 }
 
@@ -181,22 +202,31 @@ func (dht *DHT) runHandler() {
 		select {
 		case pkt = <-dht.packets:
 			handlePacket(dht, pkt)
+		case <-dht.stop.Chan():
+			return
 		}
 	}
 }
 
-// Run starts the dht.
-func (dht *DHT) Run() error {
+// Start starts the dht
+func (dht *DHT) Start() error {
 	err := dht.init()
 	if err != nil {
 		return err
 	}
 
-	dht.listen()
+	go dht.listen()
+	go dht.runHandler()
+
 	dht.join()
-	log.Info("DHT ready")
-	dht.runHandler()
+	log.Infof("[%s] DHT ready", dht.node.id.HexShort())
 	return nil
+}
+
+// Shutdown shuts down the dht
+func (dht *DHT) Shutdown() {
+	log.Infof("[%s] DHT shutting down", dht.node.id.HexShort())
+	dht.stop.Stop()
 }
 
 func printState(dht *DHT) {
@@ -210,68 +240,239 @@ func printState(dht *DHT) {
 	}
 }
 
-//func (dht *DHT) Get(hash bitmap) ([]Node, error) {
-//	return iterativeFindNode(dht, hash)
-//}
-//
-//func iterativeFindNode(dht *DHT, hash bitmap) ([]Node, error) {
-//	shortlist := dht.rt.FindClosest(hash, alpha)
-//	if len(shortlist) == 0 {
-//		return nil, errors.Err("no nodes in routing table")
-//	}
-//
-//	pending := make(chan *Node)
-//	contacted := make(map[bitmap]bool)
-//	contactedMutex := &sync.Mutex{}
-//	closestNodeMutex := &sync.Mutex{}
-//	closestNode := shortlist[0]
-//	wg := sync.WaitGroup{}
-//
-//	for i := 0; i < alpha; i++ {
-//		wg.Add(1)
-//		go func() {
-//			defer wg.Done()
-//			for {
-//				node, ok := <-pending
-//				if !ok {
-//					return
-//				}
-//
-//				contactedMutex.Lock()
-//				if _, ok := contacted[node.id]; ok {
-//					contactedMutex.Unlock()
-//					continue
-//				}
-//				contacted[node.id] = true
-//				contactedMutex.Unlock()
-//
-//				res := dht.tm.Send(node, &Request{
-//					NodeID: dht.node.id.RawString(),
-//					Method: findNodeMethod,
-//					Args:   []string{hash.RawString()},
-//				})
-//				if res == nil {
-//					// remove node from shortlist
-//					continue
-//				}
-//
-//				for _, n := range res.FindNodeData {
-//					pending <- &n
-//					closestNodeMutex.Lock()
-//					if n.id.Xor(hash).Less(closestNode.id.Xor(hash)) {
-//						closestNode = &n
-//					}
-//					closestNodeMutex.Unlock()
-//				}
-//			}
-//		}()
-//	}
-//
-//	for _, n := range shortlist {
-//		pending <- n
-//	}
-//
-//	wg.Wait()
-//
-//	return nil, nil
-//}
+func (dht *DHT) FindNodes(hash bitmap) ([]Node, error) {
+	nf := newNodeFinder(dht, hash, false)
+	res, err := nf.Find()
+	if err != nil {
+		return nil, err
+	}
+	return res.Nodes, nil
+}
+
+func (dht *DHT) FindValue(hash bitmap) ([]Node, bool, error) {
+	nf := newNodeFinder(dht, hash, true)
+	res, err := nf.Find()
+	if err != nil {
+		return nil, false, err
+	}
+	return res.Nodes, res.Found, nil
+}
+
+type nodeFinder struct {
+	findValue bool // true if we're using findValue
+	target    bitmap
+	dht       *DHT
+
+	done *stopOnce.Stopper
+
+	findValueMutex  *sync.Mutex
+	findValueResult []Node
+
+	activeNodesMutex *sync.Mutex
+	activeNodes      []Node
+
+	shortlistMutex *sync.Mutex
+	shortlist      []Node
+
+	contactedMutex *sync.RWMutex
+	contacted      map[bitmap]bool
+}
+
+type findNodeResponse struct {
+	Found bool
+	Nodes []Node
+}
+
+func newNodeFinder(dht *DHT, target bitmap, findValue bool) *nodeFinder {
+	return &nodeFinder{
+		dht:              dht,
+		target:           target,
+		findValue:        findValue,
+		findValueMutex:   &sync.Mutex{},
+		activeNodesMutex: &sync.Mutex{},
+		contactedMutex:   &sync.RWMutex{},
+		shortlistMutex:   &sync.Mutex{},
+		contacted:        make(map[bitmap]bool),
+		done:             stopOnce.New(),
+	}
+}
+
+func (nf *nodeFinder) Find() (findNodeResponse, error) {
+	log.Debugf("[%s] starting an iterative Find() for %s (findValue is %t)", nf.dht.node.id.HexShort(), nf.target.HexShort(), nf.findValue)
+	nf.appendNewToShortlist(nf.dht.rt.GetClosest(nf.target, alpha))
+	if len(nf.shortlist) == 0 {
+		return findNodeResponse{}, errors.Err("no nodes in routing table")
+	}
+
+	wg := &sync.WaitGroup{}
+
+	for i := 0; i < alpha; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			nf.iterationWorker(i + 1)
+		}(i)
+	}
+
+	wg.Wait()
+
+	// TODO: what to do if we have less than K active nodes, shortlist is empty, but we
+	// TODO: have other nodes in our routing table whom we have not contacted. prolly contact them?
+
+	result := findNodeResponse{}
+	if nf.findValue && len(nf.findValueResult) > 0 {
+		result.Found = true
+		result.Nodes = nf.findValueResult
+	} else {
+		result.Nodes = nf.activeNodes
+		if len(result.Nodes) > bucketSize {
+			result.Nodes = result.Nodes[:bucketSize]
+		}
+	}
+
+	return result, nil
+}
+
+func (nf *nodeFinder) iterationWorker(num int) {
+	log.Debugf("[%s] starting worker %d", nf.dht.node.id.HexShort(), num)
+	defer func() { log.Debugf("[%s] stopping worker %d", nf.dht.node.id.HexShort(), num) }()
+
+	for {
+		maybeNode := nf.popFromShortlist()
+		if maybeNode == nil {
+			// TODO: block if there are pending requests out from other workers. there may be more shortlist values coming
+			log.Debugf("[%s] no more nodes in short list", nf.dht.node.id.HexShort())
+			return
+		}
+		node := *maybeNode
+
+		if node.id.Equals(nf.dht.node.id) {
+			continue // cannot contact self
+		}
+
+		req := &Request{Args: []string{nf.target.RawString()}}
+		if nf.findValue {
+			req.Method = findValueMethod
+		} else {
+			req.Method = findNodeMethod
+		}
+
+		log.Debugf("[%s] contacting %s", nf.dht.node.id.HexShort(), node.id.HexShort())
+
+		var res *Response
+		ctx, cancel := context.WithCancel(context.Background())
+		resCh := nf.dht.tm.SendAsync(ctx, node, req)
+		select {
+		case res = <-resCh:
+		case <-nf.done.Chan():
+			log.Debugf("[%s] worker %d: canceled", nf.dht.node.id.HexShort(), num)
+			cancel()
+			return
+		}
+
+		if res == nil {
+			// nothing to do, response timed out
+		} else if nf.findValue && res.FindValueKey != "" {
+			log.Debugf("[%s] worker %d: got value", nf.dht.node.id.HexShort(), num)
+			nf.findValueMutex.Lock()
+			nf.findValueResult = res.FindNodeData
+			nf.findValueMutex.Unlock()
+			nf.done.Stop()
+			return
+		} else {
+			log.Debugf("[%s] worker %d: got more contacts", nf.dht.node.id.HexShort(), num)
+			nf.insertIntoActiveList(node)
+			nf.markContacted(node)
+			nf.appendNewToShortlist(res.FindNodeData)
+		}
+
+		if nf.isSearchFinished() {
+			log.Debugf("[%s] worker %d: search is finished", nf.dht.node.id.HexShort(), num)
+			nf.done.Stop()
+			return
+		}
+	}
+}
+
+func (nf *nodeFinder) filterContacted(nodes []Node) []Node {
+	nf.contactedMutex.RLock()
+	defer nf.contactedMutex.RUnlock()
+	filtered := []Node{}
+	for _, n := range nodes {
+		if ok := nf.contacted[n.id]; !ok {
+			filtered = append(filtered, n)
+		}
+	}
+	return filtered
+}
+
+func (nf *nodeFinder) markContacted(node Node) {
+	nf.contactedMutex.Lock()
+	defer nf.contactedMutex.Unlock()
+	nf.contacted[node.id] = true
+}
+
+func (nf *nodeFinder) appendNewToShortlist(nodes []Node) {
+	nf.shortlistMutex.Lock()
+	defer nf.shortlistMutex.Unlock()
+	nf.shortlist = append(nf.shortlist, nf.filterContacted(nodes)...)
+	sortNodesInPlace(nf.shortlist, nf.target)
+}
+
+func (nf *nodeFinder) popFromShortlist() *Node {
+	nf.shortlistMutex.Lock()
+	defer nf.shortlistMutex.Unlock()
+	if len(nf.shortlist) == 0 {
+		return nil
+	}
+	first := nf.shortlist[0]
+	nf.shortlist = nf.shortlist[1:]
+	return &first
+}
+
+func (nf *nodeFinder) insertIntoActiveList(node Node) {
+	nf.activeNodesMutex.Lock()
+	defer nf.activeNodesMutex.Unlock()
+
+	inserted := false
+	for i, n := range nf.activeNodes {
+		if node.id.Xor(nf.target).Less(n.id.Xor(nf.target)) {
+			nf.activeNodes = append(nf.activeNodes[:i], append([]Node{node}, nf.activeNodes[i:]...)...)
+			inserted = true
+		}
+	}
+	if !inserted {
+		nf.activeNodes = append(nf.activeNodes, node)
+	}
+}
+
+func (nf *nodeFinder) isSearchFinished() bool {
+	if nf.findValue && len(nf.findValueResult) > 0 {
+		// if we have a result, always break
+		return true
+	}
+
+	select {
+	case <-nf.done.Chan():
+		return true
+	default:
+	}
+
+	nf.shortlistMutex.Lock()
+	defer nf.shortlistMutex.Unlock()
+
+	if len(nf.shortlist) == 0 {
+		// no more nodes to contact
+		return true
+	}
+
+	nf.activeNodesMutex.Lock()
+	defer nf.activeNodesMutex.Unlock()
+
+	if len(nf.activeNodes) >= bucketSize && nf.activeNodes[bucketSize-1].id.Xor(nf.target).Less(nf.shortlist[0].id.Xor(nf.target)) {
+		// we have at least K active nodes, and we don't have any closer nodes yet to contact
+		return true
+	}
+
+	return false
+}

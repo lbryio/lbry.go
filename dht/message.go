@@ -183,7 +183,7 @@ func (r Response) ArgsDebug() string {
 		str += "for " + hex.EncodeToString([]byte(r.FindValueKey))[:8] + " "
 	}
 	for _, c := range r.FindNodeData {
-		str += c.Addr().String() + ":" + c.id.Hex()[:8] + ", "
+		str += c.Addr().String() + ":" + c.id.HexShort() + ", "
 	}
 	return str[:len(str)-2] // chomp off last ", "
 }
@@ -229,7 +229,22 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 
 	err = bencode.DecodeBytes(raw.Data, &r.Data)
 	if err != nil {
-		err = bencode.DecodeBytes(raw.Data, r.FindNodeData)
+		var rawData map[string]bencode.RawMessage
+		err = bencode.DecodeBytes(raw.Data, &rawData)
+		if err != nil {
+			return err
+		}
+
+		var rawContacts bencode.RawMessage
+		var ok bool
+		if rawContacts, ok = rawData["contacts"]; !ok {
+			for k, v := range rawData {
+				r.FindValueKey = k
+				rawContacts = v
+				break
+			}
+		}
+		err = bencode.DecodeBytes(rawContacts, &r.FindNodeData)
 		if err != nil {
 			return err
 		}

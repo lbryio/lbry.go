@@ -1,6 +1,7 @@
 package dht
 
 import (
+	"context"
 	"net"
 	"sync"
 	"time"
@@ -10,7 +11,7 @@ import (
 
 // query represents the query data included queried node and query-formed data.
 type transaction struct {
-	node *Node
+	node Node
 	req  *Request
 	res  chan *Response
 }
@@ -60,37 +61,53 @@ func (tm *transactionManager) Find(id string, addr *net.UDPAddr) *transaction {
 	return t
 }
 
-func (tm *transactionManager) Send(node *Node, req *Request) *Response {
+func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req *Request) <-chan *Response {
 	if node.id.Equals(tm.dht.node.id) {
 		log.Error("sending query to self")
 		return nil
 	}
 
-	req.ID = newMessageID()
-	trans := &transaction{
-		node: node,
-		req:  req,
-		res:  make(chan *Response),
-	}
+	ch := make(chan *Response, 1)
 
-	tm.insert(trans)
-	defer tm.delete(trans.req.ID)
+	go func() {
+		defer close(ch)
 
-	for i := 0; i < udpRetry; i++ {
-		if err := send(tm.dht, trans.node.Addr(), *trans.req); err != nil {
-			log.Error(err)
-			break
+		req.ID = newMessageID()
+		req.NodeID = tm.dht.node.id.RawString()
+		trans := &transaction{
+			node: node,
+			req:  req,
+			res:  make(chan *Response),
 		}
 
-		select {
-		case res := <-trans.res:
-			return res
-		case <-time.After(udpTimeout):
-		}
-	}
+		tm.insert(trans)
+		defer tm.delete(trans.req.ID)
 
-	tm.dht.rt.RemoveByID(trans.node.id)
-	return nil
+		for i := 0; i < udpRetry; i++ {
+			if err := send(tm.dht, trans.node.Addr(), *trans.req); err != nil {
+				log.Error(err)
+				continue // try again? return?
+			}
+
+			select {
+			case res := <-trans.res:
+				ch <- res
+				return
+			case <-ctx.Done():
+				return
+			case <-time.After(udpTimeout):
+			}
+		}
+
+		// if request timed out each time
+		tm.dht.rt.RemoveByID(trans.node.id)
+	}()
+
+	return ch
+}
+
+func (tm *transactionManager) Send(node Node, req *Request) *Response {
+	return <-tm.SendAsync(context.Background(), node, req)
 }
 
 // Count returns the number of transactions in the manager
