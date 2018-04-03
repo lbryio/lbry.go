@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestDHT_FindNodes(t *testing.T) {
+func TestNodeFinder_FindNodes(t *testing.T) {
 	id1 := newRandomBitmap()
 	id2 := newRandomBitmap()
 	id3 := newRandomBitmap()
@@ -40,11 +40,12 @@ func TestDHT_FindNodes(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // give dhts a chance to connect
 
-	foundNodes, found, err := dht3.Get(newRandomBitmap())
-
+	nf := newNodeFinder(dht3, newRandomBitmap(), false)
+	res, err := nf.Find()
 	if err != nil {
 		t.Fatal(err)
 	}
+	foundNodes, found := res.Nodes, res.Found
 
 	if found {
 		t.Fatal("something was found, but it should not have been")
@@ -74,7 +75,7 @@ func TestDHT_FindNodes(t *testing.T) {
 	}
 }
 
-func TestDHT_Get(t *testing.T) {
+func TestNodeFinder_FindValue(t *testing.T) {
 	id1 := newRandomBitmap()
 	id2 := newRandomBitmap()
 	id3 := newRandomBitmap()
@@ -111,10 +112,12 @@ func TestDHT_Get(t *testing.T) {
 	nodeToFind := Node{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
 	dht1.store.Upsert(nodeToFind.id.RawString(), nodeToFind)
 
-	foundNodes, found, err := dht3.Get(nodeToFind.id)
+	nf := newNodeFinder(dht3, nodeToFind.id, true)
+	res, err := nf.Find()
 	if err != nil {
 		t.Fatal(err)
 	}
+	foundNodes, found := res.Nodes, res.Found
 
 	if !found {
 		t.Fatal("node was not found")
