@@ -23,21 +23,20 @@ func newMessageID() string {
 	return string(buf)
 }
 
-// handlePacke handles packets received from udp.
+// handlePacket handles packets received from udp.
 func handlePacket(dht *DHT, pkt packet) {
-	//log.Infof("[%s] Received message from %s:%s : %s\n", dht.node.id.HexShort(), pkt.raddr.IP.String(), strconv.Itoa(pkt.raddr.Port), hex.EncodeToString(pkt.data))
+	//log.Debugf("[%s] Received message from %s:%s (%d bytes) %s", dht.node.id.HexShort(), pkt.raddr.IP.String(), strconv.Itoa(pkt.raddr.Port), len(pkt.data), hex.EncodeToString(pkt.data))
 
 	var data map[string]interface{}
 	err := bencode.DecodeBytes(pkt.data, &data)
 	if err != nil {
-		log.Errorf("error decoding data: %s", err)
-		log.Errorf(hex.EncodeToString(pkt.data))
+		log.Errorf("[%s] error decoding data: %s: (%d bytes) %s", dht.node.id.HexShort(), err.Error(), len(pkt.data), hex.EncodeToString(pkt.data))
 		return
 	}
 
 	msgType, ok := data[headerTypeField]
 	if !ok {
-		log.Errorf("decoded data has no message type: %s", data)
+		log.Errorf("[%s] decoded data has no message type: %s", dht.node.id.HexShort(), spew.Sdump(data))
 		return
 	}
 
@@ -73,7 +72,7 @@ func handlePacket(dht *DHT, pkt packet) {
 		handleError(dht, pkt.raddr, e)
 
 	default:
-		log.Errorf("Invalid message type: %s", msgType)
+		log.Errorf("[%s] invalid message type: %s", dht.node.id.HexShort(), msgType)
 		return
 	}
 }
@@ -170,18 +169,20 @@ func handleError(dht *DHT, addr *net.UDPAddr, e Error) {
 
 // send sends data to a udp address
 func send(dht *DHT, addr *net.UDPAddr, data Message) error {
-	if req, ok := data.(Request); ok {
-		log.Debugf("[%s] query %s: sending request to %s : %s(%s)", dht.node.id.HexShort(), hex.EncodeToString([]byte(req.ID))[:8], addr.String(), req.Method, argsToString(req.Args))
-	} else if res, ok := data.(Response); ok {
-		log.Debugf("[%s] query %s: sending response to %s : %s", dht.node.id.HexShort(), hex.EncodeToString([]byte(res.ID))[:8], addr.String(), res.ArgsDebug())
-	} else {
-		log.Debugf("[%s] %s", dht.node.id.HexShort(), spew.Sdump(data))
-	}
 	encoded, err := bencode.EncodeBytes(data)
 	if err != nil {
 		return err
 	}
-	//log.Infof("Encoded: %s", string(encoded))
+
+	if req, ok := data.(Request); ok {
+		log.Debugf("[%s] query %s: sending request to %s (%d bytes) %s(%s)",
+			dht.node.id.HexShort(), hex.EncodeToString([]byte(req.ID))[:8], addr.String(), len(encoded), req.Method, argsToString(req.Args))
+	} else if res, ok := data.(Response); ok {
+		log.Debugf("[%s] query %s: sending response to %s (%d bytes) %s",
+			dht.node.id.HexShort(), hex.EncodeToString([]byte(res.ID))[:8], addr.String(), len(encoded), res.ArgsDebug())
+	} else {
+		log.Debugf("[%s] (%d bytes) %s", dht.node.id.HexShort(), len(encoded), spew.Sdump(data))
+	}
 
 	dht.conn.SetWriteDeadline(time.Now().Add(time.Second * 15))
 

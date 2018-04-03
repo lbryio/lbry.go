@@ -49,7 +49,7 @@ func (n *Node) UnmarshalCompact(b []byte) error {
 	if len(b) != compactNodeInfoLength {
 		return errors.Err("invalid compact length")
 	}
-	n.ip = net.IPv4(b[0], b[1], b[2], b[3])
+	n.ip = net.IPv4(b[0], b[1], b[2], b[3]).To4()
 	n.port = int(uint16(b[5]) | uint16(b[4])<<8)
 	n.id = newBitmapFromBytes(b[6:])
 	return nil

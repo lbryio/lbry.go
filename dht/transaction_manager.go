@@ -85,7 +85,7 @@ func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req *Req
 
 		for i := 0; i < udpRetry; i++ {
 			if err := send(tm.dht, trans.node.Addr(), *trans.req); err != nil {
-				log.Error(err)
+				log.Errorf("send error: ", err.Error())
 				continue // try again? return?
 			}
 

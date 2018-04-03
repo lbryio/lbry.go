@@ -2,6 +2,7 @@ package dht
 
 import (
 	"encoding/hex"
+	"strings"
 
 	"github.com/lbryio/errors.go"
 
@@ -174,18 +175,21 @@ type Response struct {
 }
 
 func (r Response) ArgsDebug() string {
-	if len(r.FindNodeData) == 0 {
+	if r.Data != "" {
 		return r.Data
 	}
 
 	str := "contacts "
 	if r.FindValueKey != "" {
-		str += "for " + hex.EncodeToString([]byte(r.FindValueKey))[:8] + " "
+		str = "value for " + hex.EncodeToString([]byte(r.FindValueKey))[:8] + " "
 	}
+
+	str += "|"
 	for _, c := range r.FindNodeData {
-		str += c.Addr().String() + ":" + c.id.HexShort() + ", "
+		str += c.Addr().String() + ":" + c.id.HexShort() + ","
 	}
-	return str[:len(str)-2] // chomp off last ", "
+	str = strings.TrimRight(str, ",") + "|"
+	return str
 }
 
 func (r Response) MarshalBencode() ([]byte, error) {
@@ -235,18 +239,29 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 			return err
 		}
 
-		var rawContacts bencode.RawMessage
-		var ok bool
-		if rawContacts, ok = rawData["contacts"]; !ok {
+		if contacts, ok := rawData["contacts"]; ok {
+			err = bencode.DecodeBytes(contacts, &r.FindNodeData)
+			if err != nil {
+				return err
+			}
+		} else {
 			for k, v := range rawData {
 				r.FindValueKey = k
-				rawContacts = v
+				var compactNodes [][]byte
+				err = bencode.DecodeBytes(v, &compactNodes)
+				if err != nil {
+					return err
+				}
+				for _, compact := range compactNodes {
+					var uncompactedNode Node
+					err = uncompactedNode.UnmarshalCompact(compact)
+					if err != nil {
+						return err
+					}
+					r.FindNodeData = append(r.FindNodeData, uncompactedNode)
+				}
 				break
 			}
-		}
-		err = bencode.DecodeBytes(rawContacts, &r.FindNodeData)
-		if err != nil {
-			return err
 		}
 	}
 

@@ -7,9 +7,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/errors.go"
 	"github.com/lyoshenka/bencode"
-	log "github.com/sirupsen/logrus"
 )
+
+type timeoutErr struct {
+	error
+}
+
+func (t timeoutErr) Timeout() bool {
+	return true
+}
+
+func (t timeoutErr) Temporary() bool {
+	return true
+}
 
 type testUDPPacket struct {
 	data []byte
@@ -20,6 +32,8 @@ type testUDPConn struct {
 	addr   *net.UDPAddr
 	toRead chan testUDPPacket
 	writes chan testUDPPacket
+
+	readDeadline time.Time
 }
 
 func newTestUDPConn(addr string) *testUDPConn {
@@ -39,12 +53,17 @@ func newTestUDPConn(addr string) *testUDPConn {
 }
 
 func (t testUDPConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
+	var timeoutCh <-chan time.Time
+	if !t.readDeadline.IsZero() {
+		timeoutCh = time.After(t.readDeadline.Sub(time.Now()))
+	}
+
 	select {
 	case packet := <-t.toRead:
 		n := copy(b, packet.data)
 		return n, packet.addr, nil
-		//default:
-		//	return 0, nil, nil
+	case <-timeoutCh:
+		return 0, nil, timeoutErr{errors.Err("timeout")}
 	}
 }
 
@@ -53,16 +72,22 @@ func (t testUDPConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
 	return len(b), nil
 }
 
-func (t testUDPConn) SetReadDeadline(tm time.Time) error {
+func (t *testUDPConn) SetReadDeadline(tm time.Time) error {
+	t.readDeadline = tm
 	return nil
 }
 
-func (t testUDPConn) SetWriteDeadline(tm time.Time) error {
+func (t *testUDPConn) SetWriteDeadline(tm time.Time) error {
+	return nil
+}
+
+func (t *testUDPConn) Close() error {
+	t.toRead = nil
+	t.writes = nil
 	return nil
 }
 
 func TestPing(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
 	dhtNodeID := newRandomBitmap()
 	testNodeID := newRandomBitmap()
 

@@ -13,6 +13,11 @@ import (
 	"github.com/spf13/cast"
 )
 
+func init() {
+	//log.SetFormatter(&log.TextFormatter{ForceColors: true})
+	//log.SetLevel(log.DebugLevel)
+}
+
 const network = "udp4"
 
 const alpha = 3            // this is the constant alpha in the spec
@@ -67,6 +72,7 @@ type UDPConn interface {
 	WriteToUDP([]byte, *net.UDPAddr) (int, error)
 	SetReadDeadline(time.Time) error
 	SetWriteDeadline(time.Time) error
+	Close() error
 }
 
 // DHT represents a DHT node.
@@ -79,6 +85,7 @@ type DHT struct {
 	store   *peerStore
 	tm      *transactionManager
 	stop    *stopOnce.Stopper
+	stopWG  *sync.WaitGroup
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -120,6 +127,7 @@ func New(config *Config) (*DHT, error) {
 		packets: make(chan packet),
 		store:   newPeerStore(),
 		stop:    stopOnce.New(),
+		stopWG:  &sync.WaitGroup{},
 	}
 	d.tm = newTransactionManager(d)
 	return d, nil
@@ -127,8 +135,7 @@ func New(config *Config) (*DHT, error) {
 
 // init initializes global variables.
 func (dht *DHT) init() error {
-	log.Info("Initializing DHT on " + dht.conf.Address)
-	log.Infof("Node ID is %s", dht.node.id.Hex())
+	log.Debugf("Initializing DHT on %s (node id %s)", dht.conf.Address, dht.node.id.HexShort())
 
 	listener, err := net.ListenPacket(network, dht.conf.Address)
 	if err != nil {
@@ -146,7 +153,11 @@ func (dht *DHT) init() error {
 
 // listen receives message from udp.
 func (dht *DHT) listen() {
+	dht.stopWG.Add(1)
+	defer dht.stopWG.Done()
+
 	buf := make([]byte, 8192)
+
 	for {
 		select {
 		case <-dht.stop.Chan():
@@ -154,8 +165,7 @@ func (dht *DHT) listen() {
 		default:
 		}
 
-		dht.conn.SetReadDeadline(time.Now().Add(2 * time.Second)) // need this to periodically check shutdown chan
-
+		dht.conn.SetReadDeadline(time.Now().Add(1 * time.Second)) // need this to periodically check shutdown chan
 		n, raddr, err := dht.conn.ReadFromUDP(buf)
 		if err != nil {
 			if e, ok := err.(net.Error); !ok || !e.Timeout() {
@@ -167,12 +177,16 @@ func (dht *DHT) listen() {
 			continue
 		}
 
-		dht.packets <- packet{data: buf[:n], raddr: raddr}
+		data := make([]byte, n)
+		copy(data, buf[:n]) // slices use the same underlying array, so we need a new one for each packet
+
+		dht.packets <- packet{data: data, raddr: raddr}
 	}
 }
 
 // join makes current node join the dht network.
 func (dht *DHT) join() {
+	log.Debugf("[%s] joining network", dht.node.id.HexShort())
 	// get real node IDs and add them to the routing table
 	for _, addr := range dht.conf.SeedNodes {
 		raddr, err := net.ResolveUDPAddr(network, addr)
@@ -191,11 +205,14 @@ func (dht *DHT) join() {
 	// now call iterativeFind on yourself
 	_, err := dht.FindNodes(dht.node.id)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
 }
 
 func (dht *DHT) runHandler() {
+	dht.stopWG.Add(1)
+	defer dht.stopWG.Done()
+
 	var pkt packet
 
 	for {
@@ -209,10 +226,11 @@ func (dht *DHT) runHandler() {
 }
 
 // Start starts the dht
-func (dht *DHT) Start() error {
+func (dht *DHT) Start() {
 	err := dht.init()
 	if err != nil {
-		return err
+		log.Error(err)
+		return
 	}
 
 	go dht.listen()
@@ -220,13 +238,15 @@ func (dht *DHT) Start() error {
 
 	dht.join()
 	log.Infof("[%s] DHT ready", dht.node.id.HexShort())
-	return nil
 }
 
 // Shutdown shuts down the dht
 func (dht *DHT) Shutdown() {
-	log.Infof("[%s] DHT shutting down", dht.node.id.HexShort())
+	log.Debugf("[%s] DHT shutting down", dht.node.id.HexShort())
 	dht.stop.Stop()
+	dht.stopWG.Wait()
+	dht.conn.Close()
+	log.Infof("[%s] DHT stopped", dht.node.id.HexShort())
 }
 
 func printState(dht *DHT) {
@@ -271,11 +291,9 @@ type nodeFinder struct {
 	activeNodesMutex *sync.Mutex
 	activeNodes      []Node
 
-	shortlistMutex *sync.Mutex
-	shortlist      []Node
-
-	contactedMutex *sync.RWMutex
-	contacted      map[bitmap]bool
+	shortlistContactedMutex *sync.Mutex
+	shortlist               []Node
+	contacted               map[bitmap]bool
 }
 
 type findNodeResponse struct {
@@ -285,15 +303,14 @@ type findNodeResponse struct {
 
 func newNodeFinder(dht *DHT, target bitmap, findValue bool) *nodeFinder {
 	return &nodeFinder{
-		dht:              dht,
-		target:           target,
-		findValue:        findValue,
-		findValueMutex:   &sync.Mutex{},
-		activeNodesMutex: &sync.Mutex{},
-		contactedMutex:   &sync.RWMutex{},
-		shortlistMutex:   &sync.Mutex{},
-		contacted:        make(map[bitmap]bool),
-		done:             stopOnce.New(),
+		dht:                     dht,
+		target:                  target,
+		findValue:               findValue,
+		findValueMutex:          &sync.Mutex{},
+		activeNodesMutex:        &sync.Mutex{},
+		shortlistContactedMutex: &sync.Mutex{},
+		contacted:               make(map[bitmap]bool),
+		done:                    stopOnce.New(),
 	}
 }
 
@@ -341,7 +358,7 @@ func (nf *nodeFinder) iterationWorker(num int) {
 		maybeNode := nf.popFromShortlist()
 		if maybeNode == nil {
 			// TODO: block if there are pending requests out from other workers. there may be more shortlist values coming
-			log.Debugf("[%s] no more nodes in short list", nf.dht.node.id.HexShort())
+			log.Debugf("[%s] no more nodes in shortlist", nf.dht.node.id.HexShort())
 			return
 		}
 		node := *maybeNode
@@ -382,7 +399,6 @@ func (nf *nodeFinder) iterationWorker(num int) {
 		} else {
 			log.Debugf("[%s] worker %d: got more contacts", nf.dht.node.id.HexShort(), num)
 			nf.insertIntoActiveList(node)
-			nf.markContacted(node)
 			nf.appendNewToShortlist(res.FindNodeData)
 		}
 
@@ -394,39 +410,32 @@ func (nf *nodeFinder) iterationWorker(num int) {
 	}
 }
 
-func (nf *nodeFinder) filterContacted(nodes []Node) []Node {
-	nf.contactedMutex.RLock()
-	defer nf.contactedMutex.RUnlock()
-	filtered := []Node{}
+func (nf *nodeFinder) appendNewToShortlist(nodes []Node) {
+	nf.shortlistContactedMutex.Lock()
+	defer nf.shortlistContactedMutex.Unlock()
+
+	notContacted := []Node{}
 	for _, n := range nodes {
-		if ok := nf.contacted[n.id]; !ok {
-			filtered = append(filtered, n)
+		if _, ok := nf.contacted[n.id]; !ok {
+			notContacted = append(notContacted, n)
 		}
 	}
-	return filtered
-}
 
-func (nf *nodeFinder) markContacted(node Node) {
-	nf.contactedMutex.Lock()
-	defer nf.contactedMutex.Unlock()
-	nf.contacted[node.id] = true
-}
-
-func (nf *nodeFinder) appendNewToShortlist(nodes []Node) {
-	nf.shortlistMutex.Lock()
-	defer nf.shortlistMutex.Unlock()
-	nf.shortlist = append(nf.shortlist, nf.filterContacted(nodes)...)
+	nf.shortlist = append(nf.shortlist, notContacted...)
 	sortNodesInPlace(nf.shortlist, nf.target)
 }
 
 func (nf *nodeFinder) popFromShortlist() *Node {
-	nf.shortlistMutex.Lock()
-	defer nf.shortlistMutex.Unlock()
+	nf.shortlistContactedMutex.Lock()
+	defer nf.shortlistContactedMutex.Unlock()
+
 	if len(nf.shortlist) == 0 {
 		return nil
 	}
+
 	first := nf.shortlist[0]
 	nf.shortlist = nf.shortlist[1:]
+	nf.contacted[first.id] = true
 	return &first
 }
 
@@ -448,7 +457,6 @@ func (nf *nodeFinder) insertIntoActiveList(node Node) {
 
 func (nf *nodeFinder) isSearchFinished() bool {
 	if nf.findValue && len(nf.findValueResult) > 0 {
-		// if we have a result, always break
 		return true
 	}
 
@@ -458,11 +466,10 @@ func (nf *nodeFinder) isSearchFinished() bool {
 	default:
 	}
 
-	nf.shortlistMutex.Lock()
-	defer nf.shortlistMutex.Unlock()
+	nf.shortlistContactedMutex.Lock()
+	defer nf.shortlistContactedMutex.Unlock()
 
 	if len(nf.shortlist) == 0 {
-		// no more nodes to contact
 		return true
 	}
 

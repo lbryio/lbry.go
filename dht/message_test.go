@@ -2,18 +2,17 @@ package dht
 
 import (
 	"encoding/hex"
+	"net"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lyoshenka/bencode"
-	log "github.com/sirupsen/logrus"
 )
 
 func TestBencodeDecodeStoreArgs(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
-
 	blobHash := "3214D6C2F77FCB5E8D5FC07EDAFBA614F031CE8B2EAB49F924F8143F6DFBADE048D918710072FB98AB1B52B58F4E1468"
 	lbryID := "7CE1B831DEC8689E44F80F547D2DEA171F6A625E1A4FF6C6165E645F953103DABEB068A622203F859C6C64658FD3AA3B"
 	port := hex.EncodeToString([]byte("3333"))
@@ -70,6 +69,72 @@ func TestBencodeDecodeStoreArgs(t *testing.T) {
 		t.Error(err)
 	} else if !reflect.DeepEqual(reencoded, data) {
 		t.Error("reencoded data does not match original")
-		//spew.Dump(reencoded, data)
+		spew.Dump(reencoded, data)
+	}
+}
+
+func TestBencodeFindNodesResponse(t *testing.T) {
+	res := Response{
+		ID:     newMessageID(),
+		NodeID: newRandomBitmap().RawString(),
+		FindNodeData: []Node{
+			{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
+			{id: newRandomBitmap(), ip: net.IPv4(4, 3, 2, 1).To4(), port: 8765},
+		},
+	}
+
+	encoded, err := bencode.EncodeBytes(res)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var res2 Response
+	err = bencode.DecodeBytes(encoded, &res2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	compareResponses(t, res, res2)
+}
+
+func TestBencodeFindValueResponse(t *testing.T) {
+	res := Response{
+		ID:           newMessageID(),
+		NodeID:       newRandomBitmap().RawString(),
+		FindValueKey: newRandomBitmap().RawString(),
+		FindNodeData: []Node{
+			{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
+		},
+	}
+
+	encoded, err := bencode.EncodeBytes(res)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var res2 Response
+	err = bencode.DecodeBytes(encoded, &res2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	compareResponses(t, res, res2)
+}
+
+func compareResponses(t *testing.T, res, res2 Response) {
+	if res.ID != res2.ID {
+		t.Errorf("expected ID %s, got %s", res.ID, res2.ID)
+	}
+	if res.NodeID != res2.NodeID {
+		t.Errorf("expected NodeID %s, got %s", res.NodeID, res2.NodeID)
+	}
+	if res.Data != res2.Data {
+		t.Errorf("expected Data %s, got %s", res.Data, res2.Data)
+	}
+	if res.FindValueKey != res2.FindValueKey {
+		t.Errorf("expected FindValueKey %s, got %s", res.FindValueKey, res2.FindValueKey)
+	}
+	if !reflect.DeepEqual(res.FindNodeData, res2.FindNodeData) {
+		t.Errorf("expected FindNodeData %s, got %s", spew.Sdump(res.FindNodeData), spew.Sdump(res2.FindNodeData))
 	}
 }
