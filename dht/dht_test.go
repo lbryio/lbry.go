@@ -4,8 +4,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func TestDHT_FindNodes(t *testing.T) {
@@ -22,7 +20,7 @@ func TestDHT_FindNodes(t *testing.T) {
 	go dht1.Start()
 	defer dht1.Shutdown()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second) // give dhts a chance to connect
 
 	dht2, err := New(&Config{Address: "127.0.0.1:21217", NodeID: id2.Hex(), SeedNodes: []string{seedIP}})
 	if err != nil {
@@ -42,13 +40,15 @@ func TestDHT_FindNodes(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // give dhts a chance to connect
 
-	foundNodes, err := dht3.FindNodes(id2)
+	foundNodes, found, err := dht3.Get(newRandomBitmap())
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	spew.Dump(foundNodes)
+	if found {
+		t.Fatal("something was found, but it should not have been")
+	}
 
 	if len(foundNodes) != 2 {
 		t.Errorf("expected 2 nodes, found %d", len(foundNodes))
@@ -74,7 +74,7 @@ func TestDHT_FindNodes(t *testing.T) {
 	}
 }
 
-func TestDHT_FindValue(t *testing.T) {
+func TestDHT_Get(t *testing.T) {
 	id1 := newRandomBitmap()
 	id2 := newRandomBitmap()
 	id3 := newRandomBitmap()
@@ -111,7 +111,7 @@ func TestDHT_FindValue(t *testing.T) {
 	nodeToFind := Node{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
 	dht1.store.Upsert(nodeToFind.id.RawString(), nodeToFind)
 
-	foundNodes, found, err := dht3.FindValue(nodeToFind.id)
+	foundNodes, found, err := dht3.Get(nodeToFind.id)
 	if err != nil {
 		t.Fatal(err)
 	}

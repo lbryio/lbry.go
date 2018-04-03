@@ -5,21 +5,22 @@ import (
 	"encoding/hex"
 	"strconv"
 
+	"github.com/lbryio/errors.go"
 	"github.com/lyoshenka/bencode"
 )
 
 type bitmap [nodeIDLength]byte
 
 func (b bitmap) RawString() string {
-	return string(b[0:nodeIDLength])
+	return string(b[:])
 }
 
 func (b bitmap) Hex() string {
-	return hex.EncodeToString(b[0:nodeIDLength])
+	return hex.EncodeToString(b[:])
 }
 
 func (b bitmap) HexShort() string {
-	return hex.EncodeToString(b[0:nodeIDLength])[:8]
+	return hex.EncodeToString(b[:4])
 }
 
 func (b bitmap) Equals(other bitmap) bool {
@@ -65,6 +66,9 @@ func (b *bitmap) UnmarshalBencode(encoded []byte) error {
 	err := bencode.DecodeBytes(encoded, &str)
 	if err != nil {
 		return err
+	}
+	if len(str) != nodeIDLength {
+		return errors.Err("invalid node ID length")
 	}
 	copy(b[:], str)
 	return nil

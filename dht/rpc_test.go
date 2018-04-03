@@ -151,7 +151,7 @@ func TestPing(t *testing.T) {
 			rMessageID, ok := response[headerMessageIDField].(string)
 			if !ok {
 				t.Error("message ID is not a string")
-			} else if rMessageID != messageID {
+			} else if rMessageID != string(messageID[:]) {
 				t.Error("unexpected message ID")
 			}
 		}
@@ -203,16 +203,18 @@ func TestStore(t *testing.T) {
 
 	storeRequest := Request{
 		ID:     messageID,
-		NodeID: testNodeID.RawString(),
+		NodeID: testNodeID,
 		Method: storeMethod,
 		StoreArgs: &storeArgs{
 			BlobHash: blobHashToStore,
-			NodeID:   testNodeID,
+			Value: storeArgsValue{
+				Token:  "arst",
+				LbryID: testNodeID,
+				Port:   9999,
+			},
+			NodeID: testNodeID,
 		},
 	}
-	storeRequest.StoreArgs.Value.Token = "arst"
-	storeRequest.StoreArgs.Value.LbryID = testNodeID.RawString()
-	storeRequest.StoreArgs.Value.Port = 9999
 
 	_ = "64 " + // start message
 		"313A30 693065" + // type: 0
@@ -305,7 +307,7 @@ func TestFindNode(t *testing.T) {
 
 	request := Request{
 		ID:     messageID,
-		NodeID: testNodeID.RawString(),
+		NodeID: testNodeID,
 		Method: findNodeMethod,
 		Args:   []string{blobHashToFind},
 	}
@@ -390,7 +392,7 @@ func TestFindValueExisting(t *testing.T) {
 
 	request := Request{
 		ID:     messageID,
-		NodeID: testNodeID.RawString(),
+		NodeID: testNodeID,
 		Method: findValueMethod,
 		Args:   []string{valueToFind},
 	}
@@ -468,7 +470,7 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 
 	request := Request{
 		ID:     messageID,
-		NodeID: testNodeID.RawString(),
+		NodeID: testNodeID,
 		Method: findValueMethod,
 		Args:   []string{valueToFind},
 	}
@@ -517,7 +519,7 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 	verifyContacts(t, contacts, nodes)
 }
 
-func verifyResponse(t *testing.T, resp map[string]interface{}, messageID, dhtNodeID string) {
+func verifyResponse(t *testing.T, resp map[string]interface{}, id messageID, dhtNodeID string) {
 	if len(resp) != 4 {
 		t.Errorf("expected 4 response fields, got %d", len(resp))
 	}
@@ -541,7 +543,7 @@ func verifyResponse(t *testing.T, resp map[string]interface{}, messageID, dhtNod
 		rMessageID, ok := resp[headerMessageIDField].(string)
 		if !ok {
 			t.Error("message ID is not a string")
-		} else if rMessageID != messageID {
+		} else if rMessageID != string(id[:]) {
 			t.Error("unexpected message ID")
 		}
 		if len(rMessageID) != messageIDLength {

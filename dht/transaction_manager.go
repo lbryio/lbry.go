@@ -19,7 +19,7 @@ type transaction struct {
 // transactionManager represents the manager of transactions.
 type transactionManager struct {
 	lock         *sync.RWMutex
-	transactions map[string]*transaction
+	transactions map[messageID]*transaction
 	dht          *DHT
 }
 
@@ -27,7 +27,7 @@ type transactionManager struct {
 func newTransactionManager(dht *DHT) *transactionManager {
 	return &transactionManager{
 		lock:         &sync.RWMutex{},
-		transactions: make(map[string]*transaction),
+		transactions: make(map[messageID]*transaction),
 		dht:          dht,
 	}
 }
@@ -40,14 +40,14 @@ func (tm *transactionManager) insert(trans *transaction) {
 }
 
 // delete removes a transaction from transactionManager.
-func (tm *transactionManager) delete(transID string) {
+func (tm *transactionManager) delete(id messageID) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
-	delete(tm.transactions, transID)
+	delete(tm.transactions, id)
 }
 
 // find transaction for id. optionally ensure that addr matches node from transaction
-func (tm *transactionManager) Find(id string, addr *net.UDPAddr) *transaction {
+func (tm *transactionManager) Find(id messageID, addr *net.UDPAddr) *transaction {
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 
@@ -73,7 +73,7 @@ func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req *Req
 		defer close(ch)
 
 		req.ID = newMessageID()
-		req.NodeID = tm.dht.node.id.RawString()
+		req.NodeID = tm.dht.node.id
 		trans := &transaction{
 			node: node,
 			req:  req,

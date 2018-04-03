@@ -48,7 +48,7 @@ func TestBencodeDecodeStoreArgs(t *testing.T) {
 	if hex.EncodeToString([]byte(storeArgs.BlobHash)) != strings.ToLower(blobHash) {
 		t.Error("blob hash mismatch")
 	}
-	if hex.EncodeToString([]byte(storeArgs.Value.LbryID)) != strings.ToLower(lbryID) {
+	if storeArgs.Value.LbryID.Hex() != strings.ToLower(lbryID) {
 		t.Error("lbryid mismatch")
 	}
 	if hex.EncodeToString([]byte(strconv.Itoa(storeArgs.Value.Port))) != port {
@@ -76,7 +76,7 @@ func TestBencodeDecodeStoreArgs(t *testing.T) {
 func TestBencodeFindNodesResponse(t *testing.T) {
 	res := Response{
 		ID:     newMessageID(),
-		NodeID: newRandomBitmap().RawString(),
+		NodeID: newRandomBitmap(),
 		FindNodeData: []Node{
 			{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
 			{id: newRandomBitmap(), ip: net.IPv4(4, 3, 2, 1).To4(), port: 8765},
@@ -100,7 +100,7 @@ func TestBencodeFindNodesResponse(t *testing.T) {
 func TestBencodeFindValueResponse(t *testing.T) {
 	res := Response{
 		ID:           newMessageID(),
-		NodeID:       newRandomBitmap().RawString(),
+		NodeID:       newRandomBitmap(),
 		FindValueKey: newRandomBitmap().RawString(),
 		FindNodeData: []Node{
 			{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
@@ -125,8 +125,8 @@ func compareResponses(t *testing.T, res, res2 Response) {
 	if res.ID != res2.ID {
 		t.Errorf("expected ID %s, got %s", res.ID, res2.ID)
 	}
-	if res.NodeID != res2.NodeID {
-		t.Errorf("expected NodeID %s, got %s", res.NodeID, res2.NodeID)
+	if !res.NodeID.Equals(res2.NodeID) {
+		t.Errorf("expected NodeID %s, got %s", res.NodeID.Hex(), res2.NodeID.Hex())
 	}
 	if res.Data != res2.Data {
 		t.Errorf("expected Data %s, got %s", res.Data, res2.Data)

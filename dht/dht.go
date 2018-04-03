@@ -203,7 +203,7 @@ func (dht *DHT) join() {
 	}
 
 	// now call iterativeFind on yourself
-	_, err := dht.FindNodes(dht.node.id)
+	_, _, err := dht.Get(dht.node.id)
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
@@ -260,22 +260,37 @@ func printState(dht *DHT) {
 	}
 }
 
-func (dht *DHT) FindNodes(hash bitmap) ([]Node, error) {
-	nf := newNodeFinder(dht, hash, false)
-	res, err := nf.Find()
-	if err != nil {
-		return nil, err
-	}
-	return res.Nodes, nil
-}
-
-func (dht *DHT) FindValue(hash bitmap) ([]Node, bool, error) {
+func (dht *DHT) Get(hash bitmap) ([]Node, bool, error) {
 	nf := newNodeFinder(dht, hash, true)
 	res, err := nf.Find()
 	if err != nil {
 		return nil, false, err
 	}
 	return res.Nodes, res.Found, nil
+}
+
+func (dht *DHT) Put(hash bitmap) error {
+	nf := newNodeFinder(dht, hash, false)
+	res, err := nf.Find()
+	if err != nil {
+		return err
+	}
+
+	for _, node := range res.Nodes {
+		send(dht, node.Addr(), &Request{
+			Method: storeMethod,
+			StoreArgs: &storeArgs{
+				BlobHash: hash.RawString(),
+				Value: storeArgsValue{
+					Token:  "",
+					LbryID: dht.node.id,
+					Port:   dht.node.port,
+				},
+			},
+		})
+	}
+
+	return nil
 }
 
 type nodeFinder struct {

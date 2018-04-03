@@ -1,7 +1,9 @@
 package dht
 
 import (
+	"crypto/rand"
 	"encoding/hex"
+	"reflect"
 	"strings"
 
 	"github.com/lbryio/errors.go"
@@ -41,9 +43,39 @@ type Message interface {
 	bencode.Marshaler
 }
 
+type messageID [messageIDLength]byte
+
+func (m messageID) HexShort() string {
+	return hex.EncodeToString(m[:])[:8]
+}
+
+func (m *messageID) UnmarshalBencode(encoded []byte) error {
+	var str string
+	err := bencode.DecodeBytes(encoded, &str)
+	if err != nil {
+		return err
+	}
+	copy(m[:], str)
+	return nil
+}
+
+func (m messageID) MarshalBencode() ([]byte, error) {
+	str := string(m[:])
+	return bencode.EncodeBytes(str)
+}
+
+func newMessageID() messageID {
+	var m messageID
+	_, err := rand.Read(m[:])
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 type Request struct {
-	ID        string
-	NodeID    string
+	ID        messageID
+	NodeID    bitmap
 	Method    string
 	Args      []string
 	StoreArgs *storeArgs
@@ -67,8 +99,8 @@ func (r Request) MarshalBencode() ([]byte, error) {
 
 func (r *Request) UnmarshalBencode(b []byte) error {
 	var raw struct {
-		ID     string             `bencode:"1"`
-		NodeID string             `bencode:"2"`
+		ID     messageID          `bencode:"1"`
+		NodeID bitmap             `bencode:"2"`
 		Method string             `bencode:"3"`
 		Args   bencode.RawMessage `bencode:"4"`
 	}
@@ -94,13 +126,15 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
+type storeArgsValue struct {
+	Token  string `bencode:"token"`
+	LbryID bitmap `bencode:"lbryid"`
+	Port   int    `bencode:"port"`
+}
+
 type storeArgs struct {
-	BlobHash string
-	Value    struct {
-		Token  string `bencode:"token"`
-		LbryID string `bencode:"lbryid"`
-		Port   int    `bencode:"port"`
-	}
+	BlobHash  string
+	Value     storeArgsValue
 	NodeID    bitmap
 	SelfStore bool // this is an int on the wire
 }
@@ -167,8 +201,8 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 }
 
 type Response struct {
-	ID           string
-	NodeID       string
+	ID           messageID
+	NodeID       bitmap
 	Data         string
 	FindNodeData []Node
 	FindValueKey string
@@ -219,8 +253,8 @@ func (r Response) MarshalBencode() ([]byte, error) {
 
 func (r *Response) UnmarshalBencode(b []byte) error {
 	var raw struct {
-		ID     string             `bencode:"1"`
-		NodeID string             `bencode:"2"`
+		ID     messageID          `bencode:"1"`
+		NodeID bitmap             `bencode:"2"`
 		Data   bencode.RawMessage `bencode:"3"`
 	}
 	err := bencode.DecodeBytes(b, &raw)
@@ -269,10 +303,10 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 }
 
 type Error struct {
-	ID            string
-	NodeID        string
-	Response      []string
+	ID            messageID
+	NodeID        bitmap
 	ExceptionType string
+	Response      []string
 }
 
 func (e Error) MarshalBencode() ([]byte, error) {
@@ -283,4 +317,30 @@ func (e Error) MarshalBencode() ([]byte, error) {
 		headerPayloadField:   e.ExceptionType,
 		headerArgsField:      e.Response,
 	})
+}
+
+func (e *Error) UnmarshalBencode(b []byte) error {
+	var raw struct {
+		ID            messageID   `bencode:"1"`
+		NodeID        bitmap      `bencode:"2"`
+		ExceptionType string      `bencode:"3"`
+		Args          interface{} `bencode:"4"`
+	}
+	err := bencode.DecodeBytes(b, &raw)
+	if err != nil {
+		return err
+	}
+
+	e.ID = raw.ID
+	e.NodeID = raw.NodeID
+	e.ExceptionType = raw.ExceptionType
+
+	if reflect.TypeOf(raw.Args).Kind() == reflect.Slice {
+		v := reflect.ValueOf(raw.Args)
+		for i := 0; i < v.Len(); i++ {
+			e.Response = append(e.Response, cast.ToString(v.Index(i).Interface()))
+		}
+	}
+
+	return nil
 }
