@@ -99,7 +99,7 @@ func (nf *nodeFinder) iterationWorker(num int) {
 			continue // cannot contact self
 		}
 
-		req := &Request{Args: []string{nf.target.RawString()}}
+		req := Request{Args: []string{nf.target.RawString()}}
 		if nf.findValue {
 			req.Method = findValueMethod
 		} else {

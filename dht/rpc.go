@@ -3,7 +3,6 @@ package dht
 import (
 	"encoding/hex"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/lbryio/lbry.go/util"
@@ -35,7 +34,7 @@ func handlePacket(dht *DHT, pkt packet) {
 			log.Errorf("[%s] error decoding request: %s: (%d bytes) %s", dht.node.id.HexShort(), err.Error(), len(pkt.data), hex.EncodeToString(pkt.data))
 			return
 		}
-		log.Debugf("[%s] query %s: received request from %s: %s(%s)", dht.node.id.HexShort(), request.ID.HexShort(), request.NodeID.HexShort(), request.Method, argsToString(request.Args))
+		log.Debugf("[%s] query %s: received request from %s: %s(%s)", dht.node.id.HexShort(), request.ID.HexShort(), request.NodeID.HexShort(), request.Method, request.ArgsDebug())
 		handleRequest(dht, pkt.raddr, request)
 
 	case '0' + responseType:
@@ -75,17 +74,13 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 	case pingMethod:
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id, Data: pingSuccessResponse})
 	case storeMethod:
-		if request.StoreArgs.BlobHash == "" {
-			log.Errorln("blobhash is empty")
-			return // nothing to store
-		}
 		// TODO: we should be sending the IP in the request, not just using the sender's IP
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		dht.store.Upsert(request.StoreArgs.BlobHash, Node{id: request.StoreArgs.NodeID, ip: addr.IP, port: request.StoreArgs.Value.Port})
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id, Data: storeSuccessResponse})
 	case findNodeMethod:
-		if len(request.Args) < 1 {
-			log.Errorln("nothing to find")
+		if len(request.Args) != 1 {
+			log.Errorln("invalid number of args")
 			return
 		}
 		if len(request.Args[0]) != nodeIDLength {
@@ -94,20 +89,22 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 		}
 		doFindNodes(dht, addr, request)
 	case findValueMethod:
-		if len(request.Args) < 1 {
-			log.Errorln("nothing to find")
+		if len(request.Args) != 1 {
+			log.Errorln("invalid number of args")
 			return
 		}
 		if len(request.Args[0]) != nodeIDLength {
-			log.Errorln("invalid node id")
+			log.Errorln("invalid blob hash")
 			return
 		}
 
-		if nodes := dht.store.Get(request.Args[0]); len(nodes) > 0 {
-			response := Response{ID: request.ID, NodeID: dht.node.id}
-			response.FindValueKey = request.Args[0]
-			response.FindNodeData = nodes
-			send(dht, addr, response)
+		if nodes := dht.store.Get(newBitmapFromString(request.Args[0])); len(nodes) > 0 {
+			send(dht, addr, Response{
+				ID:           request.ID,
+				NodeID:       dht.node.id,
+				FindValueKey: request.Args[0],
+				FindNodeData: nodes,
+			})
 		} else {
 			doFindNodes(dht, addr, request)
 		}
@@ -140,7 +137,7 @@ func doFindNodes(dht *DHT, addr *net.UDPAddr, request Request) {
 func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) {
 	tx := dht.tm.Find(response.ID, addr)
 	if tx != nil {
-		tx.res <- &response
+		tx.res <- response
 	}
 
 	node := Node{id: response.NodeID, ip: addr.IP, port: addr.Port}
@@ -163,7 +160,7 @@ func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 
 	if req, ok := data.(Request); ok {
 		log.Debugf("[%s] query %s: sending request to %s (%d bytes) %s(%s)",
-			dht.node.id.HexShort(), req.ID.HexShort(), addr.String(), len(encoded), req.Method, argsToString(req.Args))
+			dht.node.id.HexShort(), req.ID.HexShort(), addr.String(), len(encoded), req.Method, req.ArgsDebug())
 	} else if res, ok := data.(Response); ok {
 		log.Debugf("[%s] query %s: sending response to %s (%d bytes) %s",
 			dht.node.id.HexShort(), res.ID.HexShort(), addr.String(), len(encoded), res.ArgsDebug())
@@ -175,15 +172,4 @@ func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 
 	_, err = dht.conn.WriteToUDP(encoded, addr)
 	return err
-}
-
-func argsToString(args []string) string {
-	argsCopy := make([]string, len(args))
-	copy(argsCopy, args)
-	for k, v := range argsCopy {
-		if len(v) == nodeIDLength {
-			argsCopy[k] = hex.EncodeToString([]byte(v))[:8]
-		}
-	}
-	return strings.Join(argsCopy, ", ")
 }

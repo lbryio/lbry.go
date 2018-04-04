@@ -193,7 +193,7 @@ func (dht *DHT) join() {
 		}
 
 		tmpNode := Node{id: newRandomBitmap(), ip: raddr.IP, port: raddr.Port}
-		res := dht.tm.Send(tmpNode, &Request{Method: pingMethod})
+		res := dht.tm.Send(tmpNode, Request{Method: pingMethod})
 		if res == nil {
 			log.Errorf("[%s] join: no response from seed node %s", dht.node.id.HexShort(), addr)
 		}
@@ -260,8 +260,8 @@ func (dht *DHT) Get(hash bitmap) ([]Node, error) {
 	return nil, nil
 }
 
-// Put announces to the DHT that this node has the blob for the given hash
-func (dht *DHT) Put(hash bitmap) error {
+// Announce announces to the DHT that this node has the blob for the given hash
+func (dht *DHT) Announce(hash bitmap) error {
 	nf := newNodeFinder(dht, hash, false)
 	res, err := nf.Find()
 	if err != nil {
@@ -269,10 +269,10 @@ func (dht *DHT) Put(hash bitmap) error {
 	}
 
 	for _, node := range res.Nodes {
-		send(dht, node.Addr(), &Request{
+		send(dht, node.Addr(), Request{
 			Method: storeMethod,
 			StoreArgs: &storeArgs{
-				BlobHash: hash.RawString(),
+				BlobHash: hash,
 				Value: storeArgsValue{
 					Token:  "",
 					LbryID: dht.node.id,

@@ -109,10 +109,11 @@ func TestNodeFinder_FindValue(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // give dhts a chance to connect
 
+	blobHashToFind := newRandomBitmap()
 	nodeToFind := Node{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
-	dht1.store.Upsert(nodeToFind.id.RawString(), nodeToFind)
+	dht1.store.Upsert(blobHashToFind, nodeToFind)
 
-	nf := newNodeFinder(dht3, nodeToFind.id, true)
+	nf := newNodeFinder(dht3, blobHashToFind, true)
 	res, err := nf.Find()
 	if err != nil {
 		t.Fatal(err)

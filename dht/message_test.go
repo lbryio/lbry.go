@@ -45,7 +45,7 @@ func TestBencodeDecodeStoreArgs(t *testing.T) {
 		t.Error(err)
 	}
 
-	if hex.EncodeToString([]byte(storeArgs.BlobHash)) != strings.ToLower(blobHash) {
+	if storeArgs.BlobHash.Hex() != strings.ToLower(blobHash) {
 		t.Error("blob hash mismatch")
 	}
 	if storeArgs.Value.LbryID.Hex() != strings.ToLower(lbryID) {

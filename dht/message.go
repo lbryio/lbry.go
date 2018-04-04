@@ -126,6 +126,17 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
+func (r Request) ArgsDebug() string {
+	argsCopy := make([]string, len(r.Args))
+	copy(argsCopy, r.Args)
+	for k, v := range argsCopy {
+		if len(v) == nodeIDLength {
+			argsCopy[k] = hex.EncodeToString([]byte(v))[:8]
+		}
+	}
+	return strings.Join(argsCopy, ", ")
+}
+
 type storeArgsValue struct {
 	Token  string `bencode:"token"`
 	LbryID bitmap `bencode:"lbryid"`
@@ -133,7 +144,7 @@ type storeArgsValue struct {
 }
 
 type storeArgs struct {
-	BlobHash  string
+	BlobHash  bitmap
 	Value     storeArgsValue
 	NodeID    bitmap
 	SelfStore bool // this is an int on the wire

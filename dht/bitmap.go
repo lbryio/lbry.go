@@ -61,6 +61,11 @@ func (b bitmap) PrefixLen() int {
 	return numBuckets
 }
 
+func (b bitmap) MarshalBencode() ([]byte, error) {
+	str := string(b[:])
+	return bencode.EncodeBytes(str)
+}
+
 func (b *bitmap) UnmarshalBencode(encoded []byte) error {
 	var str string
 	err := bencode.DecodeBytes(encoded, &str)
@@ -68,15 +73,10 @@ func (b *bitmap) UnmarshalBencode(encoded []byte) error {
 		return err
 	}
 	if len(str) != nodeIDLength {
-		return errors.Err("invalid node ID length")
+		return errors.Err("invalid bitmap length")
 	}
 	copy(b[:], str)
 	return nil
-}
-
-func (b bitmap) MarshalBencode() ([]byte, error) {
-	str := string(b[:])
-	return bencode.EncodeBytes(str)
 }
 
 func newBitmapFromBytes(data []byte) bitmap {

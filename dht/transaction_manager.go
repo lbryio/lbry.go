@@ -9,21 +9,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// query represents the query data included queried node and query-formed data.
+// transaction represents a single query to the dht. it stores the queried node, the request, and the response channel
 type transaction struct {
 	node Node
-	req  *Request
-	res  chan *Response
+	req  Request
+	res  chan Response
 }
 
-// transactionManager represents the manager of transactions.
+// transactionManager keeps track of the outstanding transactions
 type transactionManager struct {
+	dht          *DHT
 	lock         *sync.RWMutex
 	transactions map[messageID]*transaction
-	dht          *DHT
 }
 
-// newTransactionManager returns new transactionManager pointer.
+// newTransactionManager returns a new transactionManager
 func newTransactionManager(dht *DHT) *transactionManager {
 	return &transactionManager{
 		lock:         &sync.RWMutex{},
@@ -32,36 +32,36 @@ func newTransactionManager(dht *DHT) *transactionManager {
 	}
 }
 
-// insert adds a transaction to transactionManager.
-func (tm *transactionManager) insert(trans *transaction) {
+// insert adds a transaction to the manager.
+func (tm *transactionManager) insert(tx *transaction) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
-	tm.transactions[trans.req.ID] = trans
+	tm.transactions[tx.req.ID] = tx
 }
 
-// delete removes a transaction from transactionManager.
+// delete removes a transaction from the manager.
 func (tm *transactionManager) delete(id messageID) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 	delete(tm.transactions, id)
 }
 
-// find transaction for id. optionally ensure that addr matches node from transaction
+// Find finds a transaction for the given id. it optionally ensures that addr matches node from transaction
 func (tm *transactionManager) Find(id messageID, addr *net.UDPAddr) *transaction {
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 
 	t, ok := tm.transactions[id]
-	if !ok {
-		return nil
-	} else if addr != nil && t.node.Addr().String() != addr.String() {
+	if !ok || (addr != nil && t.node.Addr().String() != addr.String()) {
 		return nil
 	}
 
 	return t
 }
 
-func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req *Request) <-chan *Response {
+// SendAsync sends a transaction and returns a channel that will eventually contain the transaction response
+// The response channel is closed when the transaction is completed or times out.
+func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req Request) <-chan *Response {
 	if node.id.Equals(tm.dht.node.id) {
 		log.Error("sending query to self")
 		return nil
@@ -74,24 +74,24 @@ func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req *Req
 
 		req.ID = newMessageID()
 		req.NodeID = tm.dht.node.id
-		trans := &transaction{
+		tx := &transaction{
 			node: node,
 			req:  req,
-			res:  make(chan *Response),
+			res:  make(chan Response),
 		}
 
-		tm.insert(trans)
-		defer tm.delete(trans.req.ID)
+		tm.insert(tx)
+		defer tm.delete(tx.req.ID)
 
 		for i := 0; i < udpRetry; i++ {
-			if err := send(tm.dht, trans.node.Addr(), *trans.req); err != nil {
+			if err := send(tm.dht, node.Addr(), tx.req); err != nil {
 				log.Errorf("send error: ", err.Error())
 				continue // try again? return?
 			}
 
 			select {
-			case res := <-trans.res:
-				ch <- res
+			case res := <-tx.res:
+				ch <- &res
 				return
 			case <-ctx.Done():
 				return
@@ -100,13 +100,15 @@ func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req *Req
 		}
 
 		// if request timed out each time
-		tm.dht.rt.RemoveByID(trans.node.id)
+		tm.dht.rt.RemoveByID(tx.node.id)
 	}()
 
 	return ch
 }
 
-func (tm *transactionManager) Send(node Node, req *Request) *Response {
+// Send sends a transaction and blocks until the response is available. It returns a response, or nil
+// if the transaction timed out.
+func (tm *transactionManager) Send(node Node, req Request) *Response {
 	return <-tm.SendAsync(context.Background(), node, req)
 }
 

@@ -199,7 +199,7 @@ func TestStore(t *testing.T) {
 	defer dht.Shutdown()
 
 	messageID := newMessageID()
-	blobHashToStore := newRandomBitmap().RawString()
+	blobHashToStore := newRandomBitmap()
 
 	storeRequest := Request{
 		ID:     messageID,
@@ -383,7 +383,7 @@ func TestFindValueExisting(t *testing.T) {
 	//data, _ := hex.DecodeString("64313a30693065313a3132303a7de8e57d34e316abbb5a8a8da50dcd1ad4c80e0f313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33393a66696e6456616c7565313a346c34383aa47624b8e7ee1e54df0c45e2eb858feb0b705bd2a78d8b739be31ba188f4bd6f56b371c51fecc5280d5fd26ba4168e966565")
 
 	messageID := newMessageID()
-	valueToFind := newRandomBitmap().RawString()
+	valueToFind := newRandomBitmap()
 
 	nodeToFind := Node{id: newRandomBitmap(), ip: net.ParseIP("1.2.3.4"), port: 1286}
 	dht.store.Upsert(valueToFind, nodeToFind)
@@ -394,7 +394,7 @@ func TestFindValueExisting(t *testing.T) {
 		ID:     messageID,
 		NodeID: testNodeID,
 		Method: findValueMethod,
-		Args:   []string{valueToFind},
+		Args:   []string{valueToFind.RawString()},
 	}
 
 	data, err := bencode.EncodeBytes(request)
@@ -428,7 +428,7 @@ func TestFindValueExisting(t *testing.T) {
 		t.Fatal("payload is not a dictionary")
 	}
 
-	compactContacts, ok := payload[valueToFind]
+	compactContacts, ok := payload[valueToFind.RawString()]
 	if !ok {
 		t.Fatal("payload is missing key for search value")
 	}
