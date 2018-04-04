@@ -79,30 +79,22 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 		dht.store.Upsert(request.StoreArgs.BlobHash, Node{id: request.StoreArgs.NodeID, ip: addr.IP, port: request.StoreArgs.Value.Port})
 		send(dht, addr, Response{ID: request.ID, NodeID: dht.node.id, Data: storeSuccessResponse})
 	case findNodeMethod:
-		if len(request.Args) != 1 {
-			log.Errorln("invalid number of args")
-			return
-		}
-		if len(request.Args[0]) != nodeIDLength {
-			log.Errorln("invalid node id")
+		if request.Arg == nil {
+			log.Errorln("request is missing arg")
 			return
 		}
 		doFindNodes(dht, addr, request)
 	case findValueMethod:
-		if len(request.Args) != 1 {
-			log.Errorln("invalid number of args")
-			return
-		}
-		if len(request.Args[0]) != nodeIDLength {
-			log.Errorln("invalid blob hash")
+		if request.Arg == nil {
+			log.Errorln("request is missing arg")
 			return
 		}
 
-		if nodes := dht.store.Get(newBitmapFromString(request.Args[0])); len(nodes) > 0 {
+		if nodes := dht.store.Get(*request.Arg); len(nodes) > 0 {
 			send(dht, addr, Response{
 				ID:           request.ID,
 				NodeID:       dht.node.id,
-				FindValueKey: request.Args[0],
+				FindValueKey: request.Arg.RawString(),
 				FindNodeData: nodes,
 			})
 		} else {
@@ -120,8 +112,7 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 }
 
 func doFindNodes(dht *DHT, addr *net.UDPAddr, request Request) {
-	nodeID := newBitmapFromString(request.Args[0])
-	closestNodes := dht.rt.GetClosest(nodeID, bucketSize)
+	closestNodes := dht.rt.GetClosest(*request.Arg, bucketSize)
 	if len(closestNodes) > 0 {
 		response := Response{ID: request.ID, NodeID: dht.node.id, FindNodeData: make([]Node, len(closestNodes))}
 		for i, n := range closestNodes {

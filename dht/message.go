@@ -77,7 +77,7 @@ type Request struct {
 	ID        messageID
 	NodeID    bitmap
 	Method    string
-	Args      []string
+	Arg       *bitmap
 	StoreArgs *storeArgs
 }
 
@@ -85,8 +85,8 @@ func (r Request) MarshalBencode() ([]byte, error) {
 	var args interface{}
 	if r.StoreArgs != nil {
 		args = r.StoreArgs
-	} else {
-		args = r.Args
+	} else if r.Arg != nil {
+		args = []bitmap{*r.Arg}
 	}
 	return bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      requestType,
@@ -116,25 +116,26 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	if r.Method == storeMethod {
 		r.StoreArgs = &storeArgs{} // bencode wont find the unmarshaler on a null pointer. need to fix it.
 		err = bencode.DecodeBytes(raw.Args, &r.StoreArgs)
-	} else {
-		err = bencode.DecodeBytes(raw.Args, &r.Args)
-	}
-	if err != nil {
-		return errors.Prefix("request unmarshal", err)
+		if err != nil {
+			return errors.Prefix("request unmarshal", err)
+		}
+	} else if len(raw.Args) > 2 { // 2 because an empty list is `le`
+		tmp := []bitmap{}
+		err = bencode.DecodeBytes(raw.Args, &tmp)
+		if err != nil {
+			return errors.Prefix("request unmarshal", err)
+		}
+		r.Arg = &tmp[0]
 	}
 
 	return nil
 }
 
 func (r Request) ArgsDebug() string {
-	argsCopy := make([]string, len(r.Args))
-	copy(argsCopy, r.Args)
-	for k, v := range argsCopy {
-		if len(v) == nodeIDLength {
-			argsCopy[k] = hex.EncodeToString([]byte(v))[:8]
-		}
+	if r.Arg != nil {
+		return r.Arg.HexShort()
 	}
-	return strings.Join(argsCopy, ", ")
+	return ""
 }
 
 type storeArgsValue struct {

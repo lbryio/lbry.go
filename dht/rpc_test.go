@@ -303,13 +303,13 @@ func TestFindNode(t *testing.T) {
 	}
 
 	messageID := newMessageID()
-	blobHashToFind := newRandomBitmap().RawString()
+	blobHashToFind := newRandomBitmap()
 
 	request := Request{
 		ID:     messageID,
 		NodeID: testNodeID,
 		Method: findNodeMethod,
-		Args:   []string{blobHashToFind},
+		Arg:    &blobHashToFind,
 	}
 
 	data, err := bencode.EncodeBytes(request)
@@ -394,7 +394,7 @@ func TestFindValueExisting(t *testing.T) {
 		ID:     messageID,
 		NodeID: testNodeID,
 		Method: findValueMethod,
-		Args:   []string{valueToFind.RawString()},
+		Arg:    &valueToFind,
 	}
 
 	data, err := bencode.EncodeBytes(request)
@@ -466,13 +466,13 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 	}
 
 	messageID := newMessageID()
-	valueToFind := newRandomBitmap().RawString()
+	valueToFind := newRandomBitmap()
 
 	request := Request{
 		ID:     messageID,
 		NodeID: testNodeID,
 		Method: findValueMethod,
-		Args:   []string{valueToFind},
+		Arg:    &valueToFind,
 	}
 
 	data, err := bencode.EncodeBytes(request)
