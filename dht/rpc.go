@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/lbryio/errors.go"
 	"github.com/lbryio/lbry.go/util"
 
 	"github.com/davecgh/go-spew/spew"
@@ -146,7 +147,7 @@ func handleError(dht *DHT, addr *net.UDPAddr, e Error) {
 func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 	encoded, err := bencode.EncodeBytes(data)
 	if err != nil {
-		return err
+		return errors.Err(err)
 	}
 
 	if req, ok := data.(Request); ok {
@@ -162,5 +163,5 @@ func send(dht *DHT, addr *net.UDPAddr, data Message) error {
 	dht.conn.SetWriteDeadline(time.Now().Add(time.Second * 15))
 
 	_, err = dht.conn.WriteToUDP(encoded, addr)
-	return err
+	return errors.Err(err)
 }

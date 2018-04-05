@@ -266,7 +266,7 @@ func TestStore(t *testing.T) {
 		}
 	}
 
-	if len(dht.store.nodeIDs) != 1 {
+	if len(dht.store.hashes) != 1 {
 		t.Error("dht store has wrong number of items")
 	}
 

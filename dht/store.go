@@ -11,7 +11,7 @@ type peer struct {
 
 type peerStore struct {
 	// map of blob hashes to (map of node IDs to bools)
-	nodeIDs map[bitmap]map[bitmap]bool
+	hashes map[bitmap]map[bitmap]bool
 	// map of node IDs to peers
 	nodeInfo map[bitmap]peer
 	lock     sync.RWMutex
@@ -19,7 +19,7 @@ type peerStore struct {
 
 func newPeerStore() *peerStore {
 	return &peerStore{
-		nodeIDs:  make(map[bitmap]map[bitmap]bool),
+		hashes:   make(map[bitmap]map[bitmap]bool),
 		nodeInfo: make(map[bitmap]peer),
 	}
 }
@@ -27,10 +27,10 @@ func newPeerStore() *peerStore {
 func (s *peerStore) Upsert(blobHash bitmap, node Node) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if _, ok := s.nodeIDs[blobHash]; !ok {
-		s.nodeIDs[blobHash] = make(map[bitmap]bool)
+	if _, ok := s.hashes[blobHash]; !ok {
+		s.hashes[blobHash] = make(map[bitmap]bool)
 	}
-	s.nodeIDs[blobHash][node.id] = true
+	s.hashes[blobHash][node.id] = true
 	s.nodeInfo[node.id] = peer{node: node}
 }
 
@@ -38,7 +38,7 @@ func (s *peerStore) Get(blobHash bitmap) []Node {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	var nodes []Node
-	if ids, ok := s.nodeIDs[blobHash]; ok {
+	if ids, ok := s.hashes[blobHash]; ok {
 		for id := range ids {
 			peer, ok := s.nodeInfo[id]
 			if !ok {
@@ -50,8 +50,8 @@ func (s *peerStore) Get(blobHash bitmap) []Node {
 	return nodes
 }
 
-func (s *peerStore) CountKnownNodes() int {
+func (s *peerStore) CountStoredHashes() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return len(s.nodeInfo)
+	return len(s.hashes)
 }

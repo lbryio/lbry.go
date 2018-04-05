@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/lbryio/errors.go"
@@ -132,7 +133,9 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 }
 
 func (r Request) ArgsDebug() string {
-	if r.Arg != nil {
+	if r.StoreArgs != nil {
+		return r.StoreArgs.BlobHash.HexShort() + ", " + r.StoreArgs.Value.LbryID.HexShort() + ":" + strconv.Itoa(r.StoreArgs.Value.Port)
+	} else if r.Arg != nil {
 		return r.Arg.HexShort()
 	}
 	return ""

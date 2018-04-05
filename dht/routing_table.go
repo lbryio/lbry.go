@@ -93,12 +93,12 @@ func (n *Node) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-type SortedNode struct {
+type sortedNode struct {
 	node                Node
 	xorDistanceToTarget bitmap
 }
 
-type byXorDistance []SortedNode
+type byXorDistance []sortedNode
 
 func (a byXorDistance) Len() int      { return len(a) }
 func (a byXorDistance) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -106,14 +106,14 @@ func (a byXorDistance) Less(i, j int) bool {
 	return a[i].xorDistanceToTarget.Less(a[j].xorDistanceToTarget)
 }
 
-type RoutingTable struct {
+type routingTable struct {
 	node    Node
 	buckets [numBuckets]*list.List
 	lock    *sync.RWMutex
 }
 
-func newRoutingTable(node *Node) *RoutingTable {
-	var rt RoutingTable
+func newRoutingTable(node *Node) *routingTable {
+	var rt routingTable
 	for i := range rt.buckets {
 		rt.buckets[i] = list.New()
 	}
@@ -122,7 +122,7 @@ func newRoutingTable(node *Node) *RoutingTable {
 	return &rt
 }
 
-func (rt *RoutingTable) BucketInfo() string {
+func (rt *routingTable) BucketInfo() string {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
 
@@ -148,7 +148,7 @@ func (rt *RoutingTable) BucketInfo() string {
 	return strings.Join(bucketInfo, "\n")
 }
 
-func (rt *RoutingTable) Update(node Node) {
+func (rt *routingTable) Update(node Node) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
 	bucketNum := bucketFor(rt.node.id, node.id)
@@ -165,7 +165,7 @@ func (rt *RoutingTable) Update(node Node) {
 	}
 }
 
-func (rt *RoutingTable) RemoveByID(id bitmap) {
+func (rt *routingTable) RemoveByID(id bitmap) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
 	bucketNum := bucketFor(rt.node.id, id)
@@ -176,11 +176,11 @@ func (rt *RoutingTable) RemoveByID(id bitmap) {
 	}
 }
 
-func (rt *RoutingTable) GetClosest(target bitmap, limit int) []Node {
+func (rt *routingTable) GetClosest(target bitmap, limit int) []Node {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
 
-	var toSort []SortedNode
+	var toSort []sortedNode
 	var bucketNum int
 
 	if rt.node.id.Equals(target) {
@@ -225,10 +225,10 @@ func findInList(bucket *list.List, value bitmap) *list.Element {
 	return nil
 }
 
-func appendNodes(nodes []SortedNode, start *list.Element, target bitmap) []SortedNode {
+func appendNodes(nodes []sortedNode, start *list.Element, target bitmap) []sortedNode {
 	for curr := start; curr != nil; curr = curr.Next() {
 		node := curr.Value.(Node)
-		nodes = append(nodes, SortedNode{node, node.id.Xor(target)})
+		nodes = append(nodes, sortedNode{node, node.id.Xor(target)})
 	}
 	return nodes
 }
@@ -241,10 +241,10 @@ func bucketFor(id bitmap, target bitmap) int {
 }
 
 func sortNodesInPlace(nodes []Node, target bitmap) {
-	toSort := make([]SortedNode, len(nodes))
+	toSort := make([]sortedNode, len(nodes))
 
 	for i, n := range nodes {
-		toSort[i] = SortedNode{n, n.id.Xor(target)}
+		toSort[i] = sortedNode{n, n.id.Xor(target)}
 	}
 
 	sort.Sort(byXorDistance(toSort))

@@ -3,6 +3,7 @@ package dht
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/lbryio/errors.go"
 	"github.com/lbryio/lbry.go/stopOnce"
@@ -23,9 +24,9 @@ type nodeFinder struct {
 	activeNodesMutex *sync.Mutex
 	activeNodes      []Node
 
-	shortlistContactedMutex *sync.Mutex
-	shortlist               []Node
-	contacted               map[bitmap]bool
+	shortlistMutex *sync.Mutex
+	shortlist      []Node
+	shortlistAdded map[bitmap]bool
 }
 
 type findNodeResponse struct {
@@ -35,14 +36,14 @@ type findNodeResponse struct {
 
 func newNodeFinder(dht *DHT, target bitmap, findValue bool) *nodeFinder {
 	return &nodeFinder{
-		dht:                     dht,
-		target:                  target,
-		findValue:               findValue,
-		findValueMutex:          &sync.Mutex{},
-		activeNodesMutex:        &sync.Mutex{},
-		shortlistContactedMutex: &sync.Mutex{},
-		contacted:               make(map[bitmap]bool),
-		done:                    stopOnce.New(),
+		dht:              dht,
+		target:           target,
+		findValue:        findValue,
+		findValueMutex:   &sync.Mutex{},
+		activeNodesMutex: &sync.Mutex{},
+		shortlistMutex:   &sync.Mutex{},
+		shortlistAdded:   make(map[bitmap]bool),
+		done:             stopOnce.New(),
 	}
 }
 
@@ -91,47 +92,48 @@ func (nf *nodeFinder) iterationWorker(num int) {
 		if maybeNode == nil {
 			// TODO: block if there are pending requests out from other workers. there may be more shortlist values coming
 			log.Debugf("[%s] no more nodes in shortlist", nf.dht.node.id.HexShort())
-			return
-		}
-		node := *maybeNode
-
-		if node.id.Equals(nf.dht.node.id) {
-			continue // cannot contact self
-		}
-
-		req := Request{Arg: &nf.target}
-		if nf.findValue {
-			req.Method = findValueMethod
+			time.Sleep(10 * time.Millisecond)
 		} else {
-			req.Method = findNodeMethod
-		}
+			node := *maybeNode
 
-		log.Debugf("[%s] contacting %s", nf.dht.node.id.HexShort(), node.id.HexShort())
+			if node.id.Equals(nf.dht.node.id) {
+				continue // cannot contact self
+			}
 
-		var res *Response
-		ctx, cancel := context.WithCancel(context.Background())
-		resCh := nf.dht.tm.SendAsync(ctx, node, req)
-		select {
-		case res = <-resCh:
-		case <-nf.done.Chan():
-			log.Debugf("[%s] worker %d: canceled", nf.dht.node.id.HexShort(), num)
-			cancel()
-			return
-		}
+			req := Request{Arg: &nf.target}
+			if nf.findValue {
+				req.Method = findValueMethod
+			} else {
+				req.Method = findNodeMethod
+			}
 
-		if res == nil {
-			// nothing to do, response timed out
-		} else if nf.findValue && res.FindValueKey != "" {
-			log.Debugf("[%s] worker %d: got value", nf.dht.node.id.HexShort(), num)
-			nf.findValueMutex.Lock()
-			nf.findValueResult = res.FindNodeData
-			nf.findValueMutex.Unlock()
-			nf.done.Stop()
-			return
-		} else {
-			log.Debugf("[%s] worker %d: got more contacts", nf.dht.node.id.HexShort(), num)
-			nf.insertIntoActiveList(node)
-			nf.appendNewToShortlist(res.FindNodeData)
+			log.Debugf("[%s] contacting %s", nf.dht.node.id.HexShort(), node.id.HexShort())
+
+			var res *Response
+			ctx, cancel := context.WithCancel(context.Background())
+			resCh := nf.dht.tm.SendAsync(ctx, node, req)
+			select {
+			case res = <-resCh:
+			case <-nf.done.Chan():
+				log.Debugf("[%s] worker %d: canceled", nf.dht.node.id.HexShort(), num)
+				cancel()
+				return
+			}
+
+			if res == nil {
+				// nothing to do, response timed out
+			} else if nf.findValue && res.FindValueKey != "" {
+				log.Debugf("[%s] worker %d: got value", nf.dht.node.id.HexShort(), num)
+				nf.findValueMutex.Lock()
+				nf.findValueResult = res.FindNodeData
+				nf.findValueMutex.Unlock()
+				nf.done.Stop()
+				return
+			} else {
+				log.Debugf("[%s] worker %d: got more contacts", nf.dht.node.id.HexShort(), num)
+				nf.insertIntoActiveList(node)
+				nf.appendNewToShortlist(res.FindNodeData)
+			}
 		}
 
 		if nf.isSearchFinished() {
@@ -143,23 +145,22 @@ func (nf *nodeFinder) iterationWorker(num int) {
 }
 
 func (nf *nodeFinder) appendNewToShortlist(nodes []Node) {
-	nf.shortlistContactedMutex.Lock()
-	defer nf.shortlistContactedMutex.Unlock()
+	nf.shortlistMutex.Lock()
+	defer nf.shortlistMutex.Unlock()
 
-	notContacted := []Node{}
 	for _, n := range nodes {
-		if _, ok := nf.contacted[n.id]; !ok {
-			notContacted = append(notContacted, n)
+		if _, ok := nf.shortlistAdded[n.id]; !ok {
+			nf.shortlist = append(nf.shortlist, n)
+			nf.shortlistAdded[n.id] = true
 		}
 	}
 
-	nf.shortlist = append(nf.shortlist, notContacted...)
 	sortNodesInPlace(nf.shortlist, nf.target)
 }
 
 func (nf *nodeFinder) popFromShortlist() *Node {
-	nf.shortlistContactedMutex.Lock()
-	defer nf.shortlistContactedMutex.Unlock()
+	nf.shortlistMutex.Lock()
+	defer nf.shortlistMutex.Unlock()
 
 	if len(nf.shortlist) == 0 {
 		return nil
@@ -167,7 +168,6 @@ func (nf *nodeFinder) popFromShortlist() *Node {
 
 	first := nf.shortlist[0]
 	nf.shortlist = nf.shortlist[1:]
-	nf.contacted[first.id] = true
 	return &first
 }
 
@@ -180,6 +180,7 @@ func (nf *nodeFinder) insertIntoActiveList(node Node) {
 		if node.id.Xor(nf.target).Less(n.id.Xor(nf.target)) {
 			nf.activeNodes = append(nf.activeNodes[:i], append([]Node{node}, nf.activeNodes[i:]...)...)
 			inserted = true
+			break
 		}
 	}
 	if !inserted {
@@ -198,8 +199,8 @@ func (nf *nodeFinder) isSearchFinished() bool {
 	default:
 	}
 
-	nf.shortlistContactedMutex.Lock()
-	defer nf.shortlistContactedMutex.Unlock()
+	nf.shortlistMutex.Lock()
+	defer nf.shortlistMutex.Unlock()
 
 	if len(nf.shortlist) == 0 {
 		return true

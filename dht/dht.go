@@ -1,7 +1,9 @@
 package dht
 
 import (
+	"context"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -49,8 +51,8 @@ type Config struct {
 	SeedNodes []string
 	// the hex-encoded node id for this node. if string is empty, a random id will be generated
 	NodeID string
-	// print the state of the dht every minute
-	PrintState bool
+	// print the state of the dht every X time
+	PrintState time.Duration
 }
 
 // NewStandardConfig returns a Config pointer with default values.
@@ -76,15 +78,26 @@ type UDPConn interface {
 
 // DHT represents a DHT node.
 type DHT struct {
-	conf    *Config
-	conn    UDPConn
-	node    *Node
-	rt      *RoutingTable
+	// config
+	conf *Config
+	// UDP connection for sending and receiving data
+	conn UDPConn
+	// the local dht node
+	node *Node
+	// routing table
+	rt *routingTable
+	// channel of incoming packets
 	packets chan packet
-	store   *peerStore
-	tm      *transactionManager
-	stop    *stopOnce.Stopper
-	stopWG  *sync.WaitGroup
+	// data store
+	store *peerStore
+	// transaction manager
+	tm *transactionManager
+	// stopper to shut down DHT
+	stop *stopOnce.Stopper
+	// wait group for all the things that need to be stopped when DHT shuts down
+	stopWG *sync.WaitGroup
+	// channel is closed when DHT joins network
+	joined chan struct{}
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -127,6 +140,7 @@ func New(config *Config) (*DHT, error) {
 		store:   newPeerStore(),
 		stop:    stopOnce.New(),
 		stopWG:  &sync.WaitGroup{},
+		joined:  make(chan struct{}),
 	}
 	d.tm = newTransactionManager(d)
 	return d, nil
@@ -141,8 +155,14 @@ func (dht *DHT) init() error {
 
 	dht.conn = listener.(*net.UDPConn)
 
-	if dht.conf.PrintState {
-		go printState(dht)
+	if dht.conf.PrintState > 0 {
+		go func() {
+			t := time.NewTicker(dht.conf.PrintState)
+			for {
+				dht.PrintState()
+				<-t.C
+			}
+		}()
 	}
 
 	return nil
@@ -153,7 +173,7 @@ func (dht *DHT) listen() {
 	dht.stopWG.Add(1)
 	defer dht.stopWG.Done()
 
-	buf := make([]byte, 8192)
+	buf := make([]byte, 16384)
 
 	for {
 		select {
@@ -162,7 +182,7 @@ func (dht *DHT) listen() {
 		default:
 		}
 
-		dht.conn.SetReadDeadline(time.Now().Add(1 * time.Second)) // need this to periodically check shutdown chan
+		dht.conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // need this to periodically check shutdown chan
 		n, raddr, err := dht.conn.ReadFromUDP(buf)
 		if err != nil {
 			if e, ok := err.(net.Error); !ok || !e.Timeout() {
@@ -204,6 +224,8 @@ func (dht *DHT) join() {
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
+
+	close(dht.joined) // if anyone's waiting for join to finish, they'll know its done
 }
 
 func (dht *DHT) runHandler() {
@@ -234,7 +256,14 @@ func (dht *DHT) Start() {
 	go dht.runHandler()
 
 	dht.join()
-	log.Infof("[%s] DHT ready on %s", dht.node.id.HexShort(), dht.node.Addr().String())
+	log.Debugf("[%s] DHT ready on %s", dht.node.id.HexShort(), dht.node.Addr().String())
+}
+
+func (dht *DHT) WaitUntilJoined() {
+	if dht.joined == nil {
+		panic("dht not initialized")
+	}
+	<-dht.joined
 }
 
 // Shutdown shuts down the dht
@@ -243,7 +272,7 @@ func (dht *DHT) Shutdown() {
 	dht.stop.Stop()
 	dht.stopWG.Wait()
 	dht.conn.Close()
-	log.Infof("[%s] DHT stopped", dht.node.id.HexShort())
+	log.Debugf("[%s] DHT stopped", dht.node.id.HexShort())
 }
 
 // Get returns the list of nodes that have the blob for the given hash
@@ -269,7 +298,7 @@ func (dht *DHT) Announce(hash bitmap) error {
 	}
 
 	for _, node := range res.Nodes {
-		send(dht, node.Addr(), Request{
+		dht.tm.SendAsync(context.Background(), node, Request{
 			Method: storeMethod,
 			StoreArgs: &storeArgs{
 				BlobHash: hash,
@@ -285,13 +314,18 @@ func (dht *DHT) Announce(hash bitmap) error {
 	return nil
 }
 
-func printState(dht *DHT) {
-	t := time.NewTicker(60 * time.Second)
-	for {
-		log.Printf("DHT state at %s", time.Now().Format(time.RFC822Z))
-		log.Printf("Outstanding transactions: %d", dht.tm.Count())
-		log.Printf("Known nodes: %d", dht.store.CountKnownNodes())
-		log.Printf("Buckets: \n%s", dht.rt.BucketInfo())
-		<-t.C
+func (dht *DHT) PrintState() {
+	log.Printf("DHT state at %s", time.Now().Format(time.RFC822Z))
+	log.Printf("Outstanding transactions: %d", dht.tm.Count())
+	log.Printf("Stored hashes: %d", dht.store.CountStoredHashes())
+	log.Printf("Buckets:")
+	for _, line := range strings.Split(dht.rt.BucketInfo(), "\n") {
+		log.Println(line)
+	}
+}
+
+func printNodeList(list []Node) {
+	for i, n := range list {
+		log.Printf("%d) %s %s:%d", i, n.id.HexShort(), n.ip.String(), n.port)
 	}
 }

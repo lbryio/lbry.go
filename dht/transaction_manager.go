@@ -3,6 +3,7 @@ package dht
 import (
 	"context"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -85,7 +86,9 @@ func (tm *transactionManager) SendAsync(ctx context.Context, node Node, req Requ
 
 		for i := 0; i < udpRetry; i++ {
 			if err := send(tm.dht, node.Addr(), tx.req); err != nil {
-				log.Errorf("send error: ", err.Error())
+				if !strings.Contains(err.Error(), "use of closed network connection") { // this only happens on localhost. real UDP has no connections
+					log.Error("send error: ", err)
+				}
 				continue // try again? return?
 			}
 
