@@ -168,7 +168,11 @@ func (dht *DHT) init() error {
 			t := time.NewTicker(dht.conf.PrintState)
 			for {
 				dht.PrintState()
-				<-t.C
+				select {
+				case <-t.C:
+				case <-dht.stop.Chan():
+					return
+				}
 			}
 		}()
 	}
