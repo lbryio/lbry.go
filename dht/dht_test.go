@@ -3,7 +3,6 @@ package dht
 import (
 	"math/rand"
 	"net"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -12,14 +11,14 @@ import (
 )
 
 func TestNodeFinder_FindNodes(t *testing.T) {
-	dhts := makeDHT(t, 3)
+	dhts := MakeTestDHT(3)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
 		}
 	}()
 
-	nf := newNodeFinder(dhts[2], newRandomBitmap(), false)
+	nf := newNodeFinder(dhts[2], RandomBitmapP(), false)
 	res, err := nf.Find()
 	if err != nil {
 		t.Fatal(err)
@@ -55,15 +54,15 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 }
 
 func TestNodeFinder_FindValue(t *testing.T) {
-	dhts := makeDHT(t, 3)
+	dhts := MakeTestDHT(3)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
 		}
 	}()
 
-	blobHashToFind := newRandomBitmap()
-	nodeToFind := Node{id: newRandomBitmap(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
+	blobHashToFind := RandomBitmapP()
+	nodeToFind := Node{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
 	dhts[0].store.Upsert(blobHashToFind, nodeToFind)
 
 	nf := newNodeFinder(dhts[2], blobHashToFind, true)
@@ -90,7 +89,7 @@ func TestDHT_LargeDHT(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	log.Println("if this takes longer than 20 seconds, its stuck. idk why it gets stuck sometimes, but its a bug.")
 	nodes := 100
-	dhts := makeDHT(t, nodes)
+	dhts := MakeTestDHT(nodes)
 	defer func() {
 		for _, d := range dhts {
 			go d.Shutdown()
@@ -100,9 +99,9 @@ func TestDHT_LargeDHT(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	numIDs := nodes / 2
-	ids := make([]bitmap, numIDs)
+	ids := make([]Bitmap, numIDs)
 	for i := 0; i < numIDs; i++ {
-		ids[i] = newRandomBitmap()
+		ids[i] = RandomBitmapP()
 	}
 	for i := 0; i < numIDs; i++ {
 		go func(i int) {
@@ -115,32 +114,4 @@ func TestDHT_LargeDHT(t *testing.T) {
 	wg.Wait()
 
 	dhts[1].PrintState()
-}
-
-func makeDHT(t *testing.T, numNodes int) []*DHT {
-	if numNodes < 1 {
-		return nil
-	}
-
-	ip := "127.0.0.1"
-	firstPort := 21000
-	dhts := make([]*DHT, numNodes)
-
-	for i := 0; i < numNodes; i++ {
-		seeds := []string{}
-		if i > 0 {
-			seeds = []string{ip + ":" + strconv.Itoa(firstPort)}
-		}
-
-		dht, err := New(&Config{Address: ip + ":" + strconv.Itoa(firstPort+i), NodeID: newRandomBitmap().Hex(), SeedNodes: seeds})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		go dht.Start()
-		dht.WaitUntilJoined()
-		dhts[i] = dht
-	}
-
-	return dhts
 }

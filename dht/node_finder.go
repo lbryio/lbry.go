@@ -13,7 +13,7 @@ import (
 
 type nodeFinder struct {
 	findValue bool // true if we're using findValue
-	target    bitmap
+	target    Bitmap
 	dht       *DHT
 
 	done *stopOnce.Stopper
@@ -26,7 +26,10 @@ type nodeFinder struct {
 
 	shortlistMutex *sync.Mutex
 	shortlist      []Node
-	shortlistAdded map[bitmap]bool
+	shortlistAdded map[Bitmap]bool
+
+	outstandingRequestsMutex *sync.RWMutex
+	outstandingRequests      uint
 }
 
 type findNodeResponse struct {
@@ -34,7 +37,7 @@ type findNodeResponse struct {
 	Nodes []Node
 }
 
-func newNodeFinder(dht *DHT, target bitmap, findValue bool) *nodeFinder {
+func newNodeFinder(dht *DHT, target Bitmap, findValue bool) *nodeFinder {
 	return &nodeFinder{
 		dht:              dht,
 		target:           target,
@@ -42,13 +45,18 @@ func newNodeFinder(dht *DHT, target bitmap, findValue bool) *nodeFinder {
 		findValueMutex:   &sync.Mutex{},
 		activeNodesMutex: &sync.Mutex{},
 		shortlistMutex:   &sync.Mutex{},
-		shortlistAdded:   make(map[bitmap]bool),
+		shortlistAdded:   make(map[Bitmap]bool),
 		done:             stopOnce.New(),
+		outstandingRequestsMutex: &sync.RWMutex{},
 	}
 }
 
 func (nf *nodeFinder) Find() (findNodeResponse, error) {
-	log.Debugf("[%s] starting an iterative Find() for %s (findValue is %t)", nf.dht.node.id.HexShort(), nf.target.HexShort(), nf.findValue)
+	if nf.findValue {
+		log.Debugf("[%s] starting an iterative Find for the value %s", nf.dht.node.id.HexShort(), nf.target.HexShort())
+	} else {
+		log.Debugf("[%s] starting an iterative Find for nodes near %s", nf.dht.node.id.HexShort(), nf.target.HexShort())
+	}
 	nf.appendNewToShortlist(nf.dht.rt.GetClosest(nf.target, alpha))
 	if len(nf.shortlist) == 0 {
 		return findNodeResponse{}, errors.Err("no nodes in routing table")
@@ -67,7 +75,7 @@ func (nf *nodeFinder) Find() (findNodeResponse, error) {
 	wg.Wait()
 
 	// TODO: what to do if we have less than K active nodes, shortlist is empty, but we
-	// TODO: have other nodes in our routing table whom we have not contacted. prolly contact them?
+	// TODO: have other nodes in our routing table whom we have not contacted. prolly contact them
 
 	result := findNodeResponse{}
 	if nf.findValue && len(nf.findValueResult) > 0 {
@@ -91,8 +99,8 @@ func (nf *nodeFinder) iterationWorker(num int) {
 		maybeNode := nf.popFromShortlist()
 		if maybeNode == nil {
 			// TODO: block if there are pending requests out from other workers. there may be more shortlist values coming
-			log.Debugf("[%s] no more nodes in shortlist", nf.dht.node.id.HexShort())
-			time.Sleep(10 * time.Millisecond)
+			log.Debugf("[%s] worker %d: no nodes in shortlist, waiting...", nf.dht.node.id.HexShort(), num)
+			time.Sleep(100 * time.Millisecond)
 		} else {
 			node := *maybeNode
 
@@ -107,7 +115,9 @@ func (nf *nodeFinder) iterationWorker(num int) {
 				req.Method = findNodeMethod
 			}
 
-			log.Debugf("[%s] contacting %s", nf.dht.node.id.HexShort(), node.id.HexShort())
+			log.Debugf("[%s] worker %d: contacting %s", nf.dht.node.id.HexShort(), num, node.id.HexShort())
+
+			nf.incrementOutstanding()
 
 			var res *Response
 			ctx, cancel := context.WithCancel(context.Background())
@@ -122,6 +132,7 @@ func (nf *nodeFinder) iterationWorker(num int) {
 
 			if res == nil {
 				// nothing to do, response timed out
+				log.Debugf("[%s] worker %d: timed out waiting for %s", nf.dht.node.id.HexShort(), num, node.id.HexShort())
 			} else if nf.findValue && res.FindValueKey != "" {
 				log.Debugf("[%s] worker %d: got value", nf.dht.node.id.HexShort(), num)
 				nf.findValueMutex.Lock()
@@ -130,10 +141,12 @@ func (nf *nodeFinder) iterationWorker(num int) {
 				nf.done.Stop()
 				return
 			} else {
-				log.Debugf("[%s] worker %d: got more contacts", nf.dht.node.id.HexShort(), num)
+				log.Debugf("[%s] worker %d: got contacts", nf.dht.node.id.HexShort(), num)
 				nf.insertIntoActiveList(node)
 				nf.appendNewToShortlist(res.FindNodeData)
 			}
+
+			nf.decrementOutstanding() // this is all the way down here because we need to add to shortlist first
 		}
 
 		if nf.isSearchFinished() {
@@ -199,20 +212,40 @@ func (nf *nodeFinder) isSearchFinished() bool {
 	default:
 	}
 
-	nf.shortlistMutex.Lock()
-	defer nf.shortlistMutex.Unlock()
+	if !nf.areRequestsOutstanding() {
+		nf.shortlistMutex.Lock()
+		defer nf.shortlistMutex.Unlock()
 
-	if len(nf.shortlist) == 0 {
-		return true
-	}
+		if len(nf.shortlist) == 0 {
+			return true
+		}
 
-	nf.activeNodesMutex.Lock()
-	defer nf.activeNodesMutex.Unlock()
+		nf.activeNodesMutex.Lock()
+		defer nf.activeNodesMutex.Unlock()
 
-	if len(nf.activeNodes) >= bucketSize && nf.activeNodes[bucketSize-1].id.Xor(nf.target).Less(nf.shortlist[0].id.Xor(nf.target)) {
-		// we have at least K active nodes, and we don't have any closer nodes yet to contact
-		return true
+		if len(nf.activeNodes) >= bucketSize && nf.activeNodes[bucketSize-1].id.Xor(nf.target).Less(nf.shortlist[0].id.Xor(nf.target)) {
+			// we have at least K active nodes, and we don't have any closer nodes yet to contact
+			return true
+		}
 	}
 
 	return false
+}
+
+func (nf *nodeFinder) incrementOutstanding() {
+	nf.outstandingRequestsMutex.Lock()
+	defer nf.outstandingRequestsMutex.Unlock()
+	nf.outstandingRequests++
+}
+func (nf *nodeFinder) decrementOutstanding() {
+	nf.outstandingRequestsMutex.Lock()
+	defer nf.outstandingRequestsMutex.Unlock()
+	if nf.outstandingRequests > 0 {
+		nf.outstandingRequests--
+	}
+}
+func (nf *nodeFinder) areRequestsOutstanding() bool {
+	nf.outstandingRequestsMutex.RLock()
+	defer nf.outstandingRequestsMutex.RUnlock()
+	return nf.outstandingRequests > 0
 }

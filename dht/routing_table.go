@@ -15,9 +15,14 @@ import (
 )
 
 type Node struct {
-	id   bitmap
-	ip   net.IP
-	port int
+	id    Bitmap
+	ip    net.IP
+	port  int
+	token string // this is set when the node is returned from a FindNode call
+}
+
+func (n Node) String() string {
+	return n.id.HexShort() + "@" + n.Addr().String()
 }
 
 func (n Node) Addr() *net.UDPAddr {
@@ -51,7 +56,7 @@ func (n *Node) UnmarshalCompact(b []byte) error {
 	}
 	n.ip = net.IPv4(b[0], b[1], b[2], b[3]).To4()
 	n.port = int(uint16(b[5]) | uint16(b[4])<<8)
-	n.id = newBitmapFromBytes(b[6:])
+	n.id = BitmapFromBytesP(b[6:])
 	return nil
 }
 
@@ -95,7 +100,7 @@ func (n *Node) UnmarshalBencode(b []byte) error {
 
 type sortedNode struct {
 	node                Node
-	xorDistanceToTarget bitmap
+	xorDistanceToTarget Bitmap
 }
 
 type byXorDistance []sortedNode
@@ -128,24 +133,33 @@ func (rt *routingTable) BucketInfo() string {
 
 	bucketInfo := []string{}
 	for i, b := range rt.buckets {
-		count := 0
-		ids := ""
-		for curr := b.Front(); curr != nil; curr = curr.Next() {
-			count++
-			if ids != "" {
-				ids += ", "
-			}
-			ids += curr.Value.(Node).id.HexShort()
-		}
-
-		if count > 0 {
-			bucketInfo = append(bucketInfo, fmt.Sprintf("Bucket %d: (%d) %s", i, count, ids))
+		contents := bucketContents(b)
+		if contents != "" {
+			bucketInfo = append(bucketInfo, fmt.Sprintf("Bucket %d: %s", i, contents))
 		}
 	}
 	if len(bucketInfo) == 0 {
 		return "buckets are empty"
 	}
 	return strings.Join(bucketInfo, "\n")
+}
+
+func bucketContents(b *list.List) string {
+	count := 0
+	ids := ""
+	for curr := b.Front(); curr != nil; curr = curr.Next() {
+		count++
+		if ids != "" {
+			ids += ", "
+		}
+		ids += curr.Value.(Node).id.HexShort()
+	}
+
+	if count > 0 {
+		return fmt.Sprintf("(%d) %s", count, ids)
+	} else {
+		return ""
+	}
 }
 
 func (rt *routingTable) Update(node Node) {
@@ -165,7 +179,7 @@ func (rt *routingTable) Update(node Node) {
 	}
 }
 
-func (rt *routingTable) RemoveByID(id bitmap) {
+func (rt *routingTable) RemoveByID(id Bitmap) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
 	bucketNum := bucketFor(rt.node.id, id)
@@ -176,7 +190,7 @@ func (rt *routingTable) RemoveByID(id bitmap) {
 	}
 }
 
-func (rt *routingTable) GetClosest(target bitmap, limit int) []Node {
+func (rt *routingTable) GetClosest(target Bitmap, limit int) []Node {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
 
@@ -216,7 +230,7 @@ func (rt *routingTable) GetClosest(target bitmap, limit int) []Node {
 	return nodes
 }
 
-func findInList(bucket *list.List, value bitmap) *list.Element {
+func findInList(bucket *list.List, value Bitmap) *list.Element {
 	for curr := bucket.Front(); curr != nil; curr = curr.Next() {
 		if curr.Value.(Node).id.Equals(value) {
 			return curr
@@ -225,7 +239,7 @@ func findInList(bucket *list.List, value bitmap) *list.Element {
 	return nil
 }
 
-func appendNodes(nodes []sortedNode, start *list.Element, target bitmap) []sortedNode {
+func appendNodes(nodes []sortedNode, start *list.Element, target Bitmap) []sortedNode {
 	for curr := start; curr != nil; curr = curr.Next() {
 		node := curr.Value.(Node)
 		nodes = append(nodes, sortedNode{node, node.id.Xor(target)})
@@ -233,14 +247,14 @@ func appendNodes(nodes []sortedNode, start *list.Element, target bitmap) []sorte
 	return nodes
 }
 
-func bucketFor(id bitmap, target bitmap) int {
+func bucketFor(id Bitmap, target Bitmap) int {
 	if id.Equals(target) {
 		panic("nodes do not have a bucket for themselves")
 	}
 	return numBuckets - 1 - target.Xor(id).PrefixLen()
 }
 
-func sortNodesInPlace(nodes []Node, target bitmap) {
+func sortNodesInPlace(nodes []Node, target Bitmap) {
 	toSort := make([]sortedNode, len(nodes))
 
 	for i, n := range nodes {

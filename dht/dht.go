@@ -3,6 +3,7 @@ package dht
 import (
 	"context"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ const bucketSize = 8       // this is the constant k in the spec
 
 const udpRetry = 3
 const udpTimeout = 10 * time.Second
+const udpMaxMessageLength = 1024 // I think our longest message is ~676 bytes, so I rounded up
 
 const tExpire = 86400 * time.Second    // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
 const tRefresh = 3600 * time.Second    // the time after which an otherwise unaccessed bucket must be refreshed
@@ -36,6 +38,8 @@ const tRepublish = 86400 * time.Second // the time after which the original publ
 
 const numBuckets = nodeIDLength * 8
 const compactNodeInfoLength = nodeIDLength + 6
+
+const tokenSecretRotationInterval = 5 * time.Minute // how often the token-generating secret is rotated
 
 // packet represents the information receive from udp.
 type packet struct {
@@ -92,6 +96,8 @@ type DHT struct {
 	store *peerStore
 	// transaction manager
 	tm *transactionManager
+	// token manager
+	tokens *tokenManager
 	// stopper to shut down DHT
 	stop *stopOnce.Stopper
 	// wait group for all the things that need to be stopped when DHT shuts down
@@ -106,11 +112,11 @@ func New(config *Config) (*DHT, error) {
 		config = NewStandardConfig()
 	}
 
-	var id bitmap
+	var id Bitmap
 	if config.NodeID == "" {
-		id = newRandomBitmap()
+		id = RandomBitmapP()
 	} else {
-		id = newBitmapFromHex(config.NodeID)
+		id = BitmapFromHexP(config.NodeID)
 	}
 
 	ip, port, err := net.SplitHostPort(config.Address)
@@ -141,8 +147,10 @@ func New(config *Config) (*DHT, error) {
 		stop:    stopOnce.New(),
 		stopWG:  &sync.WaitGroup{},
 		joined:  make(chan struct{}),
+		tokens:  &tokenManager{},
 	}
 	d.tm = newTransactionManager(d)
+	d.tokens.Start(tokenSecretRotationInterval)
 	return d, nil
 }
 
@@ -173,7 +181,7 @@ func (dht *DHT) listen() {
 	dht.stopWG.Add(1)
 	defer dht.stopWG.Done()
 
-	buf := make([]byte, 16384)
+	buf := make([]byte, udpMaxMessageLength)
 
 	for {
 		select {
@@ -212,7 +220,7 @@ func (dht *DHT) join() {
 			continue
 		}
 
-		tmpNode := Node{id: newRandomBitmap(), ip: raddr.IP, port: raddr.Port}
+		tmpNode := Node{id: RandomBitmapP(), ip: raddr.IP, port: raddr.Port}
 		res := dht.tm.Send(tmpNode, Request{Method: pingMethod})
 		if res == nil {
 			log.Errorf("[%s] join: no response from seed node %s", dht.node.id.HexShort(), addr)
@@ -271,12 +279,13 @@ func (dht *DHT) Shutdown() {
 	log.Debugf("[%s] DHT shutting down", dht.node.id.HexShort())
 	dht.stop.Stop()
 	dht.stopWG.Wait()
+	dht.tokens.Stop()
 	dht.conn.Close()
 	log.Debugf("[%s] DHT stopped", dht.node.id.HexShort())
 }
 
 // Get returns the list of nodes that have the blob for the given hash
-func (dht *DHT) Get(hash bitmap) ([]Node, error) {
+func (dht *DHT) Get(hash Bitmap) ([]Node, error) {
 	nf := newNodeFinder(dht, hash, true)
 	res, err := nf.Find()
 	if err != nil {
@@ -290,32 +299,57 @@ func (dht *DHT) Get(hash bitmap) ([]Node, error) {
 }
 
 // Announce announces to the DHT that this node has the blob for the given hash
-func (dht *DHT) Announce(hash bitmap) error {
+func (dht *DHT) Announce(hash Bitmap) error {
 	nf := newNodeFinder(dht, hash, false)
 	res, err := nf.Find()
 	if err != nil {
 		return err
 	}
 
+	// TODO: if this node is closer than farthest peer, store locally and pop farthest peer
+
 	for _, node := range res.Nodes {
-		dht.tm.SendAsync(context.Background(), node, Request{
-			Method: storeMethod,
-			StoreArgs: &storeArgs{
-				BlobHash: hash,
-				Value: storeArgsValue{
-					Token:  "",
-					LbryID: dht.node.id,
-					Port:   dht.node.port,
-				},
-			},
-		})
+		go dht.storeOnNode(hash, node)
 	}
 
 	return nil
 }
 
+func (dht *DHT) storeOnNode(hash Bitmap, node Node) {
+	dht.stopWG.Add(1)
+	defer dht.stopWG.Done()
+
+	resCh := dht.tm.SendAsync(context.Background(), node, Request{
+		Method: findValueMethod,
+		Arg:    &hash,
+	})
+	var res *Response
+
+	select {
+	case res = <-resCh:
+	case <-dht.stop.Chan():
+		return
+	}
+
+	if res == nil {
+		return // request timed out
+	}
+
+	dht.tm.SendAsync(context.Background(), node, Request{
+		Method: storeMethod,
+		StoreArgs: &storeArgs{
+			BlobHash: hash,
+			Value: storeArgsValue{
+				Token:  res.Token,
+				LbryID: dht.node.id,
+				Port:   dht.node.port,
+			},
+		},
+	})
+}
+
 func (dht *DHT) PrintState() {
-	log.Printf("DHT state at %s", time.Now().Format(time.RFC822Z))
+	log.Printf("DHT node %s at %s", dht.node.String(), time.Now().Format(time.RFC822Z))
 	log.Printf("Outstanding transactions: %d", dht.tm.Count())
 	log.Printf("Stored hashes: %d", dht.store.CountStoredHashes())
 	log.Printf("Buckets:")
@@ -326,6 +360,34 @@ func (dht *DHT) PrintState() {
 
 func printNodeList(list []Node) {
 	for i, n := range list {
-		log.Printf("%d) %s %s:%d", i, n.id.HexShort(), n.ip.String(), n.port)
+		log.Printf("%d) %s", i, n.String())
 	}
+}
+
+func MakeTestDHT(numNodes int) []*DHT {
+	if numNodes < 1 {
+		return nil
+	}
+
+	ip := "127.0.0.1"
+	firstPort := 21000
+	dhts := make([]*DHT, numNodes)
+
+	for i := 0; i < numNodes; i++ {
+		seeds := []string{}
+		if i > 0 {
+			seeds = []string{ip + ":" + strconv.Itoa(firstPort)}
+		}
+
+		dht, err := New(&Config{Address: ip + ":" + strconv.Itoa(firstPort+i), NodeID: RandomBitmapP().Hex(), SeedNodes: seeds})
+		if err != nil {
+			panic(err)
+		}
+
+		go dht.Start()
+		dht.WaitUntilJoined()
+		dhts[i] = dht
+	}
+
+	return dhts
 }

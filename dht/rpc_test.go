@@ -88,8 +88,8 @@ func (t *testUDPConn) Close() error {
 }
 
 func TestPing(t *testing.T) {
-	dhtNodeID := newRandomBitmap()
-	testNodeID := newRandomBitmap()
+	dhtNodeID := RandomBitmapP()
+	testNodeID := RandomBitmapP()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
@@ -183,8 +183,8 @@ func TestPing(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
-	dhtNodeID := newRandomBitmap()
-	testNodeID := newRandomBitmap()
+	dhtNodeID := RandomBitmapP()
+	testNodeID := RandomBitmapP()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
@@ -199,7 +199,7 @@ func TestStore(t *testing.T) {
 	defer dht.Shutdown()
 
 	messageID := newMessageID()
-	blobHashToStore := newRandomBitmap()
+	blobHashToStore := RandomBitmapP()
 
 	storeRequest := Request{
 		ID:     messageID,
@@ -208,7 +208,7 @@ func TestStore(t *testing.T) {
 		StoreArgs: &storeArgs{
 			BlobHash: blobHashToStore,
 			Value: storeArgsValue{
-				Token:  "arst",
+				Token:  dht.tokens.Get(testNodeID, conn.addr),
 				LbryID: testNodeID,
 				Port:   9999,
 			},
@@ -280,8 +280,8 @@ func TestStore(t *testing.T) {
 }
 
 func TestFindNode(t *testing.T) {
-	dhtNodeID := newRandomBitmap()
-	testNodeID := newRandomBitmap()
+	dhtNodeID := RandomBitmapP()
+	testNodeID := RandomBitmapP()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
@@ -297,13 +297,13 @@ func TestFindNode(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Node
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Node{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.rt.Update(n)
 	}
 
 	messageID := newMessageID()
-	blobHashToFind := newRandomBitmap()
+	blobHashToFind := RandomBitmapP()
 
 	request := Request{
 		ID:     messageID,
@@ -338,27 +338,17 @@ func TestFindNode(t *testing.T) {
 		t.Fatal("missing payload field")
 	}
 
-	payload, ok := response[headerPayloadField].(map[string]interface{})
+	contacts, ok := response[headerPayloadField].([]interface{})
 	if !ok {
-		t.Fatal("payload is not a dictionary")
-	}
-
-	contactsList, ok := payload["contacts"]
-	if !ok {
-		t.Fatal("payload is missing 'contacts' key")
-	}
-
-	contacts, ok := contactsList.([]interface{})
-	if !ok {
-		t.Fatal("'contacts' is not a list")
+		t.Fatal("payload is not a list")
 	}
 
 	verifyContacts(t, contacts, nodes)
 }
 
 func TestFindValueExisting(t *testing.T) {
-	dhtNodeID := newRandomBitmap()
-	testNodeID := newRandomBitmap()
+	dhtNodeID := RandomBitmapP()
+	testNodeID := RandomBitmapP()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
@@ -375,7 +365,7 @@ func TestFindValueExisting(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Node
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Node{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.rt.Update(n)
 	}
@@ -383,9 +373,9 @@ func TestFindValueExisting(t *testing.T) {
 	//data, _ := hex.DecodeString("64313a30693065313a3132303a7de8e57d34e316abbb5a8a8da50dcd1ad4c80e0f313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33393a66696e6456616c7565313a346c34383aa47624b8e7ee1e54df0c45e2eb858feb0b705bd2a78d8b739be31ba188f4bd6f56b371c51fecc5280d5fd26ba4168e966565")
 
 	messageID := newMessageID()
-	valueToFind := newRandomBitmap()
+	valueToFind := RandomBitmapP()
 
-	nodeToFind := Node{id: newRandomBitmap(), ip: net.ParseIP("1.2.3.4"), port: 1286}
+	nodeToFind := Node{id: RandomBitmapP(), ip: net.ParseIP("1.2.3.4"), port: 1286}
 	dht.store.Upsert(valueToFind, nodeToFind)
 	dht.store.Upsert(valueToFind, nodeToFind)
 	dht.store.Upsert(valueToFind, nodeToFind)
@@ -442,8 +432,8 @@ func TestFindValueExisting(t *testing.T) {
 }
 
 func TestFindValueFallbackToFindNode(t *testing.T) {
-	dhtNodeID := newRandomBitmap()
-	testNodeID := newRandomBitmap()
+	dhtNodeID := RandomBitmapP()
+	testNodeID := RandomBitmapP()
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
@@ -460,13 +450,13 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Node
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: newRandomBitmap(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Node{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.rt.Update(n)
 	}
 
 	messageID := newMessageID()
-	valueToFind := newRandomBitmap()
+	valueToFind := RandomBitmapP()
 
 	request := Request{
 		ID:     messageID,
@@ -506,7 +496,7 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 		t.Fatal("payload is not a dictionary")
 	}
 
-	contactsList, ok := payload["contacts"]
+	contactsList, ok := payload[contactsField]
 	if !ok {
 		t.Fatal("payload is missing 'contacts' key")
 	}

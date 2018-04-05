@@ -7,19 +7,19 @@ import (
 )
 
 func TestBitmap(t *testing.T) {
-	a := bitmap{
+	a := Bitmap{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 		12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
 		24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
 		36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
 	}
-	b := bitmap{
+	b := Bitmap{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 		12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
 		24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
 		36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47, 46,
 	}
-	c := bitmap{
+	c := Bitmap{
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -46,13 +46,13 @@ func TestBitmap(t *testing.T) {
 	}
 
 	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	if newBitmapFromHex(id).Hex() != id {
-		t.Error(newBitmapFromHex(id).Hex())
+	if BitmapFromHexP(id).Hex() != id {
+		t.Error(BitmapFromHexP(id).Hex())
 	}
 }
 
 func TestBitmapMarshal(t *testing.T) {
-	b := newBitmapFromString("123456789012345678901234567890123456789012345678")
+	b := BitmapFromStringP("123456789012345678901234567890123456789012345678")
 	encoded, err := bencode.EncodeBytes(b)
 	if err != nil {
 		t.Error(err)
@@ -66,11 +66,11 @@ func TestBitmapMarshal(t *testing.T) {
 func TestBitmapMarshalEmbedded(t *testing.T) {
 	e := struct {
 		A string
-		B bitmap
+		B Bitmap
 		C int
 	}{
 		A: "1",
-		B: newBitmapFromString("222222222222222222222222222222222222222222222222"),
+		B: BitmapFromStringP("222222222222222222222222222222222222222222222222"),
 		C: 3,
 	}
 
@@ -86,7 +86,7 @@ func TestBitmapMarshalEmbedded(t *testing.T) {
 
 func TestBitmapMarshalEmbedded2(t *testing.T) {
 	encoded, err := bencode.EncodeBytes([]interface{}{
-		newBitmapFromString("333333333333333333333333333333333333333333333333"),
+		BitmapFromStringP("333333333333333333333333333333333333333333333333"),
 	})
 	if err != nil {
 		t.Error(err)
@@ -113,7 +113,7 @@ func TestBitmap_PrefixLen(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		len := newBitmapFromHex(test.str).PrefixLen()
+		len := BitmapFromHexP(test.str).PrefixLen()
 		if len != test.len {
 			t.Errorf("got prefix len %d; expected %d for %s", len, test.len, test.str)
 		}

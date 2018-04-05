@@ -3,27 +3,26 @@ package dht
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"strconv"
 
 	"github.com/lbryio/errors.go"
 	"github.com/lyoshenka/bencode"
 )
 
-type bitmap [nodeIDLength]byte
+type Bitmap [nodeIDLength]byte
 
-func (b bitmap) RawString() string {
+func (b Bitmap) RawString() string {
 	return string(b[:])
 }
 
-func (b bitmap) Hex() string {
+func (b Bitmap) Hex() string {
 	return hex.EncodeToString(b[:])
 }
 
-func (b bitmap) HexShort() string {
+func (b Bitmap) HexShort() string {
 	return hex.EncodeToString(b[:4])
 }
 
-func (b bitmap) Equals(other bitmap) bool {
+func (b Bitmap) Equals(other Bitmap) bool {
 	for k := range b {
 		if b[k] != other[k] {
 			return false
@@ -32,17 +31,17 @@ func (b bitmap) Equals(other bitmap) bool {
 	return true
 }
 
-func (b bitmap) Less(other interface{}) bool {
+func (b Bitmap) Less(other interface{}) bool {
 	for k := range b {
-		if b[k] != other.(bitmap)[k] {
-			return b[k] < other.(bitmap)[k]
+		if b[k] != other.(Bitmap)[k] {
+			return b[k] < other.(Bitmap)[k]
 		}
 	}
 	return false
 }
 
-func (b bitmap) Xor(other bitmap) bitmap {
-	var ret bitmap
+func (b Bitmap) Xor(other Bitmap) Bitmap {
+	var ret Bitmap
 	for k := range b {
 		ret[k] = b[k] ^ other[k]
 	}
@@ -50,7 +49,7 @@ func (b bitmap) Xor(other bitmap) bitmap {
 }
 
 // PrefixLen returns the number of leading 0 bits
-func (b bitmap) PrefixLen() int {
+func (b Bitmap) PrefixLen() int {
 	for i := range b {
 		for j := 0; j < 8; j++ {
 			if (b[i]>>uint8(7-j))&0x1 != 0 {
@@ -61,12 +60,12 @@ func (b bitmap) PrefixLen() int {
 	return numBuckets
 }
 
-func (b bitmap) MarshalBencode() ([]byte, error) {
+func (b Bitmap) MarshalBencode() ([]byte, error) {
 	str := string(b[:])
 	return bencode.EncodeBytes(str)
 }
 
-func (b *bitmap) UnmarshalBencode(encoded []byte) error {
+func (b *Bitmap) UnmarshalBencode(encoded []byte) error {
 	var str string
 	err := bencode.DecodeBytes(encoded, &str)
 	if err != nil {
@@ -79,30 +78,55 @@ func (b *bitmap) UnmarshalBencode(encoded []byte) error {
 	return nil
 }
 
-func newBitmapFromBytes(data []byte) bitmap {
-	if len(data) != nodeIDLength {
-		panic("invalid bitmap of length " + strconv.Itoa(len(data)))
+func BitmapFromBytes(data []byte) (Bitmap, error) {
+	var bmp Bitmap
+
+	if len(data) != len(bmp) {
+		return bmp, errors.Err("invalid bitmap of length %d", len(data))
 	}
 
-	var bmp bitmap
 	copy(bmp[:], data)
-	return bmp
+	return bmp, nil
 }
 
-func newBitmapFromString(data string) bitmap {
-	return newBitmapFromBytes([]byte(data))
-}
-
-func newBitmapFromHex(hexStr string) bitmap {
-	decoded, err := hex.DecodeString(hexStr)
+func BitmapFromBytesP(data []byte) Bitmap {
+	bmp, err := BitmapFromBytes(data)
 	if err != nil {
 		panic(err)
 	}
-	return newBitmapFromBytes(decoded)
+	return bmp
 }
 
-func newRandomBitmap() bitmap {
-	var id bitmap
+func BitmapFromString(data string) (Bitmap, error) {
+	return BitmapFromBytes([]byte(data))
+}
+
+func BitmapFromStringP(data string) Bitmap {
+	bmp, err := BitmapFromString(data)
+	if err != nil {
+		panic(err)
+	}
+	return bmp
+}
+
+func BitmapFromHex(hexStr string) (Bitmap, error) {
+	decoded, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return Bitmap{}, errors.Err(err)
+	}
+	return BitmapFromBytes(decoded)
+}
+
+func BitmapFromHexP(hexStr string) Bitmap {
+	bmp, err := BitmapFromHex(hexStr)
+	if err != nil {
+		panic(err)
+	}
+	return bmp
+}
+
+func RandomBitmapP() Bitmap {
+	var id Bitmap
 	_, err := rand.Read(id[:])
 	if err != nil {
 		panic(err)
