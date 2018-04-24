@@ -162,6 +162,7 @@ func bucketContents(b *list.List) string {
 	}
 }
 
+// Update inserts or refreshes a node
 func (rt *routingTable) Update(node Node) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
@@ -175,6 +176,18 @@ func (rt *routingTable) Update(node Node) {
 		}
 		bucket.PushBack(node)
 	} else {
+		bucket.MoveToBack(element)
+	}
+}
+
+// UpdateIfExists refreshes a node if its already in the routing table
+func (rt *routingTable) UpdateIfExists(node Node) {
+	rt.lock.Lock()
+	defer rt.lock.Unlock()
+	bucketNum := bucketFor(rt.node.id, node.id)
+	bucket := rt.buckets[bucketNum]
+	element := findInList(bucket, node.id)
+	if element != nil {
 		bucket.MoveToBack(element)
 	}
 }

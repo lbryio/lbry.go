@@ -10,6 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO: make a dht with X nodes, have them all join, then ensure that every node appears at least once in another node's routing table
+
 func TestNodeFinder_FindNodes(t *testing.T) {
 	dhts := MakeTestDHT(3)
 	defer func() {

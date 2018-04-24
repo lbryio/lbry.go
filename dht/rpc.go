@@ -115,8 +115,12 @@ func handleRequest(dht *DHT, addr *net.UDPAddr, request Request) {
 		}
 	}
 
+	// nodes that send us requests should not be inserted, only refreshed.
+	// the routing table must only contain "good" nodes, which are nodes that reply to our requests
+	// if a node is already good (aka in the table), its fine to refresh it
+	// http://www.bittorrent.org/beps/bep_0005.html#routing-table
 	node := Node{id: request.NodeID, ip: addr.IP, port: addr.Port}
-	dht.rt.Update(node)
+	dht.rt.UpdateIfExists(node)
 }
 
 func getFindResponse(dht *DHT, request Request) Response {
@@ -147,7 +151,7 @@ func handleResponse(dht *DHT, addr *net.UDPAddr, response Response) {
 func handleError(dht *DHT, addr *net.UDPAddr, e Error) {
 	spew.Dump(e)
 	node := Node{id: e.NodeID, ip: addr.IP, port: addr.Port}
-	dht.rt.Update(node)
+	dht.rt.UpdateIfExists(node)
 }
 
 // send sends data to a udp address

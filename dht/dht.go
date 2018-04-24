@@ -2,6 +2,7 @@ package dht
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -215,20 +216,24 @@ func (dht *DHT) listen() {
 
 // join makes current node join the dht network.
 func (dht *DHT) join() {
-	log.Debugf("[%s] joining network", dht.node.id.HexShort())
-	// get real node IDs and add them to the routing table
-	for _, addr := range dht.conf.SeedNodes {
-		raddr, err := net.ResolveUDPAddr(network, addr)
-		if err != nil {
-			log.Errorln(err)
-			continue
-		}
+	defer close(dht.joined) // if anyone's waiting for join to finish, they'll know its done
 
-		tmpNode := Node{id: RandomBitmapP(), ip: raddr.IP, port: raddr.Port}
-		res := dht.tm.Send(tmpNode, Request{Method: pingMethod})
-		if res == nil {
-			log.Errorf("[%s] join: no response from seed node %s", dht.node.id.HexShort(), addr)
+	log.Debugf("[%s] joining network", dht.node.id.HexShort())
+
+	// ping nodes, which gets their real node IDs and adds them to the routing table
+	atLeastOneNodeResponded := false
+	for _, addr := range dht.conf.SeedNodes {
+		err := dht.Ping(addr)
+		if err != nil {
+			log.Error(errors.Prefix(fmt.Sprintf("[%s] join", dht.node.id.HexShort()), err))
+		} else {
+			atLeastOneNodeResponded = true
 		}
+	}
+
+	if !atLeastOneNodeResponded {
+		log.Errorf("[%s] join: no nodes responded to initial ping", dht.node.id.HexShort())
+		return
 	}
 
 	// now call iterativeFind on yourself
@@ -236,8 +241,6 @@ func (dht *DHT) join() {
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
-
-	close(dht.joined) // if anyone's waiting for join to finish, they'll know its done
 }
 
 func (dht *DHT) runHandler() {
@@ -257,11 +260,10 @@ func (dht *DHT) runHandler() {
 }
 
 // Start starts the dht
-func (dht *DHT) Start() {
+func (dht *DHT) Start() error {
 	err := dht.init()
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	go dht.listen()
@@ -269,6 +271,7 @@ func (dht *DHT) Start() {
 
 	dht.join()
 	log.Debugf("[%s] DHT ready on %s", dht.node.id.HexShort(), dht.node.Addr().String())
+	return nil
 }
 
 func (dht *DHT) WaitUntilJoined() {
@@ -286,6 +289,22 @@ func (dht *DHT) Shutdown() {
 	dht.tokens.Stop()
 	dht.conn.Close()
 	log.Debugf("[%s] DHT stopped", dht.node.id.HexShort())
+}
+
+// Get returns the list of nodes that have the blob for the given hash
+func (dht *DHT) Ping(addr string) error {
+	raddr, err := net.ResolveUDPAddr(network, addr)
+	if err != nil {
+		return err
+	}
+
+	tmpNode := Node{id: RandomBitmapP(), ip: raddr.IP, port: raddr.Port}
+	res := dht.tm.Send(tmpNode, Request{Method: pingMethod})
+	if res == nil {
+		return errors.Err("no response from node %s", addr)
+	}
+
+	return nil
 }
 
 // Get returns the list of nodes that have the blob for the given hash

@@ -52,6 +52,8 @@ func (tm *transactionManager) Find(id messageID, addr *net.UDPAddr) *transaction
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 
+	// TODO: also check that the response's nodeid matches the id you thought you sent to?
+
 	t, ok := tm.transactions[id]
 	if !ok || (addr != nil && t.node.Addr().String() != addr.String()) {
 		return nil
