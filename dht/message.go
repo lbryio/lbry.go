@@ -90,6 +90,8 @@ func (r Request) MarshalBencode() ([]byte, error) {
 		args = r.StoreArgs
 	} else if r.Arg != nil {
 		args = []Bitmap{*r.Arg}
+	} else {
+		args = []string{} // request must always have keys 0-4, so we use an empty list for PING
 	}
 	return bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      requestType,
