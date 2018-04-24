@@ -62,7 +62,7 @@ type Config struct {
 // NewStandardConfig returns a Config pointer with default values.
 func NewStandardConfig() *Config {
 	return &Config{
-		Address: "127.0.0.1:4444",
+		Address: "0.0.0.0:4444",
 		SeedNodes: []string{
 			"lbrynet1.lbry.io:4444",
 			"lbrynet2.lbry.io:4444",
@@ -71,7 +71,7 @@ func NewStandardConfig() *Config {
 	}
 }
 
-// UDPConn allows using a mocked connection for testing sending/receiving data
+// UDPConn allows using a mocked connection to test sending/receiving data
 type UDPConn interface {
 	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
 	WriteToUDP([]byte, *net.UDPAddr) (int, error)
