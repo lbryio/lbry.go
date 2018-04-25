@@ -243,6 +243,19 @@ func (rt *routingTable) GetClosest(target Bitmap, limit int) []Node {
 	return nodes
 }
 
+// Count returns the number of nodes in the routing table
+func (rt *routingTable) Count() int {
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
+	count := 0
+	for _, bucket := range rt.buckets {
+		for curr := bucket.Front(); curr != nil; curr = curr.Next() {
+			count++
+		}
+	}
+	return count
+}
+
 func findInList(bucket *list.List, value Bitmap) *list.Element {
 	for curr := bucket.Front(); curr != nil; curr = curr.Next() {
 		if curr.Value.(Node).id.Equals(value) {

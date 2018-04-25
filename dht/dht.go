@@ -270,7 +270,7 @@ func (dht *DHT) Start() error {
 	go dht.runHandler()
 
 	dht.join()
-	log.Debugf("[%s] DHT ready on %s", dht.node.id.HexShort(), dht.node.Addr().String())
+	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)", dht.node.id.HexShort(), dht.node.Addr().String(), dht.rt.Count())
 	return nil
 }
 

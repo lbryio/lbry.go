@@ -48,10 +48,10 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 	}
 
 	if !foundOne {
-		t.Errorf("did not find node %s", dhts[0].node.id.Hex())
+		t.Errorf("did not find first node %s", dhts[0].node.id.Hex())
 	}
 	if !foundTwo {
-		t.Errorf("did not find node %s", dhts[1].node.id.Hex())
+		t.Errorf("did not find second node %s", dhts[1].node.id.Hex())
 	}
 }
 
