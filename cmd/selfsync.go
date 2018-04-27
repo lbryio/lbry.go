@@ -157,7 +157,7 @@ func selfSync(cmd *cobra.Command, args []string) {
 		if err != nil {
 			msg := fmt.Sprintf("Failed aquiring sync rights for channel %s: %v", lbryChannelName, err)
 			util.SendToSlack(msg)
-			log.Debugln(msg)
+			log.Error(msg)
 			continue
 		}
 		msg := fmt.Sprintf("Syncing %s to LBRY! (iteration %d)", lbryChannelName, loops)
@@ -180,7 +180,27 @@ func selfSync(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Error(errors.FullTrace(err))
 			util.SendToSlack(errors.FullTrace(err))
+			//mark video as failed
+			err := setChannelSyncStatus(authToken, channelID, StatusFailed)
+			if err != nil {
+				msg := fmt.Sprintf("Failed setting failed state for channel %s: %v", lbryChannelName, err)
+				util.SendToSlack(msg)
+				util.SendToSlack("@Nikooo777 this requires manual intervention! Panicing...")
+				log.Error(msg)
+				panic(msg)
+			}
 			break
+		}
+		//mark video as synced
+		err = setChannelSyncStatus(authToken, channelID, StatusSynced)
+		if err != nil {
+			msg := fmt.Sprintf("Failed setting synced state for channel %s: %v", lbryChannelName, err)
+			util.SendToSlack(msg)
+			util.SendToSlack("@Nikooo777 this requires manual intervention! Panicing...")
+			log.Error(msg)
+			//this error is very bad. it requires manual intervention
+			panic(msg)
+			continue
 		}
 
 		if limit != 0 && loops >= limit {

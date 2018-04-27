@@ -15,6 +15,7 @@ const (
 	StatusQueued  = "queued"  // in sync queue. will be synced soon
 	StatusSyncing = "syncing" // syncing now
 	StatusSynced  = "synced"  // done
+	StatusFailed  = "failed"
 )
 
-var SyncStatuses = []string{StatusPending, StatusQueued, StatusSyncing, StatusSynced}
+var SyncStatuses = []string{StatusPending, StatusQueued, StatusSyncing, StatusSynced, StatusFailed}
