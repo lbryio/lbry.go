@@ -20,12 +20,12 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 		}
 	}()
 
-	nf := newNodeFinder(dhts[2], RandomBitmapP(), false)
+	nf := newContactFinder(dhts[2].node, RandomBitmapP(), false)
 	res, err := nf.Find()
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundNodes, found := res.Nodes, res.Found
+	foundNodes, found := res.Contacts, res.Found
 
 	if found {
 		t.Fatal("something was found, but it should not have been")
@@ -42,7 +42,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 		if n.id.Equals(dhts[0].node.id) {
 			foundOne = true
 		}
-		//if n.id.Equals(dhts[1].node.id) {
+		//if n.id.Equals(dhts[1].node.c.id) {
 		//	foundTwo = true
 		//}
 	}
@@ -51,7 +51,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 		t.Errorf("did not find first node %s", dhts[0].node.id.Hex())
 	}
 	//if !foundTwo {
-	//	t.Errorf("did not find second node %s", dhts[1].node.id.Hex())
+	//	t.Errorf("did not find second node %s", dhts[1].node.c.id.Hex())
 	//}
 }
 
@@ -64,15 +64,15 @@ func TestNodeFinder_FindValue(t *testing.T) {
 	}()
 
 	blobHashToFind := RandomBitmapP()
-	nodeToFind := Node{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
-	dhts[0].store.Upsert(blobHashToFind, nodeToFind)
+	nodeToFind := Contact{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
+	dhts[0].node.store.Upsert(blobHashToFind, nodeToFind)
 
-	nf := newNodeFinder(dhts[2], blobHashToFind, true)
+	nf := newContactFinder(dhts[2].node, blobHashToFind, true)
 	res, err := nf.Find()
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundNodes, found := res.Nodes, res.Found
+	foundNodes, found := res.Contacts, res.Found
 
 	if !found {
 		t.Fatal("node was not found")

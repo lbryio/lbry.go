@@ -77,7 +77,7 @@ func TestBencodeFindNodesResponse(t *testing.T) {
 	res := Response{
 		ID:     newMessageID(),
 		NodeID: RandomBitmapP(),
-		FindNodeData: []Node{
+		Contacts: []Contact{
 			{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
 			{id: RandomBitmapP(), ip: net.IPv4(4, 3, 2, 1).To4(), port: 8765},
 		},
@@ -103,7 +103,7 @@ func TestBencodeFindValueResponse(t *testing.T) {
 		NodeID:       RandomBitmapP(),
 		FindValueKey: RandomBitmapP().RawString(),
 		Token:        "arst",
-		FindNodeData: []Node{
+		Contacts: []Contact{
 			{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
 		},
 	}
@@ -182,7 +182,7 @@ func compareResponses(t *testing.T, res, res2 Response) {
 	if res.Token != res2.Token {
 		t.Errorf("expected Token %s, got %s", res.Token, res2.Token)
 	}
-	if !reflect.DeepEqual(res.FindNodeData, res2.FindNodeData) {
-		t.Errorf("expected FindNodeData %s, got %s", spew.Sdump(res.FindNodeData), spew.Sdump(res2.FindNodeData))
+	if !reflect.DeepEqual(res.Contacts, res2.Contacts) {
+		t.Errorf("expected FindNodeData %s, got %s", spew.Sdump(res.Contacts), spew.Sdump(res2.Contacts))
 	}
 }

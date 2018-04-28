@@ -14,34 +14,33 @@ import (
 	"github.com/lyoshenka/bencode"
 )
 
-type Node struct {
-	id    Bitmap
-	ip    net.IP
-	port  int
-	token string // this is set when the node is returned from a FindNode call
+type Contact struct {
+	id   Bitmap
+	ip   net.IP
+	port int
 }
 
-func (n Node) String() string {
-	return n.id.HexShort() + "@" + n.Addr().String()
+func (c Contact) Addr() *net.UDPAddr {
+	return &net.UDPAddr{IP: c.ip, Port: c.port}
 }
 
-func (n Node) Addr() *net.UDPAddr {
-	return &net.UDPAddr{IP: n.ip, Port: n.port}
+func (c Contact) String() string {
+	return c.id.HexShort() + "@" + c.Addr().String()
 }
 
-func (n Node) MarshalCompact() ([]byte, error) {
-	if n.ip.To4() == nil {
+func (c Contact) MarshalCompact() ([]byte, error) {
+	if c.ip.To4() == nil {
 		return nil, errors.Err("ip not set")
 	}
-	if n.port < 0 || n.port > 65535 {
+	if c.port < 0 || c.port > 65535 {
 		return nil, errors.Err("invalid port")
 	}
 
 	var buf bytes.Buffer
-	buf.Write(n.ip.To4())
-	buf.WriteByte(byte(n.port >> 8))
-	buf.WriteByte(byte(n.port))
-	buf.Write(n.id[:])
+	buf.Write(c.ip.To4())
+	buf.WriteByte(byte(c.port >> 8))
+	buf.WriteByte(byte(c.port))
+	buf.Write(c.id[:])
 
 	if buf.Len() != compactNodeInfoLength {
 		return nil, errors.Err("i dont know how this happened")
@@ -50,21 +49,21 @@ func (n Node) MarshalCompact() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (n *Node) UnmarshalCompact(b []byte) error {
+func (c *Contact) UnmarshalCompact(b []byte) error {
 	if len(b) != compactNodeInfoLength {
 		return errors.Err("invalid compact length")
 	}
-	n.ip = net.IPv4(b[0], b[1], b[2], b[3]).To4()
-	n.port = int(uint16(b[5]) | uint16(b[4])<<8)
-	n.id = BitmapFromBytesP(b[6:])
+	c.ip = net.IPv4(b[0], b[1], b[2], b[3]).To4()
+	c.port = int(uint16(b[5]) | uint16(b[4])<<8)
+	c.id = BitmapFromBytesP(b[6:])
 	return nil
 }
 
-func (n Node) MarshalBencode() ([]byte, error) {
-	return bencode.EncodeBytes([]interface{}{n.id, n.ip.String(), n.port})
+func (c Contact) MarshalBencode() ([]byte, error) {
+	return bencode.EncodeBytes([]interface{}{c.id, c.ip.String(), c.port})
 }
 
-func (n *Node) UnmarshalBencode(b []byte) error {
+func (c *Contact) UnmarshalBencode(b []byte) error {
 	var raw []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {
@@ -75,7 +74,7 @@ func (n *Node) UnmarshalBencode(b []byte) error {
 		return errors.Err("contact must have 3 elements; got %d", len(raw))
 	}
 
-	err = bencode.DecodeBytes(raw[0], &n.id)
+	err = bencode.DecodeBytes(raw[0], &c.id)
 	if err != nil {
 		return err
 	}
@@ -85,12 +84,12 @@ func (n *Node) UnmarshalBencode(b []byte) error {
 	if err != nil {
 		return err
 	}
-	n.ip = net.ParseIP(ipStr).To4()
-	if n.ip == nil {
+	c.ip = net.ParseIP(ipStr).To4()
+	if c.ip == nil {
 		return errors.Err("invalid IP")
 	}
 
-	err = bencode.DecodeBytes(raw[2], &n.port)
+	err = bencode.DecodeBytes(raw[2], &c.port)
 	if err != nil {
 		return err
 	}
@@ -98,12 +97,12 @@ func (n *Node) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-type sortedNode struct {
-	node                Node
+type sortedContact struct {
+	contact             Contact
 	xorDistanceToTarget Bitmap
 }
 
-type byXorDistance []sortedNode
+type byXorDistance []sortedContact
 
 func (a byXorDistance) Len() int      { return len(a) }
 func (a byXorDistance) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -112,17 +111,17 @@ func (a byXorDistance) Less(i, j int) bool {
 }
 
 type routingTable struct {
-	node    Node
+	id      Bitmap
 	buckets [numBuckets]*list.List
 	lock    *sync.RWMutex
 }
 
-func newRoutingTable(node *Node) *routingTable {
+func newRoutingTable(id Bitmap) *routingTable {
 	var rt routingTable
 	for i := range rt.buckets {
 		rt.buckets[i] = list.New()
 	}
-	rt.node = *node
+	rt.id = id
 	rt.lock = &sync.RWMutex{}
 	return &rt
 }
@@ -131,7 +130,7 @@ func (rt *routingTable) BucketInfo() string {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
 
-	bucketInfo := []string{}
+	var bucketInfo []string
 	for i, b := range rt.buckets {
 		contents := bucketContents(b)
 		if contents != "" {
@@ -152,7 +151,7 @@ func bucketContents(b *list.List) string {
 		if ids != "" {
 			ids += ", "
 		}
-		ids += curr.Value.(Node).id.HexShort()
+		ids += curr.Value.(Contact).id.HexShort()
 	}
 
 	if count > 0 {
@@ -162,31 +161,31 @@ func bucketContents(b *list.List) string {
 	}
 }
 
-// Update inserts or refreshes a node
-func (rt *routingTable) Update(node Node) {
+// Update inserts or refreshes a contact
+func (rt *routingTable) Update(c Contact) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
-	bucketNum := bucketFor(rt.node.id, node.id)
+	bucketNum := bucketFor(rt.id, c.id)
 	bucket := rt.buckets[bucketNum]
-	element := findInList(bucket, node.id)
+	element := findInList(bucket, c.id)
 	if element == nil {
 		if bucket.Len() >= bucketSize {
-			// TODO: Ping front node first. Only remove if it does not respond
+			// TODO: Ping front contact first. Only remove if it does not respond
 			bucket.Remove(bucket.Front())
 		}
-		bucket.PushBack(node)
+		bucket.PushBack(c)
 	} else {
 		bucket.MoveToBack(element)
 	}
 }
 
-// UpdateIfExists refreshes a node if its already in the routing table
-func (rt *routingTable) UpdateIfExists(node Node) {
+// UpdateIfExists refreshes a contact if its already in the routing table
+func (rt *routingTable) UpdateIfExists(c Contact) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
-	bucketNum := bucketFor(rt.node.id, node.id)
+	bucketNum := bucketFor(rt.id, c.id)
 	bucket := rt.buckets[bucketNum]
-	element := findInList(bucket, node.id)
+	element := findInList(bucket, c.id)
 	if element != nil {
 		bucket.MoveToBack(element)
 	}
@@ -195,55 +194,55 @@ func (rt *routingTable) UpdateIfExists(node Node) {
 func (rt *routingTable) RemoveByID(id Bitmap) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
-	bucketNum := bucketFor(rt.node.id, id)
+	bucketNum := bucketFor(rt.id, id)
 	bucket := rt.buckets[bucketNum]
-	element := findInList(bucket, rt.node.id)
+	element := findInList(bucket, rt.id)
 	if element != nil {
 		bucket.Remove(element)
 	}
 }
 
-func (rt *routingTable) GetClosest(target Bitmap, limit int) []Node {
+func (rt *routingTable) GetClosest(target Bitmap, limit int) []Contact {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
 
-	var toSort []sortedNode
+	var toSort []sortedContact
 	var bucketNum int
 
-	if rt.node.id.Equals(target) {
+	if rt.id.Equals(target) {
 		bucketNum = 0
 	} else {
-		bucketNum = bucketFor(rt.node.id, target)
+		bucketNum = bucketFor(rt.id, target)
 	}
 
 	bucket := rt.buckets[bucketNum]
-	toSort = appendNodes(toSort, bucket.Front(), target)
+	toSort = appendContacts(toSort, bucket.Front(), target)
 
 	for i := 1; (bucketNum-i >= 0 || bucketNum+i < numBuckets) && len(toSort) < limit; i++ {
 		if bucketNum-i >= 0 {
 			bucket = rt.buckets[bucketNum-i]
-			toSort = appendNodes(toSort, bucket.Front(), target)
+			toSort = appendContacts(toSort, bucket.Front(), target)
 		}
 		if bucketNum+i < numBuckets {
 			bucket = rt.buckets[bucketNum+i]
-			toSort = appendNodes(toSort, bucket.Front(), target)
+			toSort = appendContacts(toSort, bucket.Front(), target)
 		}
 	}
 
 	sort.Sort(byXorDistance(toSort))
 
-	var nodes []Node
-	for _, c := range toSort {
-		nodes = append(nodes, c.node)
-		if len(nodes) >= limit {
+	var contacts []Contact
+	for _, sorted := range toSort {
+		contacts = append(contacts, sorted.contact)
+		if len(contacts) >= limit {
 			break
 		}
 	}
 
-	return nodes
+	return contacts
 }
 
-// Count returns the number of nodes in the routing table
+// Count returns the number of contacts in the routing table
 func (rt *routingTable) Count() int {
 	rt.lock.RLock()
 	defer rt.lock.RUnlock()
@@ -258,38 +257,24 @@ func (rt *routingTable) Count() int {
 
 func findInList(bucket *list.List, value Bitmap) *list.Element {
 	for curr := bucket.Front(); curr != nil; curr = curr.Next() {
-		if curr.Value.(Node).id.Equals(value) {
+		if curr.Value.(Contact).id.Equals(value) {
 			return curr
 		}
 	}
 	return nil
 }
 
-func appendNodes(nodes []sortedNode, start *list.Element, target Bitmap) []sortedNode {
+func appendContacts(contacts []sortedContact, start *list.Element, target Bitmap) []sortedContact {
 	for curr := start; curr != nil; curr = curr.Next() {
-		node := curr.Value.(Node)
-		nodes = append(nodes, sortedNode{node, node.id.Xor(target)})
+		c := curr.Value.(Contact)
+		contacts = append(contacts, sortedContact{c, c.id.Xor(target)})
 	}
-	return nodes
+	return contacts
 }
 
 func bucketFor(id Bitmap, target Bitmap) int {
 	if id.Equals(target) {
-		panic("nodes do not have a bucket for themselves")
+		panic("routing table does not have a bucket for its own id")
 	}
 	return numBuckets - 1 - target.Xor(id).PrefixLen()
-}
-
-func sortNodesInPlace(nodes []Node, target Bitmap) {
-	toSort := make([]sortedNode, len(nodes))
-
-	for i, n := range nodes {
-		toSort[i] = sortedNode{n, n.id.Xor(target)}
-	}
-
-	sort.Sort(byXorDistance(toSort))
-
-	for i, c := range toSort {
-		nodes[i] = c.node
-	}
 }

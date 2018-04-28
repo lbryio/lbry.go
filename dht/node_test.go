@@ -97,9 +97,11 @@ func TestPing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dht.conn = conn
-	go dht.listen()
-	go dht.runHandler()
+
+	err = dht.node.Connect(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer dht.Shutdown()
 
 	messageID := newMessageID()
@@ -193,9 +195,10 @@ func TestStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dht.conn = conn
-	go dht.listen()
-	go dht.runHandler()
+	err = dht.node.Connect(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer dht.Shutdown()
 
 	messageID := newMessageID()
@@ -208,7 +211,7 @@ func TestStore(t *testing.T) {
 		StoreArgs: &storeArgs{
 			BlobHash: blobHashToStore,
 			Value: storeArgsValue{
-				Token:  dht.tokens.Get(testNodeID, conn.addr),
+				Token:  dht.node.tokens.Get(testNodeID, conn.addr),
 				LbryID: testNodeID,
 				Port:   9999,
 			},
@@ -266,11 +269,11 @@ func TestStore(t *testing.T) {
 		}
 	}
 
-	if len(dht.store.hashes) != 1 {
+	if len(dht.node.store.hashes) != 1 {
 		t.Error("dht store has wrong number of items")
 	}
 
-	items := dht.store.Get(blobHashToStore)
+	items := dht.node.store.Get(blobHashToStore)
 	if len(items) != 1 {
 		t.Error("list created in store, but nothing in list")
 	}
@@ -289,17 +292,19 @@ func TestFindNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dht.conn = conn
-	go dht.listen()
-	go dht.runHandler()
+
+	err = dht.node.Connect(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer dht.Shutdown()
 
 	nodesToInsert := 3
-	var nodes []Node
+	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Contact{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
-		dht.rt.Update(n)
+		dht.node.rt.Update(n)
 	}
 
 	messageID := newMessageID()
@@ -357,17 +362,18 @@ func TestFindValueExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dht.conn = conn
-	go dht.listen()
-	go dht.runHandler()
+	err = dht.node.Connect(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer dht.Shutdown()
 
 	nodesToInsert := 3
-	var nodes []Node
+	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Contact{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
-		dht.rt.Update(n)
+		dht.node.rt.Update(n)
 	}
 
 	//data, _ := hex.DecodeString("64313a30693065313a3132303a7de8e57d34e316abbb5a8a8da50dcd1ad4c80e0f313a3234383a7ce1b831dec8689e44f80f547d2dea171f6a625e1a4ff6c6165e645f953103dabeb068a622203f859c6c64658fd3aa3b313a33393a66696e6456616c7565313a346c34383aa47624b8e7ee1e54df0c45e2eb858feb0b705bd2a78d8b739be31ba188f4bd6f56b371c51fecc5280d5fd26ba4168e966565")
@@ -375,10 +381,10 @@ func TestFindValueExisting(t *testing.T) {
 	messageID := newMessageID()
 	valueToFind := RandomBitmapP()
 
-	nodeToFind := Node{id: RandomBitmapP(), ip: net.ParseIP("1.2.3.4"), port: 1286}
-	dht.store.Upsert(valueToFind, nodeToFind)
-	dht.store.Upsert(valueToFind, nodeToFind)
-	dht.store.Upsert(valueToFind, nodeToFind)
+	nodeToFind := Contact{id: RandomBitmapP(), ip: net.ParseIP("1.2.3.4"), port: 1286}
+	dht.node.store.Upsert(valueToFind, nodeToFind)
+	dht.node.store.Upsert(valueToFind, nodeToFind)
+	dht.node.store.Upsert(valueToFind, nodeToFind)
 
 	request := Request{
 		ID:     messageID,
@@ -428,7 +434,7 @@ func TestFindValueExisting(t *testing.T) {
 		t.Fatal("search results are not a list")
 	}
 
-	verifyCompactContacts(t, contacts, []Node{nodeToFind})
+	verifyCompactContacts(t, contacts, []Contact{nodeToFind})
 }
 
 func TestFindValueFallbackToFindNode(t *testing.T) {
@@ -442,17 +448,18 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dht.conn = conn
-	go dht.listen()
-	go dht.runHandler()
+	err = dht.node.Connect(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer dht.Shutdown()
 
 	nodesToInsert := 3
-	var nodes []Node
+	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
-		n := Node{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Contact{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
 		nodes = append(nodes, n)
-		dht.rt.Update(n)
+		dht.node.rt.Update(n)
 	}
 
 	messageID := newMessageID()
@@ -557,7 +564,7 @@ func verifyResponse(t *testing.T, resp map[string]interface{}, id messageID, dht
 	}
 }
 
-func verifyContacts(t *testing.T, contacts []interface{}, nodes []Node) {
+func verifyContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 	if len(contacts) != len(nodes) {
 		t.Errorf("got %d contacts; expected %d", len(contacts), len(nodes))
 		return
@@ -577,7 +584,7 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Node) {
 			return
 		}
 
-		var currNode Node
+		var currNode Contact
 		currNodeFound := false
 
 		id, ok := contact[0].(string)
@@ -618,7 +625,7 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Node) {
 	}
 }
 
-func verifyCompactContacts(t *testing.T, contacts []interface{}, nodes []Node) {
+func verifyCompactContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 	if len(contacts) != len(nodes) {
 		t.Errorf("got %d contacts; expected %d", len(contacts), len(nodes))
 		return
@@ -633,14 +640,14 @@ func verifyCompactContacts(t *testing.T, contacts []interface{}, nodes []Node) {
 			return
 		}
 
-		contact := Node{}
+		contact := Contact{}
 		err := contact.UnmarshalCompact([]byte(compact))
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		var currNode Node
+		var currNode Contact
 		currNodeFound := false
 
 		if _, ok := foundNodes[contact.id.Hex()]; ok {

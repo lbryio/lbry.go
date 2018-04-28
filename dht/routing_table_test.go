@@ -36,9 +36,9 @@ func TestRoutingTable(t *testing.T) {
 	n1 := BitmapFromHexP("FFFFFFFF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 	n2 := BitmapFromHexP("FFFFFFF00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 	n3 := BitmapFromHexP("111111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-	rt := newRoutingTable(&Node{n1, net.ParseIP("127.0.0.1"), 8000, ""})
-	rt.Update(Node{n2, net.ParseIP("127.0.0.1"), 8001, ""})
-	rt.Update(Node{n3, net.ParseIP("127.0.0.1"), 8002, ""})
+	rt := newRoutingTable(n1)
+	rt.Update(Contact{n2, net.ParseIP("127.0.0.1"), 8001})
+	rt.Update(Contact{n3, net.ParseIP("127.0.0.1"), 8002})
 
 	contacts := rt.GetClosest(BitmapFromHexP("222222220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"), 1)
 	if len(contacts) != 1 {
@@ -63,14 +63,14 @@ func TestRoutingTable(t *testing.T) {
 }
 
 func TestCompactEncoding(t *testing.T) {
-	n := Node{
+	c := Contact{
 		id:   BitmapFromHexP("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41"),
 		ip:   net.ParseIP("1.2.3.4"),
 		port: int(55<<8 + 66),
 	}
 
 	var compact []byte
-	compact, err := n.MarshalCompact()
+	compact, err := c.MarshalCompact()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestCompactEncoding(t *testing.T) {
 		t.Fatalf("got length of %d; expected %d", len(compact), compactNodeInfoLength)
 	}
 
-	if !reflect.DeepEqual(compact, append([]byte{1, 2, 3, 4, 55, 66}, n.id[:]...)) {
+	if !reflect.DeepEqual(compact, append([]byte{1, 2, 3, 4, 55, 66}, c.id[:]...)) {
 		t.Errorf("compact bytes not encoded correctly")
 	}
 }

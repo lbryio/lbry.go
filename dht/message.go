@@ -223,7 +223,7 @@ type Response struct {
 	ID           messageID
 	NodeID       Bitmap
 	Data         string
-	FindNodeData []Node
+	Contacts     []Contact
 	FindValueKey string
 	Token        string
 }
@@ -239,7 +239,7 @@ func (r Response) ArgsDebug() string {
 	}
 
 	str += "|"
-	for _, c := range r.FindNodeData {
+	for _, c := range r.Contacts {
 		str += c.Addr().String() + ":" + c.id.HexShort() + ","
 	}
 	str = strings.TrimRight(str, ",") + "|"
@@ -268,8 +268,8 @@ func (r Response) MarshalBencode() ([]byte, error) {
 		}
 
 		var contacts [][]byte
-		for _, n := range r.FindNodeData {
-			compact, err := n.MarshalCompact()
+		for _, c := range r.Contacts {
+			compact, err := c.MarshalCompact()
 			if err != nil {
 				return nil, err
 			}
@@ -282,12 +282,12 @@ func (r Response) MarshalBencode() ([]byte, error) {
 	} else if r.Token != "" {
 		// findValue failure falling back to findNode
 		data[headerPayloadField] = map[string]interface{}{
-			contactsField: r.FindNodeData,
+			contactsField: r.Contacts,
 			tokenField:    r.Token,
 		}
 	} else {
 		// straight up findNode
-		data[headerPayloadField] = r.FindNodeData
+		data[headerPayloadField] = r.Contacts
 	}
 
 	return bencode.EncodeBytes(data)
@@ -314,7 +314,7 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 	}
 
 	// maybe data is a list of nodes (response to findNode)?
-	err = bencode.DecodeBytes(raw.Data, &r.FindNodeData)
+	err = bencode.DecodeBytes(raw.Data, &r.Contacts)
 	if err == nil {
 		return nil
 	}
@@ -335,25 +335,25 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 	}
 
 	if contacts, ok := rawData[contactsField]; ok {
-		err = bencode.DecodeBytes(contacts, &r.FindNodeData)
+		err = bencode.DecodeBytes(contacts, &r.Contacts)
 		if err != nil {
 			return err
 		}
 	} else {
 		for k, v := range rawData {
 			r.FindValueKey = k
-			var compactNodes [][]byte
-			err = bencode.DecodeBytes(v, &compactNodes)
+			var compactContacts [][]byte
+			err = bencode.DecodeBytes(v, &compactContacts)
 			if err != nil {
 				return err
 			}
-			for _, compact := range compactNodes {
-				var uncompactedNode Node
-				err = uncompactedNode.UnmarshalCompact(compact)
+			for _, compact := range compactContacts {
+				var c Contact
+				err = c.UnmarshalCompact(compact)
 				if err != nil {
 					return err
 				}
-				r.FindNodeData = append(r.FindNodeData, uncompactedNode)
+				r.Contacts = append(r.Contacts, c)
 			}
 			break
 		}
