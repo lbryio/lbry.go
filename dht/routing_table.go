@@ -165,7 +165,7 @@ func bucketContents(b *list.List) string {
 func (rt *routingTable) Update(c Contact) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
-	bucketNum := bucketFor(rt.id, c.id)
+	bucketNum := rt.bucketFor(c.id)
 	bucket := rt.buckets[bucketNum]
 	element := findInList(bucket, c.id)
 	if element == nil {
@@ -183,7 +183,7 @@ func (rt *routingTable) Update(c Contact) {
 func (rt *routingTable) UpdateIfExists(c Contact) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
-	bucketNum := bucketFor(rt.id, c.id)
+	bucketNum := rt.bucketFor(c.id)
 	bucket := rt.buckets[bucketNum]
 	element := findInList(bucket, c.id)
 	if element != nil {
@@ -191,10 +191,10 @@ func (rt *routingTable) UpdateIfExists(c Contact) {
 	}
 }
 
-func (rt *routingTable) RemoveByID(id Bitmap) {
+func (rt *routingTable) Remove(id Bitmap) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
-	bucketNum := bucketFor(rt.id, id)
+	bucketNum := rt.bucketFor(id)
 	bucket := rt.buckets[bucketNum]
 	element := findInList(bucket, rt.id)
 	if element != nil {
@@ -212,7 +212,7 @@ func (rt *routingTable) GetClosest(target Bitmap, limit int) []Contact {
 	if rt.id.Equals(target) {
 		bucketNum = 0
 	} else {
-		bucketNum = bucketFor(rt.id, target)
+		bucketNum = rt.bucketFor(target)
 	}
 
 	bucket := rt.buckets[bucketNum]
@@ -242,6 +242,14 @@ func (rt *routingTable) GetClosest(target Bitmap, limit int) []Contact {
 	return contacts
 }
 
+func appendContacts(contacts []sortedContact, start *list.Element, target Bitmap) []sortedContact {
+	for curr := start; curr != nil; curr = curr.Next() {
+		c := toContact(curr)
+		contacts = append(contacts, sortedContact{c, c.id.Xor(target)})
+	}
+	return contacts
+}
+
 // Count returns the number of contacts in the routing table
 func (rt *routingTable) Count() int {
 	rt.lock.RLock()
@@ -255,26 +263,22 @@ func (rt *routingTable) Count() int {
 	return count
 }
 
+func (rt *routingTable) bucketFor(target Bitmap) int {
+	if rt.id.Equals(target) {
+		panic("routing table does not have a bucket for its own id")
+	}
+	return numBuckets - 1 - target.Xor(rt.id).PrefixLen()
+}
+
 func findInList(bucket *list.List, value Bitmap) *list.Element {
 	for curr := bucket.Front(); curr != nil; curr = curr.Next() {
-		if curr.Value.(Contact).id.Equals(value) {
+		if toContact(curr).id.Equals(value) {
 			return curr
 		}
 	}
 	return nil
 }
 
-func appendContacts(contacts []sortedContact, start *list.Element, target Bitmap) []sortedContact {
-	for curr := start; curr != nil; curr = curr.Next() {
-		c := curr.Value.(Contact)
-		contacts = append(contacts, sortedContact{c, c.id.Xor(target)})
-	}
-	return contacts
-}
-
-func bucketFor(id Bitmap, target Bitmap) int {
-	if id.Equals(target) {
-		panic("routing table does not have a bucket for its own id")
-	}
-	return numBuckets - 1 - target.Xor(id).PrefixLen()
+func toContact(el *list.Element) Contact {
+	return el.Value.(Contact)
 }

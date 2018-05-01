@@ -313,7 +313,7 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 		return nil
 	}
 
-	// maybe data is a list of nodes (response to findNode)?
+	// maybe data is a list of contacts (response to findNode)?
 	err = bencode.DecodeBytes(raw.Data, &r.Contacts)
 	if err == nil {
 		return nil

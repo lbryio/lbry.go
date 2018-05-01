@@ -2,25 +2,18 @@ package dht
 
 import "sync"
 
-type peer struct {
-	contact Contact
-	//<lastPublished>,
-	//<originallyPublished>
-	//	<originalPublisherID>
-}
-
 type peerStore struct {
 	// map of blob hashes to (map of node IDs to bools)
 	hashes map[Bitmap]map[Bitmap]bool
 	// stores the peers themselves, so they can be updated in one place
-	peers map[Bitmap]peer
-	lock  sync.RWMutex
+	contacts map[Bitmap]Contact
+	lock     sync.RWMutex
 }
 
 func newPeerStore() *peerStore {
 	return &peerStore{
-		hashes: make(map[Bitmap]map[Bitmap]bool),
-		peers:  make(map[Bitmap]peer),
+		hashes:   make(map[Bitmap]map[Bitmap]bool),
+		contacts: make(map[Bitmap]Contact),
 	}
 }
 
@@ -32,7 +25,7 @@ func (s *peerStore) Upsert(blobHash Bitmap, contact Contact) {
 		s.hashes[blobHash] = make(map[Bitmap]bool)
 	}
 	s.hashes[blobHash][contact.id] = true
-	s.peers[contact.id] = peer{contact: contact}
+	s.contacts[contact.id] = contact
 }
 
 func (s *peerStore) Get(blobHash Bitmap) []Contact {
@@ -42,11 +35,11 @@ func (s *peerStore) Get(blobHash Bitmap) []Contact {
 	var contacts []Contact
 	if ids, ok := s.hashes[blobHash]; ok {
 		for id := range ids {
-			peer, ok := s.peers[id]
+			contact, ok := s.contacts[id]
 			if !ok {
 				panic("node id in IDs list, but not in nodeInfo")
 			}
-			contacts = append(contacts, peer.contact)
+			contacts = append(contacts, contact)
 		}
 	}
 	return contacts

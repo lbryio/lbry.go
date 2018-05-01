@@ -13,7 +13,7 @@ import (
 // TODO: make a dht with X nodes, have them all join, then ensure that every node appears at least once in another node's routing table
 
 func TestNodeFinder_FindNodes(t *testing.T) {
-	dhts := MakeTestDHT(3)
+	dhts := TestingCreateDHT(3)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -56,7 +56,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 }
 
 func TestNodeFinder_FindValue(t *testing.T) {
-	dhts := MakeTestDHT(3)
+	dhts := TestingCreateDHT(3)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -91,7 +91,7 @@ func TestDHT_LargeDHT(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	log.Println("if this takes longer than 20 seconds, its stuck. idk why it gets stuck sometimes, but its a bug.")
 	nodes := 100
-	dhts := MakeTestDHT(nodes)
+	dhts := TestingCreateDHT(nodes)
 	defer func() {
 		for _, d := range dhts {
 			go d.Shutdown()

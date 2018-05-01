@@ -33,13 +33,14 @@ type UDPConn interface {
 }
 
 type Node struct {
-	// TODO: replace Contact with id. ip and port aren't used except when connecting
+	// the node's id
 	id Bitmap
 	// UDP connection for sending and receiving data
 	conn UDPConn
 	// token manager
 	tokens *tokenManager
 
+	// map of outstanding transactions + mutex
 	txLock       *sync.RWMutex
 	transactions map[messageID]*transaction
 
@@ -215,22 +216,22 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		log.Errorln("invalid request method")
 		return
 	case pingMethod:
-		n.send(addr, Response{ID: request.ID, NodeID: n.id, Data: pingSuccessResponse})
+		n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: pingSuccessResponse})
 	case storeMethod:
 		// TODO: we should be sending the IP in the request, not just using the sender's IP
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		if n.tokens.Verify(request.StoreArgs.Value.Token, request.NodeID, addr) {
 			n.store.Upsert(request.StoreArgs.BlobHash, Contact{id: request.StoreArgs.NodeID, ip: addr.IP, port: request.StoreArgs.Value.Port})
-			n.send(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
+			n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
 		} else {
-			n.send(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"})
+			n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"})
 		}
 	case findNodeMethod:
 		if request.Arg == nil {
 			log.Errorln("request is missing arg")
 			return
 		}
-		n.send(addr, Response{
+		n.sendMessage(addr, Response{
 			ID:       request.ID,
 			NodeID:   n.id,
 			Contacts: n.rt.GetClosest(*request.Arg, bucketSize),
@@ -255,7 +256,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize)
 		}
 
-		n.send(addr, res)
+		n.sendMessage(addr, res)
 	}
 
 	// nodes that send us requests should not be inserted, only refreshed.
@@ -282,7 +283,7 @@ func (n *Node) handleError(addr *net.UDPAddr, e Error) {
 }
 
 // send sends data to a udp address
-func (n *Node) send(addr *net.UDPAddr, data Message) error {
+func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 	encoded, err := bencode.EncodeBytes(data)
 	if err != nil {
 		return errors.Err(err)
@@ -365,11 +366,11 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 		defer n.txDelete(tx.req.ID)
 
 		for i := 0; i < udpRetry; i++ {
-			if err := n.send(contact.Addr(), tx.req); err != nil {
+			if err := n.sendMessage(contact.Addr(), tx.req); err != nil {
 				if !strings.Contains(err.Error(), "use of closed network connection") { // this only happens on localhost. real UDP has no connections
 					log.Error("send error: ", err)
 				}
-				continue // try again? return?
+				continue
 			}
 
 			select {
@@ -383,7 +384,7 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 		}
 
 		// if request timed out each time
-		n.rt.RemoveByID(tx.contact.id)
+		n.rt.Remove(tx.contact.id)
 	}()
 
 	return ch

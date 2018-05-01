@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,26 +20,31 @@ func init() {
 	//log.SetLevel(log.DebugLevel)
 }
 
-const network = "udp4"
+const (
+	network = "udp4"
 
-const alpha = 3            // this is the constant alpha in the spec
-const nodeIDLength = 48    // bytes. this is the constant B in the spec
-const messageIDLength = 20 // bytes.
-const bucketSize = 8       // this is the constant k in the spec
+	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
+	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
+	alpha           = 3  // this is the constant alpha in the spec
+	bucketSize      = 8  // this is the constant k in the spec
+	nodeIDLength    = 48 // bytes. this is the constant B in the spec
+	messageIDLength = 20 // bytes.
 
-const udpRetry = 3
-const udpTimeout = 10 * time.Second
-const udpMaxMessageLength = 1024 // I think our longest message is ~676 bytes, so I rounded up
+	udpRetry            = 3
+	udpTimeout          = 5 * time.Second
+	udpMaxMessageLength = 1024 // bytes. I think our longest message is ~676 bytes, so I rounded up
 
-const tExpire = 86400 * time.Second    // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
-const tRefresh = 3600 * time.Second    // the time after which an otherwise unaccessed bucket must be refreshed
-const tReplicate = 3600 * time.Second  // the interval between Kademlia replication events, when a node is required to publish its entire database
-const tRepublish = 86400 * time.Second // the time after which the original publisher must republish a key/value pair
+	tExpire      = 24 * time.Hour   // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
+	tRefresh     = 1 * time.Hour    // the time after which an otherwise unaccessed bucket must be refreshed
+	tReplicate   = 1 * time.Hour    // the interval between Kademlia replication events, when a node is required to publish its entire database
+	tRepublish   = 24 * time.Hour   // the time after which the original publisher must republish a key/value pair
+	tNodeRefresh = 15 * time.Minute // the time after which a good node becomes questionable if it has not messaged us
 
-const numBuckets = nodeIDLength * 8
-const compactNodeInfoLength = nodeIDLength + 6
+	numBuckets            = nodeIDLength * 8
+	compactNodeInfoLength = nodeIDLength + 6 // nodeID + 4 for IP + 2 for port
 
-const tokenSecretRotationInterval = 5 * time.Minute // how often the token-generating secret is rotated
+	tokenSecretRotationInterval = 5 * time.Minute // how often the token-generating secret is rotated
+)
 
 // Config represents the configure of dht.
 type Config struct {
@@ -266,34 +270,6 @@ func printNodeList(list []Contact) {
 	for i, n := range list {
 		log.Printf("%d) %s", i, n.String())
 	}
-}
-
-func MakeTestDHT(numNodes int) []*DHT {
-	if numNodes < 1 {
-		return nil
-	}
-
-	ip := "127.0.0.1"
-	firstPort := 21000
-	dhts := make([]*DHT, numNodes)
-
-	for i := 0; i < numNodes; i++ {
-		seeds := []string{}
-		if i > 0 {
-			seeds = []string{ip + ":" + strconv.Itoa(firstPort)}
-		}
-
-		dht, err := New(&Config{Address: ip + ":" + strconv.Itoa(firstPort+i), NodeID: RandomBitmapP().Hex(), SeedNodes: seeds})
-		if err != nil {
-			panic(err)
-		}
-
-		go dht.Start()
-		dht.WaitUntilJoined()
-		dhts[i] = dht
-	}
-
-	return dhts
 }
 
 func getContact(nodeID, addr string) (Contact, error) {

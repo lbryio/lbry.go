@@ -23,6 +23,8 @@ func (t timeoutErr) Temporary() bool {
 	return true
 }
 
+// TODO: just use a normal net.Conn instead of this mock conn
+
 type testUDPPacket struct {
 	data []byte
 	addr *net.UDPAddr
