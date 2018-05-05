@@ -52,7 +52,7 @@ func ytsync(cmd *cobra.Command, args []string) {
 		log.Errorln("setting --max-tries less than 1 doesn't make sense")
 		return
 	}
-	util.SendToSlack("Syncing " + lbryChannelName + " to LBRY!")
+	util.SendToSlackInfo("Syncing " + lbryChannelName + " to LBRY!")
 
 	s := sync.Sync{
 		YoutubeAPIKey:           ytAPIKey,
@@ -68,9 +68,8 @@ func ytsync(cmd *cobra.Command, args []string) {
 	err := s.FullCycle()
 
 	if err != nil {
-		log.Error(errors.FullTrace(err))
-		util.SendToSlack(errors.FullTrace(err))
+		util.SendToSlackError(errors.FullTrace(err))
 
 	}
-	util.SendToSlack("Syncing " + lbryChannelName + " reached an end.")
+	util.SendToSlackInfo("Syncing " + lbryChannelName + " reached an end.")
 }

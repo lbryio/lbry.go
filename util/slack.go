@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/lbryio/lbry.go/errors"
-
 	"github.com/nlopes/slack"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,6 +17,20 @@ func InitSlack(token string, channel string, username string) {
 	slackApi = slack.New(token)
 	defaultChannel = channel
 	defaultUsername = username
+}
+func SendToSlackInfo(format string, a ...interface{}) {
+	message := fmt.Sprintf(format, a...)
+	if slackApi != nil {
+		sendToSlack(":information_source: " + message)
+	}
+	log.Debugln(message)
+}
+func SendToSlackError(format string, a ...interface{}) {
+	message := fmt.Sprintf(format, a...)
+	if slackApi != nil {
+		sendToSlack(":sos: " + message)
+	}
+	log.Errorln(message)
 }
 
 // SendToSlackUser Sends message to a specific user.
@@ -48,7 +61,6 @@ func SendToSlack(message string) error {
 
 func sendToSlack(channel, username, message string) error {
 	var err error
-
 	if slackApi == nil {
 		err = errors.Err("no slack token provided")
 	} else {

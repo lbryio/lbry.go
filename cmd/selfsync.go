@@ -46,7 +46,7 @@ type APIYoutubeChannel struct {
 
 //PoC
 func fetchChannels(authToken string) ([]APIYoutubeChannel, error) {
-	url := "http://localhost:8080/yt/jobs"
+	url := "https://api.lbry.io/yt/jobs"
 	payload := strings.NewReader("------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"auth_token\"\r\n\r\n" + authToken + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--")
 	req, _ := http.NewRequest("POST", url, payload)
 	req.Header.Add("content-type", "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW")
@@ -74,7 +74,7 @@ func setChannelSyncStatus(authToken string, channelID string, status string) err
 	if err != nil {
 		return errors.Err("could not detect system hostname")
 	}
-	url := "http://localhost:8080/yt/sync_update"
+	url := "https://api.lbry.io/yt/sync_update"
 	payload := strings.NewReader("------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data;" +
 		" name=\"channel_id\"\r\n\r\n" + channelID + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n" +
 		"Content-Disposition: form-data; name=\"sync_server\"\r\n\r\n" + host + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n" +
@@ -128,41 +128,34 @@ func selfSync(cmd *cobra.Command, args []string) {
 	}
 	channelsToSync, err := fetchChannels(authToken)
 	if err != nil {
-		msg := fmt.Sprintf("failed to fetch channels: %v", err)
-		log.Errorln(msg)
-		util.SendToSlack(msg)
+		util.SendToSlackError("failed to fetch channels: %v", err)
 		return
 	}
-
-	for loops := 0; loops < len(channelsToSync); loops++ {
+	host, err := os.Hostname()
+	if err != nil {
+		host = ""
+	}
+	for loops := 0; loops < len(channelsToSync) && (limit != 0 && loops < limit); loops++ {
 		//avoid dereferencing
 		channel := channelsToSync[loops]
 		channelID := channel.ChannelId
 		lbryChannelName := channel.DesiredChannelName
 		if channel.TotalVideos < 1 {
-			msg := fmt.Sprintf("Channnel %s has no videos. Skipping", lbryChannelName)
-			util.SendToSlack(msg)
-			log.Debugln(msg)
+			util.SendToSlackInfo("Channnel %s has no videos. Skipping", lbryChannelName)
 			continue
 		}
-		if !channel.SyncServer.IsNull() {
-			msg := fmt.Sprintf("Channnel %s is being synced by another server: %s", lbryChannelName, channel.SyncServer.String)
-			util.SendToSlack(msg)
-			log.Debugln(msg)
+		if !channel.SyncServer.IsNull() && channel.SyncServer.String != host {
+			util.SendToSlackInfo("Channnel %s is being synced by another server: %s", lbryChannelName, channel.SyncServer.String)
 			continue
 		}
 
 		//acquire the lock on the channel
 		err := setChannelSyncStatus(authToken, channelID, StatusSyncing)
 		if err != nil {
-			msg := fmt.Sprintf("Failed aquiring sync rights for channel %s: %v", lbryChannelName, err)
-			util.SendToSlack(msg)
-			log.Error(msg)
+			util.SendToSlackError("Failed aquiring sync rights for channel %s: %v", lbryChannelName, err)
 			continue
 		}
-		msg := fmt.Sprintf("Syncing %s to LBRY! (iteration %d)", lbryChannelName, loops)
-		util.SendToSlack(msg)
-		log.Debugln(msg)
+		util.SendToSlackInfo("Syncing %s to LBRY! (iteration %d)", lbryChannelName, loops)
 
 		s := sync.Sync{
 			YoutubeAPIKey:           ytAPIKey,
@@ -176,17 +169,15 @@ func selfSync(cmd *cobra.Command, args []string) {
 		}
 
 		err = s.FullCycle()
-		util.SendToSlack("Syncing " + lbryChannelName + " reached an end.")
+		util.SendToSlackInfo("Syncing " + lbryChannelName + " reached an end.")
 		if err != nil {
-			log.Error(errors.FullTrace(err))
-			util.SendToSlack(errors.FullTrace(err))
+			util.SendToSlackError(errors.FullTrace(err))
 			//mark video as failed
 			err := setChannelSyncStatus(authToken, channelID, StatusFailed)
 			if err != nil {
 				msg := fmt.Sprintf("Failed setting failed state for channel %s: %v", lbryChannelName, err)
-				util.SendToSlack(msg)
-				util.SendToSlack("@Nikooo777 this requires manual intervention! Panicing...")
-				log.Error(msg)
+				util.SendToSlackError(msg)
+				util.SendToSlackError("@Nikooo777 this requires manual intervention! Panicing...")
 				panic(msg)
 			}
 			break
@@ -195,8 +186,8 @@ func selfSync(cmd *cobra.Command, args []string) {
 		err = setChannelSyncStatus(authToken, channelID, StatusSynced)
 		if err != nil {
 			msg := fmt.Sprintf("Failed setting synced state for channel %s: %v", lbryChannelName, err)
-			util.SendToSlack(msg)
-			util.SendToSlack("@Nikooo777 this requires manual intervention! Panicing...")
+			util.SendToSlackError(msg)
+			util.SendToSlackError("@Nikooo777 this requires manual intervention! Panicing...")
 			log.Error(msg)
 			//this error is very bad. it requires manual intervention
 			panic(msg)
@@ -204,12 +195,9 @@ func selfSync(cmd *cobra.Command, args []string) {
 		}
 
 		if limit != 0 && loops >= limit {
-			msg := fmt.Sprintf("limit of %d reached! Stopping", limit)
-			util.SendToSlack(msg)
-			log.Debugln(msg)
+			util.SendToSlackInfo("limit of %d reached! Stopping", limit)
 			break
 		}
 	}
-	util.SendToSlack("Syncing process terminated!")
-	log.Debugln("Syncing process terminated!")
+	util.SendToSlackInfo("Syncing process terminated!")
 }
