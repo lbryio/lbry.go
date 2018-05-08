@@ -21,7 +21,8 @@ import (
 const DefaultPort = 5279
 
 type Client struct {
-	conn *jsonrpc.RPCClient
+	conn    jsonrpc.RPCClient
+	address string
 }
 
 func NewClient(address string) *Client {
@@ -31,7 +32,8 @@ func NewClient(address string) *Client {
 		address = "http://localhost:" + strconv.Itoa(DefaultPort)
 	}
 
-	d.conn = jsonrpc.NewRPCClient(address)
+	d.conn = jsonrpc.NewClient(address)
+	d.address = address
 
 	return &d
 }
@@ -106,7 +108,7 @@ func debugParams(params map[string]interface{}) string {
 
 func (d *Client) callNoDecode(command string, params map[string]interface{}) (interface{}, error) {
 	log.Debugln("jsonrpc: " + command + " " + debugParams(params))
-	r, err := d.conn.CallNamed(command, params)
+	r, err := d.conn.Call(command, params)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -127,7 +129,9 @@ func (d *Client) call(response interface{}, command string, params map[string]in
 }
 
 func (d *Client) SetRPCTimeout(timeout time.Duration) {
-	d.conn.SetHTTPClient(&http.Client{Timeout: timeout})
+	d.conn = jsonrpc.NewClientWithOpts(d.address, &jsonrpc.RPCClientOpts{
+		HTTPClient: &http.Client{Timeout: timeout},
+	})
 }
 
 func (d *Client) Commands() (*CommandsResponse, error) {
@@ -203,7 +207,6 @@ func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, er
 	if err != nil {
 		return nil, err
 	}
-
 	castResponse, ok := rawResponse.([]interface{})
 	if !ok {
 		return nil, errors.Err("invalid peer_list response")
@@ -211,7 +214,7 @@ func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, er
 
 	peers := []PeerListResponsePeer{}
 	for _, peer := range castResponse {
-		t, ok := peer.([]interface{})
+		t, ok := peer.(map[string]interface{})
 		if !ok {
 			return nil, errors.Err("invalid peer_list response")
 		}
@@ -220,17 +223,17 @@ func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, er
 			return nil, errors.Err("invalid triplet in peer_list response")
 		}
 
-		ip, ok := t[0].(string)
+		ip, ok := t["host"].(string)
 		if !ok {
 			return nil, errors.Err("invalid ip in peer_list response")
 		}
-		port, ok := t[1].(json.Number)
+		port, ok := t["port"].(json.Number)
 		if !ok {
 			return nil, errors.Err("invalid port in peer_list response")
 		}
-		available, ok := t[2].(bool)
+		nodeid, ok := t["node_id"].(string)
 		if !ok {
-			return nil, errors.Err("invalid is_available in peer_list response")
+			return nil, errors.Err("invalid nodeid in peer_list response")
 		}
 
 		portNum, err := port.Int64()
@@ -241,9 +244,9 @@ func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, er
 		}
 
 		peers = append(peers, PeerListResponsePeer{
-			IP:          ip,
-			Port:        uint(portNum),
-			IsAvailable: available,
+			IP:     ip,
+			Port:   uint(portNum),
+			NodeId: nodeid,
 		})
 	}
 
@@ -267,6 +270,15 @@ func (d *Client) BlobGet(blobHash string, encoding *string, timeout *uint) (*Blo
 
 	response := new(BlobGetResponse)
 	return response, decode(rawResponse, response)
+}
+
+func (d *Client) StreamAvailability(url string, search_timeout *uint64, blob_timeout *uint64) (*StreamAvailabilityResponse, error) {
+	response := new(StreamAvailabilityResponse)
+	return response, d.call(response, "stream_availability", map[string]interface{}{
+		"uri":            url,
+		"search_timeout": search_timeout,
+		"blob_timeout":   blob_timeout,
+	})
 }
 
 func (d *Client) StreamCostEstimate(url string, size *uint64) (*StreamCostEstimateResponse, error) {

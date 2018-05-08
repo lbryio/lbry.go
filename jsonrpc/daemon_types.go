@@ -214,9 +214,9 @@ type ClaimListResponse struct {
 type ClaimShowResponse Claim
 
 type PeerListResponsePeer struct {
-	IP          string
-	Port        uint
-	IsAvailable bool
+	IP     string `json:"host"`
+	Port   uint   `json:"port"`
+	NodeId string `json:"node_id"`
 }
 type PeerListResponse []PeerListResponsePeer
 
@@ -235,6 +235,27 @@ type BlobGetResponse struct {
 }
 
 type StreamCostEstimateResponse decimal.Decimal
+
+type BlobAvailability struct {
+	IsAvailable      bool     `json:"is_available"`
+	ReachablePeers   []string `json:"reachable_peers"`
+	UnReachablePeers []string `json:"unreachable_peers"`
+}
+
+type StreamAvailabilityResponse struct {
+	IsAvailable          bool             `json:"is_available"`
+	DidDecode            bool             `json:"did_decode"`
+	DidResolve           bool             `json:"did_resolve"`
+	IsStream             bool             `json:"is_stream"`
+	NumBlobsInStream     uint64           `json:"num_blobs_in_stream"`
+	SDHash               string           `json:"sd_hash"`
+	SDBlobAvailability   BlobAvailability `json:"sd_blob_availability"`
+	HeadBlobHash         string           `json:"head_blob_hash"`
+	HeadBlobAvailability BlobAvailability `json:"head_blob_availability"`
+	UseUPNP              bool             `json:"use_upnp"`
+	UPNPRedirectIsSet    bool             `json:"upnp_redirect_is_set"`
+	Error                string           `json:"error,omitempty"`
+}
 
 type GetResponse File
 type FileListResponse []File
