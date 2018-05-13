@@ -17,7 +17,8 @@ type contactFinder struct {
 	target    Bitmap
 	node      *Node
 
-	done *stopOnce.Stopper
+	done   *stopOnce.Stopper
+	doneWG *sync.WaitGroup
 
 	findValueMutex  *sync.Mutex
 	findValueResult []Contact
@@ -48,8 +49,14 @@ func newContactFinder(node *Node, target Bitmap, findValue bool) *contactFinder 
 		shortlistMutex:      &sync.Mutex{},
 		shortlistAdded:      make(map[Bitmap]bool),
 		done:                stopOnce.New(),
+		doneWG:              &sync.WaitGroup{},
 		outstandingRequestsMutex: &sync.RWMutex{},
 	}
+}
+
+func (cf *contactFinder) Cancel() {
+	cf.done.Stop()
+	cf.doneWG.Wait()
 }
 
 func (cf *contactFinder) Find() (findNodeResponse, error) {
@@ -63,17 +70,15 @@ func (cf *contactFinder) Find() (findNodeResponse, error) {
 		return findNodeResponse{}, errors.Err("no contacts in routing table")
 	}
 
-	wg := &sync.WaitGroup{}
-
 	for i := 0; i < alpha; i++ {
-		wg.Add(1)
+		cf.doneWG.Add(1)
 		go func(i int) {
-			defer wg.Done()
+			defer cf.doneWG.Done()
 			cf.iterationWorker(i + 1)
 		}(i)
 	}
 
-	wg.Wait()
+	cf.doneWG.Wait()
 
 	// TODO: what to do if we have less than K active contacts, shortlist is empty, but we
 	// TODO: have other contacts in our routing table whom we have not contacted. prolly contact them
@@ -133,7 +138,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 
 			if res == nil {
 				// nothing to do, response timed out
-				log.Debugf("[%s] worker %d: timed out waiting for %s", cf.node.id.HexShort(), num, contact.id.HexShort())
+				log.Debugf("[%s] worker %d: search canceled or timed out waiting for %s", cf.node.id.HexShort(), num, contact.id.HexShort())
 			} else if cf.findValue && res.FindValueKey != "" {
 				log.Debugf("[%s] worker %d: got value", cf.node.id.HexShort(), num)
 				cf.findValueMutex.Lock()

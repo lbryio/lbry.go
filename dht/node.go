@@ -24,6 +24,7 @@ type packet struct {
 }
 
 // UDPConn allows using a mocked connection to test sending/receiving data
+// TODO: stop mocking this and use the real thing
 type UDPConn interface {
 	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
 	WriteToUDP([]byte, *net.UDPAddr) (int, error)
@@ -31,6 +32,8 @@ type UDPConn interface {
 	SetWriteDeadline(time.Time) error
 	Close() error
 }
+
+type RequestHandlerFunc func(addr *net.UDPAddr, request Request)
 
 type Node struct {
 	// the node's id
@@ -45,20 +48,24 @@ type Node struct {
 	transactions map[messageID]*transaction
 
 	// routing table
-	rt *routingTable
+	rt RoutingTable
 	// data store
-	store *peerStore
+	store Store
 
+	// overrides for request handlers
+	requestHandler RequestHandlerFunc
+
+	// stop the node neatly and clean up after itself
 	stop   *stopOnce.Stopper
 	stopWG *sync.WaitGroup
 }
 
 // New returns a Node pointer.
-func NewNode(id Bitmap) (*Node, error) {
-	n := &Node{
+func NewNode(id Bitmap) *Node {
+	return &Node{
 		id:    id,
 		rt:    newRoutingTable(id),
-		store: newPeerStore(),
+		store: newStore(),
 
 		txLock:       &sync.RWMutex{},
 		transactions: make(map[messageID]*transaction),
@@ -67,11 +74,9 @@ func NewNode(id Bitmap) (*Node, error) {
 		stopWG: &sync.WaitGroup{},
 		tokens: &tokenManager{},
 	}
-
-	n.tokens.Start(tokenSecretRotationInterval)
-	return n, nil
 }
 
+// Connect connects to the given connection and starts any background threads necessary
 func (n *Node) Connect(conn UDPConn) error {
 	n.conn = conn
 
@@ -88,6 +93,8 @@ func (n *Node) Connect(conn UDPConn) error {
 	//		}
 	//	}()
 	//}
+
+	n.tokens.Start(tokenSecretRotationInterval)
 
 	packets := make(chan packet)
 
@@ -139,6 +146,8 @@ func (n *Node) Connect(conn UDPConn) error {
 		}
 	}()
 
+	n.startRoutingTableGrooming()
+
 	return nil
 }
 
@@ -161,10 +170,9 @@ func (n *Node) handlePacket(pkt packet) {
 		return
 	}
 
-	// TODO: test this stuff more thoroughly
-
 	// the following is a bit of a hack, but it lets us avoid decoding every message twice
 	// it depends on the data being a dict with 0 as the first key (so it starts with "d1:0i") and the message type as the first value
+	// TODO: test this more thoroughly
 
 	switch pkt.data[5] {
 	case '0' + requestType:
@@ -210,9 +218,15 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		return
 	}
 
+	// if a handler is overridden, call it instead
+	if n.requestHandler != nil {
+		n.requestHandler(addr, request)
+		return
+	}
+
 	switch request.Method {
 	default:
-		//		n.send(addr, makeError(t, protocolError, "invalid q"))
+		//n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-request-method"})
 		log.Errorln("invalid request method")
 		return
 	case pingMethod:
@@ -263,7 +277,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 	// the routing table must only contain "good" nodes, which are nodes that reply to our requests
 	// if a node is already good (aka in the table), its fine to refresh it
 	// http://www.bittorrent.org/beps/bep_0005.html#routing-table
-	n.rt.UpdateIfExists(Contact{id: request.NodeID, ip: addr.IP, port: addr.Port})
+	n.rt.Fresh(Contact{id: request.NodeID, ip: addr.IP, port: addr.Port})
 }
 
 // handleResponse handles responses received from udp.
@@ -279,7 +293,7 @@ func (n *Node) handleResponse(addr *net.UDPAddr, response Response) {
 // handleError handles errors received from udp.
 func (n *Node) handleError(addr *net.UDPAddr, e Error) {
 	spew.Dump(e)
-	n.rt.UpdateIfExists(Contact{id: e.NodeID, ip: addr.IP, port: addr.Port})
+	n.rt.Fresh(Contact{id: e.NodeID, ip: addr.IP, port: addr.Port})
 }
 
 // send sends data to a udp address
@@ -383,8 +397,8 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 			}
 		}
 
-		// if request timed out each time
-		n.rt.Remove(tx.contact.id)
+		// notify routing table about a failure to respond
+		n.rt.Fail(tx.contact)
 	}()
 
 	return ch
@@ -401,4 +415,20 @@ func (n *Node) CountActiveTransactions() int {
 	n.txLock.Lock()
 	defer n.txLock.Unlock()
 	return len(n.transactions)
+}
+
+func (n *Node) startRoutingTableGrooming() {
+	n.stopWG.Add(1)
+	go func() {
+		defer n.stopWG.Done()
+		refreshTicker := time.NewTicker(tRefresh / 5) // how often to check for buckets that need to be refreshed
+		for {
+			select {
+			case <-refreshTicker.C:
+				RoutingTableRefresh(n, tRefresh, n.stop.Chan())
+			case <-n.stop.Chan():
+				return
+			}
+		}
+	}()
 }

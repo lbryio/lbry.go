@@ -60,6 +60,26 @@ func (b Bitmap) PrefixLen() int {
 	return numBuckets
 }
 
+// ZeroPrefix returns a copy of b with the first n bits set to 0
+// https://stackoverflow.com/a/23192263/182709
+func (b Bitmap) ZeroPrefix(n int) Bitmap {
+	var ret Bitmap
+	copy(ret[:], b[:])
+
+Outer:
+	for i := range ret {
+		for j := 0; j < 8; j++ {
+			if i*8+j < n {
+				ret[i] &= ^(1 << uint(7-j))
+			} else {
+				break Outer
+			}
+		}
+	}
+
+	return ret
+}
+
 func (b Bitmap) MarshalBencode() ([]byte, error) {
 	str := string(b[:])
 	return bencode.EncodeBytes(str)

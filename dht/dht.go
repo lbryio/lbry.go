@@ -34,6 +34,8 @@ const (
 	udpTimeout          = 5 * time.Second
 	udpMaxMessageLength = 1024 // bytes. I think our longest message is ~676 bytes, so I rounded up
 
+	maxPeerFails = 3 // after this many failures, a peer is considered bad and will be removed from the routing table
+
 	tExpire      = 24 * time.Hour   // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
 	tRefresh     = 1 * time.Hour    // the time after which an otherwise unaccessed bucket must be refreshed
 	tReplicate   = 1 * time.Hour    // the interval between Kademlia replication events, when a node is required to publish its entire database
@@ -97,15 +99,10 @@ func New(config *Config) (*DHT, error) {
 		return nil, err
 	}
 
-	node, err := NewNode(contact.id)
-	if err != nil {
-		return nil, err
-	}
-
 	d := &DHT{
 		conf:    config,
 		contact: contact,
-		node:    node,
+		node:    NewNode(contact.id),
 		stop:    stopOnce.New(),
 		stopWG:  &sync.WaitGroup{},
 		joined:  make(chan struct{}),
@@ -136,7 +133,8 @@ func (dht *DHT) join() {
 	}
 
 	// now call iterativeFind on yourself
-	_, err := dht.Get(dht.node.id)
+	nf := newContactFinder(dht.node, dht.node.id, false)
+	_, err := nf.Find()
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
@@ -227,15 +225,18 @@ func (dht *DHT) storeOnNode(hash Bitmap, node Contact) {
 	dht.stopWG.Add(1)
 	defer dht.stopWG.Done()
 
-	resCh := dht.node.SendAsync(context.Background(), node, Request{
+	ctx, cancel := context.WithCancel(context.Background())
+	resCh := dht.node.SendAsync(ctx, node, Request{
 		Method: findValueMethod,
 		Arg:    &hash,
 	})
+
 	var res *Response
 
 	select {
 	case res = <-resCh:
 	case <-dht.stop.Chan():
+		cancel()
 		return
 	}
 
@@ -243,7 +244,8 @@ func (dht *DHT) storeOnNode(hash Bitmap, node Contact) {
 		return // request timed out
 	}
 
-	dht.node.SendAsync(context.Background(), node, Request{
+	ctx, cancel = context.WithCancel(context.Background())
+	resCh = dht.node.SendAsync(ctx, node, Request{
 		Method: storeMethod,
 		StoreArgs: &storeArgs{
 			BlobHash: hash,
@@ -254,6 +256,14 @@ func (dht *DHT) storeOnNode(hash Bitmap, node Contact) {
 			},
 		},
 	})
+
+	go func() {
+		select {
+		case <-resCh:
+		case <-dht.stop.Chan():
+			cancel()
+		}
+	}()
 }
 
 func (dht *DHT) PrintState() {
