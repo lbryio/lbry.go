@@ -1,19 +1,18 @@
 package dht
 
 import (
-	"math/rand"
 	"net"
 	"sync"
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/lbryio/lbry.go/crypto"
 )
 
 // TODO: make a dht with X nodes, have them all join, then ensure that every node appears at least once in another node's routing table
 
 func TestNodeFinder_FindNodes(t *testing.T) {
-	bs, dhts := TestingCreateDHT(3)
+	bs, dhts := TestingCreateDHT(3, true, false)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -64,7 +63,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 }
 
 func TestNodeFinder_FindNodes_NoBootstrap(t *testing.T) {
-	dhts := TestingCreateDHTNoBootstrap(3, nil)
+	_, dhts := TestingCreateDHT(3, false, false)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -79,7 +78,7 @@ func TestNodeFinder_FindNodes_NoBootstrap(t *testing.T) {
 }
 
 func TestNodeFinder_FindValue(t *testing.T) {
-	bs, dhts := TestingCreateDHT(3)
+	bs, dhts := TestingCreateDHT(3, true, false)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -112,10 +111,8 @@ func TestNodeFinder_FindValue(t *testing.T) {
 }
 
 func TestDHT_LargeDHT(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	log.Println("if this takes longer than 20 seconds, its stuck. idk why it gets stuck sometimes, but its a bug.")
 	nodes := 100
-	bs, dhts := TestingCreateDHT(nodes)
+	bs, dhts := TestingCreateDHT(nodes, true, true)
 	defer func() {
 		for _, d := range dhts {
 			go d.Shutdown()
@@ -132,10 +129,9 @@ func TestDHT_LargeDHT(t *testing.T) {
 	}
 	for i := 0; i < numIDs; i++ {
 		go func(i int) {
-			r := rand.Intn(nodes)
 			wg.Add(1)
 			defer wg.Done()
-			dhts[r].Announce(ids[i])
+			dhts[int(crypto.RandInt64(int64(nodes)))].Announce(ids[i])
 		}(i)
 	}
 	wg.Wait()

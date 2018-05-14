@@ -112,7 +112,7 @@ func (n *Node) Connect(conn UDPConn) error {
 			}
 
 			n.conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // need this to periodically check shutdown chan
-			n, raddr, err := n.conn.ReadFromUDP(buf)
+			bytesRead, raddr, err := n.conn.ReadFromUDP(buf)
 			if err != nil {
 				if e, ok := err.(net.Error); !ok || !e.Timeout() {
 					log.Errorf("udp read error: %v", err)
@@ -123,10 +123,13 @@ func (n *Node) Connect(conn UDPConn) error {
 				continue
 			}
 
-			data := make([]byte, n)
-			copy(data, buf[:n]) // slices use the same underlying array, so we need a new one for each packet
+			data := make([]byte, bytesRead)
+			copy(data, buf[:bytesRead]) // slices use the same underlying array, so we need a new one for each packet
 
-			packets <- packet{data: data, raddr: raddr}
+			select { // needs select here because packet consumer can quit and the packets channel gets filled up and blocks
+			case packets <- packet{data: data, raddr: raddr}:
+			case <-n.stop.Chan():
+			}
 		}
 	}()
 

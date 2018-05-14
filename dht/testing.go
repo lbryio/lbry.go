@@ -13,21 +13,23 @@ import (
 var testingDHTIP = "127.0.0.1"
 var testingDHTFirstPort = 21000
 
-func TestingCreateDHT(numNodes int) (*BootstrapNode, []*DHT) {
-	bootstrapAddress := testingDHTIP + ":" + strconv.Itoa(testingDHTFirstPort)
-	bootstrapNode := NewBootstrapNode(RandomBitmapP(), 0, bootstrapDefaultRefreshDuration)
-	listener, err := net.ListenPacket(network, bootstrapAddress)
-	if err != nil {
-		panic(err)
+func TestingCreateDHT(numNodes int, bootstrap, concurrent bool) (*BootstrapNode, []*DHT) {
+	var bootstrapNode *BootstrapNode
+	var seeds []string
+
+	if bootstrap {
+		bootstrapAddress := testingDHTIP + ":" + strconv.Itoa(testingDHTFirstPort)
+		seeds = []string{bootstrapAddress}
+		bootstrapNode = NewBootstrapNode(RandomBitmapP(), 0, bootstrapDefaultRefreshDuration)
+		listener, err := net.ListenPacket(network, bootstrapAddress)
+		if err != nil {
+			panic(err)
+		}
+		bootstrapNode.Connect(listener.(*net.UDPConn))
 	}
-	bootstrapNode.Connect(listener.(*net.UDPConn))
 
-	return bootstrapNode, TestingCreateDHTNoBootstrap(numNodes, []string{bootstrapAddress})
-}
-
-func TestingCreateDHTNoBootstrap(numNodes int, seeds []string) []*DHT {
 	if numNodes < 1 {
-		return nil
+		return bootstrapNode, nil
 	}
 
 	firstPort := testingDHTFirstPort + 1
@@ -40,11 +42,19 @@ func TestingCreateDHTNoBootstrap(numNodes int, seeds []string) []*DHT {
 		}
 
 		go dht.Start()
-		dht.WaitUntilJoined()
+		if !concurrent {
+			dht.WaitUntilJoined()
+		}
 		dhts[i] = dht
 	}
 
-	return dhts
+	if concurrent {
+		for _, d := range dhts {
+			d.WaitUntilJoined()
+		}
+	}
+
+	return bootstrapNode, dhts
 }
 
 type timeoutErr struct {
