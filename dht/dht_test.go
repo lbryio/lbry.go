@@ -5,11 +5,7 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/lbryio/lbry.go/crypto"
 )
-
-// TODO: make a dht with X nodes, have them all join, then ensure that every node appears at least once in another node's routing table
 
 func TestNodeFinder_FindNodes(t *testing.T) {
 	bs, dhts := TestingCreateDHT(3, true, false)
@@ -122,19 +118,52 @@ func TestDHT_LargeDHT(t *testing.T) {
 	}()
 
 	wg := &sync.WaitGroup{}
-	numIDs := nodes / 2
-	ids := make([]Bitmap, numIDs)
-	for i := 0; i < numIDs; i++ {
+	ids := make([]Bitmap, nodes)
+	for i := range ids {
 		ids[i] = RandomBitmapP()
-	}
-	for i := 0; i < numIDs; i++ {
 		go func(i int) {
 			wg.Add(1)
 			defer wg.Done()
-			dhts[int(crypto.RandInt64(int64(nodes)))].Announce(ids[i])
+			dhts[i].Announce(ids[i])
 		}(i)
 	}
 	wg.Wait()
 
-	dhts[len(dhts)-1].PrintState()
+	// check that each node is in at learst 1 other routing table
+	rtCounts := make(map[Bitmap]int)
+	for _, d := range dhts {
+		for _, d2 := range dhts {
+			if d.node.id.Equals(d2.node.id) {
+				continue
+			}
+			c := d2.node.rt.GetClosest(d.node.id, 1)
+			if len(c) > 1 {
+				t.Error("rt returned more than one node when only one requested")
+			} else if len(c) == 1 && c[0].id.Equals(d.node.id) {
+				rtCounts[d.node.id]++
+			}
+		}
+	}
+
+	for k, v := range rtCounts {
+		if v == 0 {
+			t.Errorf("%s was not in any routing tables", k.HexShort())
+		}
+	}
+
+	// check that each ID is stored by at least 3 nodes
+	storeCounts := make(map[Bitmap]int)
+	for _, d := range dhts {
+		for _, id := range ids {
+			if len(d.node.store.Get(id)) > 0 {
+				storeCounts[id]++
+			}
+		}
+	}
+
+	for k, v := range storeCounts {
+		if v == 0 {
+			t.Errorf("%s was not stored by any nodes", k.HexShort())
+		}
+	}
 }
