@@ -2,6 +2,7 @@ package address
 
 import (
 	"errors"
+
 	"github.com/lbryio/lbryschema.go/address/base58"
 )
 
@@ -20,16 +21,13 @@ const lbrycrdMain = "lbrycrd_main"
 const lbrycrdTestnet = "lbrycrd_testnet"
 const lbrycrdRegtest = "lbrycrd_regtest"
 
-var addressPrefixes = map[string][2]byte{}
-
-func SetPrefixes() {
-	addressPrefixes[lbrycrdMain] = [2]byte{lbrycrdMainPubkeyPrefix, lbrycrdMainScriptPrefix}
-	addressPrefixes[lbrycrdTestnet] = [2]byte{lbrycrdTestnetPubkeyPrefix, lbrycrdTestnetScriptPrefix}
-	addressPrefixes[lbrycrdRegtest] = [2]byte{lbrycrdRegtestPubkeyPrefix, lbrycrdRegtestScriptPrefix}
+var addressPrefixes = map[string][2]byte{
+	lbrycrdMain:    [2]byte{lbrycrdMainPubkeyPrefix, lbrycrdMainScriptPrefix},
+	lbrycrdTestnet: [2]byte{lbrycrdTestnetPubkeyPrefix, lbrycrdTestnetScriptPrefix},
+	lbrycrdRegtest: [2]byte{lbrycrdRegtestPubkeyPrefix, lbrycrdRegtestScriptPrefix},
 }
 
 func PrefixIsValid(address [addressLength]byte, blockchainName string) bool {
-	SetPrefixes()
 	prefix := address[0]
 	for _, addrPrefix := range addressPrefixes[blockchainName] {
 		if addrPrefix == prefix {
