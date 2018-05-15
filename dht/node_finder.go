@@ -12,6 +12,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO: iterativeFindValue may be stopping early. if it gets a response with one peer, it should keep going because other nodes may know about more peers that have that blob
+// TODO: or, it should try a tcp handshake with peers as it finds them, to make sure they are still online and have the blob
+
 type contactFinder struct {
 	findValue bool // true if we're using findValue
 	target    Bitmap
