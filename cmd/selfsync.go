@@ -1,18 +1,18 @@
 package cmd
 
 import (
-	"github.com/lbryio/lbry.go/errors"
-	sync "github.com/lbryio/lbry.go/ytsync"
-
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 	"strings"
 
+	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/null"
 	"github.com/lbryio/lbry.go/util"
+	sync "github.com/lbryio/lbry.go/ytsync"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -28,6 +28,8 @@ func init() {
 	selfSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
 	selfSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
 	selfSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
+	selfSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
+
 	RootCmd.AddCommand(selfSyncCmd)
 }
 
@@ -103,6 +105,21 @@ func setChannelSyncStatus(authToken string, channelID string, status string) err
 }
 
 func selfSync(cmd *cobra.Command, args []string) {
+	usr, err := user.Current()
+	if err != nil {
+		util.SendToSlackError(err.Error())
+		return
+	}
+	usedPctile, err := util.GetUsedSpace(usr.HomeDir + "/.lbrynet/blobfiles/")
+	if err != nil {
+		util.SendToSlackError(err.Error())
+		return
+	}
+	if usedPctile > 0.9 && !skipSpaceCheck {
+		util.SendToSlackError("more than 90% of the space has been used. use --skip-space-check to ignore. %.1f", usedPctile*100)
+		return
+	}
+	util.SendToSlackInfo("disk usage: %.1f", usedPctile*100)
 	slackToken := os.Getenv("SLACK_TOKEN")
 	if slackToken == "" {
 		log.Error("A slack token was not present in env vars! Slack messages disabled!")
@@ -172,26 +189,32 @@ func selfSync(cmd *cobra.Command, args []string) {
 		util.SendToSlackInfo("Syncing " + lbryChannelName + " reached an end.")
 		if err != nil {
 			util.SendToSlackError(errors.FullTrace(err))
+			fatalErrors := []string{
+				"default_wallet already exists",
+				"WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR",
+			}
+			if util.InSliceContains(err.Error(), fatalErrors) {
+				util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
+				break
+			}
 			//mark video as failed
 			err := setChannelSyncStatus(authToken, channelID, StatusFailed)
 			if err != nil {
 				msg := fmt.Sprintf("Failed setting failed state for channel %s: %v", lbryChannelName, err)
 				util.SendToSlackError(msg)
-				util.SendToSlackError("@Nikooo777 this requires manual intervention! Panicing...")
-				panic(msg)
+				util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
+				break
 			}
-			break
+			continue
 		}
 		//mark video as synced
 		err = setChannelSyncStatus(authToken, channelID, StatusSynced)
 		if err != nil {
 			msg := fmt.Sprintf("Failed setting synced state for channel %s: %v", lbryChannelName, err)
 			util.SendToSlackError(msg)
-			util.SendToSlackError("@Nikooo777 this requires manual intervention! Panicing...")
-			log.Error(msg)
+			util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
 			//this error is very bad. it requires manual intervention
-			panic(msg)
-			continue
+			break
 		}
 
 		if limit != 0 && loops >= limit {

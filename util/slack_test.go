@@ -11,5 +11,5 @@ func TestSendToSlack(t *testing.T) {
 		t.Error("A slack token was not provided")
 	}
 	InitSlack(slackToken)
-	SendToSlack("This is a test :)")
+	SendToSlackInfo("This is a test :)")
 }

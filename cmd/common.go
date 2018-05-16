@@ -8,6 +8,7 @@ var (
 	takeOverExistingChannel bool
 	refill                  int
 	limit                   int
+	skipSpaceCheck          bool
 )
 
 const (
