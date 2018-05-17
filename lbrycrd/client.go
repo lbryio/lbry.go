@@ -144,6 +144,9 @@ func getLbrycrdURLFromConfFile() (string, error) {
 	}
 
 	defaultConfFile := os.Getenv("HOME") + "/.lbrycrd/lbrycrd.conf"
+	if os.Getenv("REGTEST") == "true" {
+		defaultConfFile = os.Getenv("HOME") + "/.lbrycrd_regtest/lbrycrd.conf"
+	}
 	if _, err := os.Stat(defaultConfFile); os.IsNotExist(err) {
 		return "", errors.Err("default lbrycrd conf file not found")
 	}

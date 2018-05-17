@@ -193,6 +193,7 @@ func selfSync(cmd *cobra.Command, args []string) {
 			fatalErrors := []string{
 				"default_wallet already exists",
 				"WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR",
+				"Initial wallet setup failed! Manual Intervention is required.",
 			}
 			if util.InSliceContains(err.Error(), fatalErrors) {
 				util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")

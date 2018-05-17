@@ -86,7 +86,6 @@ func ytsync(cmd *cobra.Command, args []string) {
 
 	if err != nil {
 		util.SendToSlackError(errors.FullTrace(err))
-
 	}
 	util.SendToSlackInfo("Syncing " + lbryChannelName + " reached an end.")
 }
