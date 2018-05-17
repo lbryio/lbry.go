@@ -6,8 +6,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/user"
 	"strings"
+
+	"os/user"
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/null"
@@ -105,6 +106,12 @@ func setChannelSyncStatus(authToken string, channelID string, status string) err
 }
 
 func selfSync(cmd *cobra.Command, args []string) {
+	slackToken := os.Getenv("SLACK_TOKEN")
+	if slackToken == "" {
+		log.Error("A slack token was not present in env vars! Slack messages disabled!")
+	} else {
+		util.InitSlack(os.Getenv("SLACK_TOKEN"))
+	}
 	usr, err := user.Current()
 	if err != nil {
 		util.SendToSlackError(err.Error())
@@ -116,16 +123,10 @@ func selfSync(cmd *cobra.Command, args []string) {
 		return
 	}
 	if usedPctile > 0.9 && !skipSpaceCheck {
-		util.SendToSlackError("more than 90% of the space has been used. use --skip-space-check to ignore. %.1f", usedPctile*100)
+		util.SendToSlackError("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
 		return
 	}
-	util.SendToSlackInfo("disk usage: %.1f", usedPctile*100)
-	slackToken := os.Getenv("SLACK_TOKEN")
-	if slackToken == "" {
-		log.Error("A slack token was not present in env vars! Slack messages disabled!")
-	} else {
-		util.InitSlack(os.Getenv("SLACK_TOKEN"))
-	}
+	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
 
 	ytAPIKey := args[0]
 	authToken := args[1]
@@ -214,11 +215,6 @@ func selfSync(cmd *cobra.Command, args []string) {
 			util.SendToSlackError(msg)
 			util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
 			//this error is very bad. it requires manual intervention
-			break
-		}
-
-		if limit != 0 && loops >= limit {
-			util.SendToSlackInfo("limit of %d reached! Stopping", limit)
 			break
 		}
 	}

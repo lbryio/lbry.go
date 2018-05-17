@@ -27,6 +27,12 @@ func init() {
 }
 
 func ytsync(cmd *cobra.Command, args []string) {
+	slackToken := os.Getenv("SLACK_TOKEN")
+	if slackToken == "" {
+		log.Error("A slack token was not present in env vars! Slack messages disabled!")
+	} else {
+		util.InitSlack(os.Getenv("SLACK_TOKEN"))
+	}
 	usr, err := user.Current()
 	if err != nil {
 		util.SendToSlackError(err.Error())
@@ -38,16 +44,11 @@ func ytsync(cmd *cobra.Command, args []string) {
 		return
 	}
 	if usedPctile > 0.9 && !skipSpaceCheck {
-		util.SendToSlackError("more than 90% of the space has been used. use --skip-space-check to ignore. %.1f", usedPctile*100)
+		util.SendToSlackError("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
 		return
 	}
-	util.SendToSlackInfo("disk usage: %.1f", usedPctile*100)
-	slackToken := os.Getenv("SLACK_TOKEN")
-	if slackToken == "" {
-		log.Error("A slack token was not present in env vars! Slack messages disabled!")
-	} else {
-		util.InitSlack(os.Getenv("SLACK_TOKEN"))
-	}
+	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
+
 	ytAPIKey := args[0]
 	lbryChannelName := args[1]
 	if string(lbryChannelName[0]) != "@" {
