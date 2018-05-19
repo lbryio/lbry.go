@@ -36,13 +36,13 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 	foundTwo := false
 
 	for _, n := range foundNodes {
-		if n.id.Equals(bs.id) {
+		if n.ID.Equals(bs.id) {
 			foundBootstrap = true
 		}
-		if n.id.Equals(dhts[0].node.id) {
+		if n.ID.Equals(dhts[0].node.id) {
 			foundOne = true
 		}
-		if n.id.Equals(dhts[1].node.id) {
+		if n.ID.Equals(dhts[1].node.id) {
 			foundTwo = true
 		}
 	}
@@ -83,7 +83,7 @@ func TestNodeFinder_FindValue(t *testing.T) {
 	}()
 
 	blobHashToFind := RandomBitmapP()
-	nodeToFind := Contact{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4), port: 5678}
+	nodeToFind := Contact{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4), Port: 5678}
 	dhts[0].node.store.Upsert(blobHashToFind, nodeToFind)
 
 	nf := newContactFinder(dhts[2].node, blobHashToFind, true)
@@ -101,8 +101,8 @@ func TestNodeFinder_FindValue(t *testing.T) {
 		t.Fatalf("expected one node, found %d", len(foundNodes))
 	}
 
-	if !foundNodes[0].id.Equals(nodeToFind.id) {
-		t.Fatalf("found node id %s, expected %s", foundNodes[0].id.Hex(), nodeToFind.id.Hex())
+	if !foundNodes[0].ID.Equals(nodeToFind.ID) {
+		t.Fatalf("found node id %s, expected %s", foundNodes[0].ID.Hex(), nodeToFind.ID.Hex())
 	}
 }
 
@@ -139,7 +139,7 @@ func TestDHT_LargeDHT(t *testing.T) {
 			c := d2.node.rt.GetClosest(d.node.id, 1)
 			if len(c) > 1 {
 				t.Error("rt returned more than one node when only one requested")
-			} else if len(c) == 1 && c[0].id.Equals(d.node.id) {
+			} else if len(c) == 1 && c[0].ID.Equals(d.node.id) {
 				rtCounts[d.node.id]++
 			}
 		}

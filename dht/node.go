@@ -48,9 +48,9 @@ type Node struct {
 	transactions map[messageID]*transaction
 
 	// routing table
-	rt RoutingTable
+	rt *routingTable
 	// data store
-	store Store
+	store *contactStore
 
 	// overrides for request handlers
 	requestHandler RequestHandlerFunc
@@ -238,7 +238,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		// TODO: we should be sending the IP in the request, not just using the sender's IP
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		if n.tokens.Verify(request.StoreArgs.Value.Token, request.NodeID, addr) {
-			n.store.Upsert(request.StoreArgs.BlobHash, Contact{id: request.StoreArgs.NodeID, ip: addr.IP, port: request.StoreArgs.Value.Port})
+			n.store.Upsert(request.StoreArgs.BlobHash, Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: request.StoreArgs.Value.Port})
 			n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
 		} else {
 			n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"})
@@ -280,7 +280,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 	// the routing table must only contain "good" nodes, which are nodes that reply to our requests
 	// if a node is already good (aka in the table), its fine to refresh it
 	// http://www.bittorrent.org/beps/bep_0005.html#routing-table
-	n.rt.Fresh(Contact{id: request.NodeID, ip: addr.IP, port: addr.Port})
+	n.rt.Fresh(Contact{ID: request.NodeID, IP: addr.IP, Port: addr.Port})
 }
 
 // handleResponse handles responses received from udp.
@@ -290,13 +290,13 @@ func (n *Node) handleResponse(addr *net.UDPAddr, response Response) {
 		tx.res <- response
 	}
 
-	n.rt.Update(Contact{id: response.NodeID, ip: addr.IP, port: addr.Port})
+	n.rt.Update(Contact{ID: response.NodeID, IP: addr.IP, Port: addr.Port})
 }
 
 // handleError handles errors received from udp.
 func (n *Node) handleError(addr *net.UDPAddr, e Error) {
 	spew.Dump(e)
-	n.rt.Fresh(Contact{id: e.NodeID, ip: addr.IP, port: addr.Port})
+	n.rt.Fresh(Contact{ID: e.NodeID, IP: addr.IP, Port: addr.Port})
 }
 
 // send sends data to a udp address
@@ -361,7 +361,7 @@ func (n *Node) txFind(id messageID, addr *net.UDPAddr) *transaction {
 // SendAsync sends a transaction and returns a channel that will eventually contain the transaction response
 // The response channel is closed when the transaction is completed or times out.
 func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-chan *Response {
-	if contact.id.Equals(n.id) {
+	if contact.ID.Equals(n.id) {
 		log.Error("sending query to self")
 		return nil
 	}
@@ -411,6 +411,12 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 // if the transaction timed out.
 func (n *Node) Send(contact Contact, req Request) *Response {
 	return <-n.SendAsync(context.Background(), contact, req)
+}
+
+// SendCancelable sends the transaction asynchronously and allows the transaction to be canceled
+func (n *Node) SendCancelable(contact Contact, req Request) (<-chan *Response, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	return n.SendAsync(ctx, contact, req), cancel
 }
 
 // Count returns the number of transactions in the manager

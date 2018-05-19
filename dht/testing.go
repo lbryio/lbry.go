@@ -215,7 +215,7 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 				continue
 			}
 			for _, n := range nodes {
-				if n.id.RawString() == id {
+				if n.ID.RawString() == id {
 					currNode = n
 					currNodeFound = true
 					foundNodes[id] = true
@@ -231,15 +231,15 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 		ip, ok := contact[1].(string)
 		if !ok {
 			t.Error("contact IP is not a string")
-		} else if !currNode.ip.Equal(net.ParseIP(ip)) {
-			t.Errorf("contact IP mismatch. got %s; expected %s", ip, currNode.ip.String())
+		} else if !currNode.IP.Equal(net.ParseIP(ip)) {
+			t.Errorf("contact IP mismatch. got %s; expected %s", ip, currNode.IP.String())
 		}
 
 		port, ok := contact[2].(int64)
 		if !ok {
 			t.Error("contact port is not an int")
-		} else if int(port) != currNode.port {
-			t.Errorf("contact port mismatch. got %d; expected %d", port, currNode.port)
+		} else if int(port) != currNode.Port {
+			t.Errorf("contact port mismatch. got %d; expected %d", port, currNode.Port)
 		}
 	}
 }
@@ -269,29 +269,38 @@ func verifyCompactContacts(t *testing.T, contacts []interface{}, nodes []Contact
 		var currNode Contact
 		currNodeFound := false
 
-		if _, ok := foundNodes[contact.id.Hex()]; ok {
-			t.Errorf("contact %s appears multiple times", contact.id.Hex())
+		if _, ok := foundNodes[contact.ID.Hex()]; ok {
+			t.Errorf("contact %s appears multiple times", contact.ID.Hex())
 			continue
 		}
 		for _, n := range nodes {
-			if n.id.Equals(contact.id) {
+			if n.ID.Equals(contact.ID) {
 				currNode = n
 				currNodeFound = true
-				foundNodes[contact.id.Hex()] = true
+				foundNodes[contact.ID.Hex()] = true
 				break
 			}
 		}
 		if !currNodeFound {
-			t.Errorf("unexpected contact %s", contact.id.Hex())
+			t.Errorf("unexpected contact %s", contact.ID.Hex())
 			continue
 		}
 
-		if !currNode.ip.Equal(contact.ip) {
-			t.Errorf("contact IP mismatch. got %s; expected %s", contact.ip.String(), currNode.ip.String())
+		if !currNode.IP.Equal(contact.IP) {
+			t.Errorf("contact IP mismatch. got %s; expected %s", contact.IP.String(), currNode.IP.String())
 		}
 
-		if contact.port != currNode.port {
-			t.Errorf("contact port mismatch. got %d; expected %d", contact.port, currNode.port)
+		if contact.Port != currNode.Port {
+			t.Errorf("contact port mismatch. got %d; expected %d", contact.Port, currNode.Port)
 		}
 	}
+}
+
+func assertPanic(t *testing.T, text string, f func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("%s: did not panic as expected", text)
+		}
+	}()
+	f()
 }

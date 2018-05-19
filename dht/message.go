@@ -240,7 +240,7 @@ func (r Response) ArgsDebug() string {
 
 	str += "|"
 	for _, c := range r.Contacts {
-		str += c.Addr().String() + ":" + c.id.HexShort() + ","
+		str += c.Addr().String() + ":" + c.ID.HexShort() + ","
 	}
 	str = strings.TrimRight(str, ",") + "|"
 

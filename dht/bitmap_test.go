@@ -1,6 +1,7 @@
 package dht
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/lyoshenka/bencode"
@@ -48,6 +49,84 @@ func TestBitmap(t *testing.T) {
 	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	if BitmapFromHexP(id).Hex() != id {
 		t.Error(BitmapFromHexP(id).Hex())
+	}
+}
+
+func TestBitmap_GetBit(t *testing.T) {
+	tt := []struct {
+		hex      string
+		bit      int
+		expected bool
+		panic    bool
+	}{
+		//{hex: "0", bit: 385, one: true, expected: "1", panic:true}, // should error
+		//{hex: "0", bit: 384, one: true, expected: "1", panic:true},
+		{bit: 383, expected: false, panic: false},
+		{bit: 382, expected: true, panic: false},
+		{bit: 381, expected: false, panic: false},
+		{bit: 380, expected: true, panic: false},
+	}
+
+	b := BitmapFromShortHexP("a")
+
+	for _, test := range tt {
+		actual := getBit(b[:], test.bit)
+		if test.expected != actual {
+			t.Errorf("getting bit %d of %s: expected %t, got %t", test.bit, b.HexSimplified(), test.expected, actual)
+		}
+	}
+}
+
+func TestBitmap_SetBit(t *testing.T) {
+	tt := []struct {
+		hex      string
+		bit      int
+		one      bool
+		expected string
+		panic    bool
+	}{
+		{hex: "0", bit: 383, one: true, expected: "1", panic: false},
+		{hex: "0", bit: 382, one: true, expected: "2", panic: false},
+		{hex: "0", bit: 381, one: true, expected: "4", panic: false},
+		{hex: "0", bit: 385, one: true, expected: "1", panic: true},
+		{hex: "0", bit: 384, one: true, expected: "1", panic: true},
+	}
+
+	for _, test := range tt {
+		expected := BitmapFromShortHexP(test.expected)
+		actual := BitmapFromShortHexP(test.hex)
+		if test.panic {
+			assertPanic(t, fmt.Sprintf("setting bit %d to %t", test.bit, test.one), func() { setBit(actual[:], test.bit, test.one) })
+		} else {
+			setBit(actual[:], test.bit, test.one)
+			if !expected.Equals(actual) {
+				t.Errorf("setting bit %d to %t: expected %s, got %s", test.bit, test.one, test.expected, actual.HexSimplified())
+			}
+
+		}
+	}
+}
+
+func TestBitmap_FromHexShort(t *testing.T) {
+	tt := []struct {
+		short string
+		long  string
+	}{
+		{short: "", long: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{short: "0", long: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{short: "00000", long: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{short: "9473745bc", long: "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000009473745bc"},
+		{short: "09473745bc", long: "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000009473745bc"},
+		{short: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			long: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+	}
+
+	for _, test := range tt {
+		short := BitmapFromShortHexP(test.short)
+		long := BitmapFromHexP(test.long)
+		if !short.Equals(long) {
+			t.Errorf("short hex %s: expected %s, got %s", test.short, long.Hex(), short.Hex())
+		}
 	}
 }
 
@@ -120,10 +199,10 @@ func TestBitmap_PrefixLen(t *testing.T) {
 	}
 }
 
-func TestBitmap_ZeroPrefix(t *testing.T) {
-	original := BitmapFromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+func TestBitmap_Prefix(t *testing.T) {
+	allOne := BitmapFromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
-	tt := []struct {
+	zerosTT := []struct {
 		zeros    int
 		expected string
 	}{
@@ -136,18 +215,162 @@ func TestBitmap_ZeroPrefix(t *testing.T) {
 		{zeros: 400, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
 	}
 
-	for _, test := range tt {
+	for _, test := range zerosTT {
 		expected := BitmapFromHexP(test.expected)
-		actual := original.ZeroPrefix(test.zeros)
+		actual := allOne.Prefix(test.zeros, false)
 		if !actual.Equals(expected) {
 			t.Errorf("%d zeros: got %s; expected %s", test.zeros, actual.Hex(), expected.Hex())
 		}
 	}
 
 	for i := 0; i < nodeIDLength*8; i++ {
-		b := original.ZeroPrefix(i)
+		b := allOne.Prefix(i, false)
 		if b.PrefixLen() != i {
 			t.Errorf("got prefix len %d; expected %d for %s", b.PrefixLen(), i, b.Hex())
+		}
+	}
+
+	allZero := BitmapFromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+	onesTT := []struct {
+		ones     int
+		expected string
+	}{
+		{ones: -123, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{ones: 0, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{ones: 1, expected: "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{ones: 69, expected: "fffffffffffffffff8000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{ones: 383, expected: "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"},
+		{ones: 384, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+		{ones: 400, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+	}
+
+	for _, test := range onesTT {
+		expected := BitmapFromHexP(test.expected)
+		actual := allZero.Prefix(test.ones, true)
+		if !actual.Equals(expected) {
+			t.Errorf("%d ones: got %s; expected %s", test.ones, actual.Hex(), expected.Hex())
+		}
+	}
+}
+
+func TestBitmap_Suffix(t *testing.T) {
+	allOne := BitmapFromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+
+	zerosTT := []struct {
+		zeros    int
+		expected string
+	}{
+		{zeros: -123, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+		{zeros: 0, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+		{zeros: 1, expected: "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"},
+		{zeros: 69, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe00000000000000000"},
+		{zeros: 383, expected: "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{zeros: 384, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{zeros: 400, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+	}
+
+	for _, test := range zerosTT {
+		expected := BitmapFromHexP(test.expected)
+		actual := allOne.Suffix(test.zeros, false)
+		if !actual.Equals(expected) {
+			t.Errorf("%d zeros: got %s; expected %s", test.zeros, actual.Hex(), expected.Hex())
+		}
+	}
+
+	for i := 0; i < nodeIDLength*8; i++ {
+		b := allOne.Prefix(i, false)
+		if b.PrefixLen() != i {
+			t.Errorf("got prefix len %d; expected %d for %s", b.PrefixLen(), i, b.Hex())
+		}
+	}
+
+	allZero := BitmapFromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+	onesTT := []struct {
+		ones     int
+		expected string
+	}{
+		{ones: -123, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{ones: 0, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+		{ones: 1, expected: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"},
+		{ones: 69, expected: "0000000000000000000000000000000000000000000000000000000000000000000000000000001fffffffffffffffff"},
+		{ones: 383, expected: "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+		{ones: 384, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+		{ones: 400, expected: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+	}
+
+	for _, test := range onesTT {
+		expected := BitmapFromHexP(test.expected)
+		actual := allZero.Suffix(test.ones, true)
+		if !actual.Equals(expected) {
+			t.Errorf("%d ones: got %s; expected %s", test.ones, actual.Hex(), expected.Hex())
+		}
+	}
+}
+
+func TestBitmap_Add(t *testing.T) {
+	tt := []struct {
+		a, b, sum string
+		panic     bool
+	}{
+		{"0", "0", "0", false},
+		{"0", "1", "1", false},
+		{"1", "0", "1", false},
+		{"1", "1", "2", false},
+		{"8", "4", "c", false},
+		{"1000", "0010", "1010", false},
+		{"1111", "1111", "2222", false},
+		{"ffff", "1", "10000", false},
+		{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "0", "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", false},
+		{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "1", "", true},
+	}
+
+	for _, test := range tt {
+		a := BitmapFromShortHexP(test.a)
+		b := BitmapFromShortHexP(test.b)
+		expected := BitmapFromShortHexP(test.sum)
+		if test.panic {
+			assertPanic(t, fmt.Sprintf("adding %s and %s", test.a, test.b), func() { a.Add(b) })
+		} else {
+			actual := a.Add(b)
+			if !expected.Equals(actual) {
+				t.Errorf("adding %s and %s; expected %s, got %s", test.a, test.b, test.sum, actual.HexSimplified())
+			}
+		}
+	}
+}
+
+func TestBitmap_Sub(t *testing.T) {
+	tt := []struct {
+		a, b, sum string
+		panic     bool
+	}{
+		{"0", "0", "0", false},
+		{"1", "0", "1", false},
+		{"1", "1", "0", false},
+		{"8", "4", "4", false},
+		{"f", "9", "6", false},
+		{"f", "e", "1", false},
+		{"10", "f", "1", false},
+		{"2222", "1111", "1111", false},
+		{"ffff", "1", "fffe", false},
+		{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "0", "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", false},
+		{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "0", false},
+		{"0", "1", "", true},
+	}
+
+	for _, test := range tt {
+		a := BitmapFromShortHexP(test.a)
+		b := BitmapFromShortHexP(test.b)
+		expected := BitmapFromShortHexP(test.sum)
+		if test.panic {
+			assertPanic(t, fmt.Sprintf("subtracting %s - %s", test.a, test.b), func() { a.Sub(b) })
+		} else {
+			actual := a.Sub(b)
+			if !expected.Equals(actual) {
+				t.Errorf("subtracting %s - %s; expected %s, got %s", test.a, test.b, test.sum, actual.HexSimplified())
+			}
 		}
 	}
 }

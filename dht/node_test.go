@@ -198,7 +198,7 @@ func TestStore(t *testing.T) {
 	if len(items) != 1 {
 		t.Error("list created in store, but nothing in list")
 	}
-	if !items[0].id.Equals(testNodeID) {
+	if !items[0].ID.Equals(testNodeID) {
 		t.Error("wrong value stored")
 	}
 }
@@ -223,7 +223,7 @@ func TestFindNode(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
-		n := Contact{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Contact{ID: RandomBitmapP(), IP: net.ParseIP("127.0.0.1"), Port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.node.rt.Update(n)
 	}
@@ -292,7 +292,7 @@ func TestFindValueExisting(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
-		n := Contact{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Contact{ID: RandomBitmapP(), IP: net.ParseIP("127.0.0.1"), Port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.node.rt.Update(n)
 	}
@@ -302,7 +302,7 @@ func TestFindValueExisting(t *testing.T) {
 	messageID := newMessageID()
 	valueToFind := RandomBitmapP()
 
-	nodeToFind := Contact{id: RandomBitmapP(), ip: net.ParseIP("1.2.3.4"), port: 1286}
+	nodeToFind := Contact{ID: RandomBitmapP(), IP: net.ParseIP("1.2.3.4"), Port: 1286}
 	dht.node.store.Upsert(valueToFind, nodeToFind)
 	dht.node.store.Upsert(valueToFind, nodeToFind)
 	dht.node.store.Upsert(valueToFind, nodeToFind)
@@ -378,7 +378,7 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 	nodesToInsert := 3
 	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
-		n := Contact{id: RandomBitmapP(), ip: net.ParseIP("127.0.0.1"), port: 10000 + i}
+		n := Contact{ID: RandomBitmapP(), IP: net.ParseIP("127.0.0.1"), Port: 10000 + i}
 		nodes = append(nodes, n)
 		dht.node.rt.Update(n)
 	}

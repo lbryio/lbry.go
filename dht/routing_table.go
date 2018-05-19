@@ -2,10 +2,11 @@ package dht
 
 import (
 	"bytes"
-	"container/list"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,32 +17,32 @@ import (
 )
 
 type Contact struct {
-	id   Bitmap
-	ip   net.IP
-	port int
+	ID   Bitmap
+	IP   net.IP
+	Port int
 }
 
 func (c Contact) Addr() *net.UDPAddr {
-	return &net.UDPAddr{IP: c.ip, Port: c.port}
+	return &net.UDPAddr{IP: c.IP, Port: c.Port}
 }
 
 func (c Contact) String() string {
-	return c.id.HexShort() + "@" + c.Addr().String()
+	return c.ID.HexShort() + "@" + c.Addr().String()
 }
 
 func (c Contact) MarshalCompact() ([]byte, error) {
-	if c.ip.To4() == nil {
+	if c.IP.To4() == nil {
 		return nil, errors.Err("ip not set")
 	}
-	if c.port < 0 || c.port > 65535 {
+	if c.Port < 0 || c.Port > 65535 {
 		return nil, errors.Err("invalid port")
 	}
 
 	var buf bytes.Buffer
-	buf.Write(c.ip.To4())
-	buf.WriteByte(byte(c.port >> 8))
-	buf.WriteByte(byte(c.port))
-	buf.Write(c.id[:])
+	buf.Write(c.IP.To4())
+	buf.WriteByte(byte(c.Port >> 8))
+	buf.WriteByte(byte(c.Port))
+	buf.Write(c.ID[:])
 
 	if buf.Len() != compactNodeInfoLength {
 		return nil, errors.Err("i dont know how this happened")
@@ -54,14 +55,14 @@ func (c *Contact) UnmarshalCompact(b []byte) error {
 	if len(b) != compactNodeInfoLength {
 		return errors.Err("invalid compact length")
 	}
-	c.ip = net.IPv4(b[0], b[1], b[2], b[3]).To4()
-	c.port = int(uint16(b[5]) | uint16(b[4])<<8)
-	c.id = BitmapFromBytesP(b[6:])
+	c.IP = net.IPv4(b[0], b[1], b[2], b[3]).To4()
+	c.Port = int(uint16(b[5]) | uint16(b[4])<<8)
+	c.ID = BitmapFromBytesP(b[6:])
 	return nil
 }
 
 func (c Contact) MarshalBencode() ([]byte, error) {
-	return bencode.EncodeBytes([]interface{}{c.id, c.ip.String(), c.port})
+	return bencode.EncodeBytes([]interface{}{c.ID, c.IP.String(), c.Port})
 }
 
 func (c *Contact) UnmarshalBencode(b []byte) error {
@@ -75,7 +76,7 @@ func (c *Contact) UnmarshalBencode(b []byte) error {
 		return errors.Err("contact must have 3 elements; got %d", len(raw))
 	}
 
-	err = bencode.DecodeBytes(raw[0], &c.id)
+	err = bencode.DecodeBytes(raw[0], &c.ID)
 	if err != nil {
 		return err
 	}
@@ -85,12 +86,12 @@ func (c *Contact) UnmarshalBencode(b []byte) error {
 	if err != nil {
 		return err
 	}
-	c.ip = net.ParseIP(ipStr).To4()
-	if c.ip == nil {
+	c.IP = net.ParseIP(ipStr).To4()
+	if c.IP == nil {
 		return errors.Err("invalid IP")
 	}
 
-	err = bencode.DecodeBytes(raw[2], &c.port)
+	err = bencode.DecodeBytes(raw[2], &c.Port)
 	if err != nil {
 		return err
 	}
@@ -113,52 +114,38 @@ func (a byXorDistance) Less(i, j int) bool {
 
 // peer is a contact with extra freshness information
 type peer struct {
-	contact      Contact
-	lastActivity time.Time
-	numFailures  int
+	Contact      Contact
+	LastActivity time.Time
+	NumFailures  int
 	//<lastPublished>,
 	//<originallyPublished>
 	//	<originalPublisherID>
 }
 
 func (p *peer) Touch() {
-	p.lastActivity = time.Now()
-	p.numFailures = 0
+	p.LastActivity = time.Now()
+	p.NumFailures = 0
 }
 
 // ActiveSince returns whether a peer has responded in the last `d` duration
 // this is used to check if the peer is "good", meaning that we believe the peer will respond to our requests
 func (p *peer) ActiveInLast(d time.Duration) bool {
-	return time.Now().Sub(p.lastActivity) > d
+	return time.Now().Sub(p.LastActivity) > d
 }
 
 // IsBad returns whether a peer is "bad", meaning that it has failed to respond to multiple pings in a row
 func (p *peer) IsBad(maxFalures int) bool {
-	return p.numFailures >= maxFalures
+	return p.NumFailures >= maxFalures
 }
 
 // Fail marks a peer as having failed to respond. It returns whether or not the peer should be removed from the routing table
 func (p *peer) Fail() {
-	p.numFailures++
-}
-
-// toPeer converts a generic *list.Element into a *peer
-// this (along with newPeer) keeps all conversions between *list.Element and peer in one place
-func toPeer(el *list.Element) *peer {
-	return el.Value.(*peer)
-}
-
-// newPeer creates a new peer from a contact
-// this (along with toPeer) keeps all conversions between *list.Element and peer in one place
-func newPeer(c Contact) peer {
-	return peer{
-		contact: c,
-	}
+	p.NumFailures++
 }
 
 type bucket struct {
 	lock       *sync.RWMutex
-	peers      *list.List
+	peers      []peer
 	lastUpdate time.Time
 }
 
@@ -166,16 +153,16 @@ type bucket struct {
 func (b bucket) Len() int {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return b.peers.Len()
+	return len(b.peers)
 }
 
 // Contacts returns a slice of the bucket's contacts
 func (b bucket) Contacts() []Contact {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	contacts := make([]Contact, b.peers.Len())
-	for i, curr := 0, b.peers.Front(); curr != nil; i, curr = i+1, curr.Next() {
-		contacts[i] = toPeer(curr).contact
+	contacts := make([]Contact, len(b.peers))
+	for i := range b.peers {
+		contacts[i] = b.peers[i].Contact
 	}
 	return contacts
 }
@@ -185,21 +172,21 @@ func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	element := find(c.id, b.peers)
-	if element != nil {
+	peerIndex := find(c.ID, b.peers)
+	if peerIndex >= 0 {
 		b.lastUpdate = time.Now()
-		toPeer(element).Touch()
-		b.peers.MoveToBack(element)
+		b.peers[peerIndex].Touch()
+		moveToBack(b.peers, peerIndex)
 
 	} else if insertIfNew {
 		hasRoom := true
 
-		if b.peers.Len() >= bucketSize {
+		if len(b.peers) >= bucketSize {
 			hasRoom = false
-			for curr := b.peers.Front(); curr != nil; curr = curr.Next() {
-				if toPeer(curr).IsBad(maxPeerFails) {
+			for i := range b.peers {
+				if b.peers[i].IsBad(maxPeerFails) {
 					// TODO: Ping contact first. Only remove if it does not respond
-					b.peers.Remove(curr)
+					b.peers = append(b.peers[:i], b.peers[i+1:]...)
 					hasRoom = true
 					break
 				}
@@ -208,9 +195,9 @@ func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
 
 		if hasRoom {
 			b.lastUpdate = time.Now()
-			peer := newPeer(c)
+			peer := peer{Contact: c}
 			peer.Touch()
-			b.peers.PushBack(&peer)
+			b.peers = append(b.peers, peer)
 		}
 	}
 }
@@ -219,21 +206,21 @@ func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
 func (b *bucket) FailContact(id Bitmap) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	element := find(id, b.peers)
-	if element != nil {
+	i := find(id, b.peers)
+	if i >= 0 {
 		// BEP5 says not to remove the contact until the bucket is full and you try to insert
-		toPeer(element).Fail()
+		b.peers[i].Fail()
 	}
 }
 
 // find returns the contact in the bucket, or nil if the bucket does not contain the contact
-func find(id Bitmap, peers *list.List) *list.Element {
-	for curr := peers.Front(); curr != nil; curr = curr.Next() {
-		if toPeer(curr).contact.id.Equals(id) {
-			return curr
+func find(id Bitmap, peers []peer) int {
+	for i := range peers {
+		if peers[i].Contact.ID.Equals(id) {
+			return i
 		}
 	}
-	return nil
+	return -1
 }
 
 // NeedsRefresh returns true if bucket has not been updated in the last `refreshInterval`, false otherwise
@@ -243,41 +230,31 @@ func (b *bucket) NeedsRefresh(refreshInterval time.Duration) bool {
 	return time.Now().Sub(b.lastUpdate) > refreshInterval
 }
 
-type RoutingTable interface {
-	Update(Contact)
-	Fresh(Contact)
-	Fail(Contact)
-	GetClosest(Bitmap, int) []Contact
-	Count() int
-	GetIDsForRefresh(time.Duration) []Bitmap
-	BucketInfo() string // for debugging
-}
-
-type routingTableImpl struct {
+type routingTable struct {
 	id      Bitmap
-	buckets [numBuckets]bucket
+	buckets [nodeIDBits]bucket
 }
 
-func newRoutingTable(id Bitmap) *routingTableImpl {
-	var rt routingTableImpl
+func newRoutingTable(id Bitmap) *routingTable {
+	var rt routingTable
 	rt.id = id
 	for i := range rt.buckets {
 		rt.buckets[i] = bucket{
-			peers: list.New(),
+			peers: make([]peer, 0, bucketSize),
 			lock:  &sync.RWMutex{},
 		}
 	}
 	return &rt
 }
 
-func (rt *routingTableImpl) BucketInfo() string {
+func (rt *routingTable) BucketInfo() string {
 	var bucketInfo []string
 	for i, b := range rt.buckets {
 		if b.Len() > 0 {
 			contacts := b.Contacts()
 			s := make([]string, len(contacts))
 			for j, c := range contacts {
-				s[j] = c.id.HexShort()
+				s[j] = c.ID.HexShort()
 			}
 			bucketInfo = append(bucketInfo, fmt.Sprintf("Bucket %d: (%d) %s", i, len(contacts), strings.Join(s, ", ")))
 		}
@@ -289,23 +266,23 @@ func (rt *routingTableImpl) BucketInfo() string {
 }
 
 // Update inserts or refreshes a contact
-func (rt *routingTableImpl) Update(c Contact) {
-	rt.bucketFor(c.id).UpdateContact(c, true)
+func (rt *routingTable) Update(c Contact) {
+	rt.bucketFor(c.ID).UpdateContact(c, true)
 }
 
 // Fresh refreshes a contact if its already in the routing table
-func (rt *routingTableImpl) Fresh(c Contact) {
-	rt.bucketFor(c.id).UpdateContact(c, false)
+func (rt *routingTable) Fresh(c Contact) {
+	rt.bucketFor(c.ID).UpdateContact(c, false)
 }
 
 // FailContact marks a contact as having failed, and removes it if it failed too many times
-func (rt *routingTableImpl) Fail(c Contact) {
-	rt.bucketFor(c.id).FailContact(c.id)
+func (rt *routingTable) Fail(c Contact) {
+	rt.bucketFor(c.ID).FailContact(c.ID)
 }
 
 // GetClosest returns the closest `limit` contacts from the routing table
 // It marks each bucket it accesses as having been accessed
-func (rt *routingTableImpl) GetClosest(target Bitmap, limit int) []Contact {
+func (rt *routingTable) GetClosest(target Bitmap, limit int) []Contact {
 	var toSort []sortedContact
 	var bucketNum int
 
@@ -317,11 +294,11 @@ func (rt *routingTableImpl) GetClosest(target Bitmap, limit int) []Contact {
 
 	toSort = appendContacts(toSort, rt.buckets[bucketNum], target)
 
-	for i := 1; (bucketNum-i >= 0 || bucketNum+i < numBuckets) && len(toSort) < limit; i++ {
+	for i := 1; (bucketNum-i >= 0 || bucketNum+i < nodeIDBits) && len(toSort) < limit; i++ {
 		if bucketNum-i >= 0 {
 			toSort = appendContacts(toSort, rt.buckets[bucketNum-i], target)
 		}
-		if bucketNum+i < numBuckets {
+		if bucketNum+i < nodeIDBits {
 			toSort = appendContacts(toSort, rt.buckets[bucketNum+i], target)
 		}
 	}
@@ -341,13 +318,13 @@ func (rt *routingTableImpl) GetClosest(target Bitmap, limit int) []Contact {
 
 func appendContacts(contacts []sortedContact, b bucket, target Bitmap) []sortedContact {
 	for _, contact := range b.Contacts() {
-		contacts = append(contacts, sortedContact{contact, contact.id.Xor(target)})
+		contacts = append(contacts, sortedContact{contact, contact.ID.Xor(target)})
 	}
 	return contacts
 }
 
 // Count returns the number of contacts in the routing table
-func (rt *routingTableImpl) Count() int {
+func (rt *routingTable) Count() int {
 	count := 0
 	for _, bucket := range rt.buckets {
 		count = bucket.Len()
@@ -355,25 +332,97 @@ func (rt *routingTableImpl) Count() int {
 	return count
 }
 
-func (rt *routingTableImpl) bucketNumFor(target Bitmap) int {
+type Range struct {
+	start Bitmap
+	end   Bitmap
+}
+
+// BucketRanges returns a slice of ranges, where the `start` of each range is the smallest id that can
+// go in that bucket, and the `end` is the largest id
+func (rt *routingTable) BucketRanges() []Range {
+	ranges := make([]Range, len(rt.buckets))
+	for i := range rt.buckets {
+		ranges[i] = Range{
+			rt.id.Suffix(i, false).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
+			rt.id.Suffix(i, true).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
+		}
+	}
+	return ranges
+}
+
+func (rt *routingTable) bucketNumFor(target Bitmap) int {
 	if rt.id.Equals(target) {
 		panic("routing table does not have a bucket for its own id")
 	}
-	return numBuckets - 1 - target.Xor(rt.id).PrefixLen()
+	return nodeIDBits - 1 - target.Xor(rt.id).PrefixLen()
 }
 
-func (rt *routingTableImpl) bucketFor(target Bitmap) *bucket {
+func (rt *routingTable) bucketFor(target Bitmap) *bucket {
 	return &rt.buckets[rt.bucketNumFor(target)]
 }
 
-func (rt *routingTableImpl) GetIDsForRefresh(refreshInterval time.Duration) []Bitmap {
+func (rt *routingTable) GetIDsForRefresh(refreshInterval time.Duration) []Bitmap {
 	var bitmaps []Bitmap
 	for i, bucket := range rt.buckets {
 		if bucket.NeedsRefresh(refreshInterval) {
-			bitmaps = append(bitmaps, RandomBitmapP().ZeroPrefix(i))
+			bitmaps = append(bitmaps, RandomBitmapP().Prefix(i, false))
 		}
 	}
 	return bitmaps
+}
+
+const rtContactSep = "-"
+
+type rtSave struct {
+	ID       string   `json:"id"`
+	Contacts []string `json:"contacts"`
+}
+
+func (rt *routingTable) MarshalJSON() ([]byte, error) {
+	var data rtSave
+	data.ID = rt.id.Hex()
+	for _, b := range rt.buckets {
+		for _, c := range b.Contacts() {
+			data.Contacts = append(data.Contacts, strings.Join([]string{c.ID.Hex(), c.IP.String(), strconv.Itoa(c.Port)}, rtContactSep))
+		}
+	}
+	return json.Marshal(data)
+}
+
+func (rt *routingTable) UnmarshalJSON(b []byte) error {
+	var data rtSave
+	err := json.Unmarshal(b, &data)
+	if err != nil {
+		return err
+	}
+
+	rt.id, err = BitmapFromHex(data.ID)
+	if err != nil {
+		return errors.Prefix("decoding ID", err)
+	}
+
+	for _, s := range data.Contacts {
+		parts := strings.Split(s, rtContactSep)
+		if len(parts) != 3 {
+			return errors.Err("decoding contact %s: wrong number of parts", s)
+		}
+		var c Contact
+		c.ID, err = BitmapFromHex(parts[0])
+		if err != nil {
+			return errors.Err("decoding contact %s: invalid ID: %s", s, err)
+		}
+		c.IP = net.ParseIP(parts[1])
+		if c.IP == nil {
+			return errors.Err("decoding contact %s: invalid IP", s)
+		}
+		c.Port, err = strconv.Atoi(parts[2])
+		if err != nil {
+			return errors.Err("decoding contact %s: invalid port: %s", s, err)
+		}
+		rt.Update(c)
+	}
+
+	return nil
 }
 
 // RoutingTableRefresh refreshes any buckets that need to be refreshed
@@ -410,4 +459,15 @@ func RoutingTableRefresh(n *Node, refreshInterval time.Duration, cancel <-chan s
 	}()
 
 	return done
+}
+
+func moveToBack(peers []peer, index int) {
+	if index < 0 || len(peers) <= index+1 {
+		return
+	}
+	p := peers[index]
+	for i := index; i < len(peers)-1; i++ {
+		peers[i] = peers[i+1]
+	}
+	peers[len(peers)-1] = p
 }

@@ -1,7 +1,6 @@
 package dht
 
 import (
-	"context"
 	"sort"
 	"sync"
 	"time"
@@ -113,7 +112,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 		} else {
 			contact := *maybeContact
 
-			if contact.id.Equals(cf.node.id) {
+			if contact.ID.Equals(cf.node.id) {
 				continue // cannot contact self
 			}
 
@@ -124,13 +123,12 @@ func (cf *contactFinder) iterationWorker(num int) {
 				req.Method = findNodeMethod
 			}
 
-			log.Debugf("[%s] worker %d: contacting %s", cf.node.id.HexShort(), num, contact.id.HexShort())
+			log.Debugf("[%s] worker %d: contacting %s", cf.node.id.HexShort(), num, contact.ID.HexShort())
 
 			cf.incrementOutstanding()
 
 			var res *Response
-			ctx, cancel := context.WithCancel(context.Background())
-			resCh := cf.node.SendAsync(ctx, contact, req)
+			resCh, cancel := cf.node.SendCancelable(contact, req)
 			select {
 			case res = <-resCh:
 			case <-cf.done.Chan():
@@ -141,7 +139,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 
 			if res == nil {
 				// nothing to do, response timed out
-				log.Debugf("[%s] worker %d: search canceled or timed out waiting for %s", cf.node.id.HexShort(), num, contact.id.HexShort())
+				log.Debugf("[%s] worker %d: search canceled or timed out waiting for %s", cf.node.id.HexShort(), num, contact.ID.HexShort())
 			} else if cf.findValue && res.FindValueKey != "" {
 				log.Debugf("[%s] worker %d: got value", cf.node.id.HexShort(), num)
 				cf.findValueMutex.Lock()
@@ -171,9 +169,9 @@ func (cf *contactFinder) appendNewToShortlist(contacts []Contact) {
 	defer cf.shortlistMutex.Unlock()
 
 	for _, c := range contacts {
-		if _, ok := cf.shortlistAdded[c.id]; !ok {
+		if _, ok := cf.shortlistAdded[c.ID]; !ok {
 			cf.shortlist = append(cf.shortlist, c)
-			cf.shortlistAdded[c.id] = true
+			cf.shortlistAdded[c.ID] = true
 		}
 	}
 
@@ -199,7 +197,7 @@ func (cf *contactFinder) insertIntoActiveList(contact Contact) {
 
 	inserted := false
 	for i, n := range cf.activeContacts {
-		if contact.id.Xor(cf.target).Less(n.id.Xor(cf.target)) {
+		if contact.ID.Xor(cf.target).Less(n.ID.Xor(cf.target)) {
 			cf.activeContacts = append(cf.activeContacts[:i], append([]Contact{contact}, cf.activeContacts[i:]...)...)
 			inserted = true
 			break
@@ -232,7 +230,7 @@ func (cf *contactFinder) isSearchFinished() bool {
 		cf.activeContactsMutex.Lock()
 		defer cf.activeContactsMutex.Unlock()
 
-		if len(cf.activeContacts) >= bucketSize && cf.activeContacts[bucketSize-1].id.Xor(cf.target).Less(cf.shortlist[0].id.Xor(cf.target)) {
+		if len(cf.activeContacts) >= bucketSize && cf.activeContacts[bucketSize-1].ID.Xor(cf.target).Less(cf.shortlist[0].ID.Xor(cf.target)) {
 			// we have at least K active contacts, and we don't have any closer contacts to ping
 			return true
 		}
@@ -263,7 +261,7 @@ func sortInPlace(contacts []Contact, target Bitmap) {
 	toSort := make([]sortedContact, len(contacts))
 
 	for i, n := range contacts {
-		toSort[i] = sortedContact{n, n.id.Xor(target)}
+		toSort[i] = sortedContact{n, n.ID.Xor(target)}
 	}
 
 	sort.Sort(byXorDistance(toSort))

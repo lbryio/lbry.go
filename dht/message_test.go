@@ -78,8 +78,8 @@ func TestBencodeFindNodesResponse(t *testing.T) {
 		ID:     newMessageID(),
 		NodeID: RandomBitmapP(),
 		Contacts: []Contact{
-			{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
-			{id: RandomBitmapP(), ip: net.IPv4(4, 3, 2, 1).To4(), port: 8765},
+			{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
+			{ID: RandomBitmapP(), IP: net.IPv4(4, 3, 2, 1).To4(), Port: 8765},
 		},
 	}
 
@@ -104,7 +104,7 @@ func TestBencodeFindValueResponse(t *testing.T) {
 		FindValueKey: RandomBitmapP().RawString(),
 		Token:        "arst",
 		Contacts: []Contact{
-			{id: RandomBitmapP(), ip: net.IPv4(1, 2, 3, 4).To4(), port: 5678},
+			{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
 		},
 	}
 

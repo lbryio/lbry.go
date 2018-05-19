@@ -1,7 +1,6 @@
 package dht
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -25,10 +24,11 @@ const (
 
 	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
 	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
-	alpha           = 3  // this is the constant alpha in the spec
-	bucketSize      = 8  // this is the constant k in the spec
-	nodeIDLength    = 48 // bytes. this is the constant B in the spec
-	messageIDLength = 20 // bytes.
+	alpha           = 3                // this is the constant alpha in the spec
+	bucketSize      = 8                // this is the constant k in the spec
+	nodeIDLength    = 48               // bytes. this is the constant B in the spec
+	nodeIDBits      = nodeIDLength * 8 // number of bits in node ID
+	messageIDLength = 20               // bytes.
 
 	udpRetry            = 3
 	udpTimeout          = 5 * time.Second
@@ -42,7 +42,6 @@ const (
 	tRepublish   = 24 * time.Hour   // the time after which the original publisher must republish a key/value pair
 	tNodeRefresh = 15 * time.Minute // the time after which a good node becomes questionable if it has not messaged us
 
-	numBuckets            = nodeIDLength * 8
 	compactNodeInfoLength = nodeIDLength + 6 // nodeID + 4 for IP + 2 for port
 
 	tokenSecretRotationInterval = 5 * time.Minute // how often the token-generating secret is rotated
@@ -102,7 +101,7 @@ func New(config *Config) (*DHT, error) {
 	d := &DHT{
 		conf:    config,
 		contact: contact,
-		node:    NewNode(contact.id),
+		node:    NewNode(contact.ID),
 		stop:    stopOnce.New(),
 		stopWG:  &sync.WaitGroup{},
 		joined:  make(chan struct{}),
@@ -181,7 +180,7 @@ func (dht *DHT) Ping(addr string) error {
 		return err
 	}
 
-	tmpNode := Contact{id: RandomBitmapP(), ip: raddr.IP, port: raddr.Port}
+	tmpNode := Contact{ID: RandomBitmapP(), IP: raddr.IP, Port: raddr.Port}
 	res := dht.node.Send(tmpNode, Request{Method: pingMethod})
 	if res == nil {
 		return errors.Err("no response from node %s", addr)
@@ -214,19 +213,25 @@ func (dht *DHT) Announce(hash Bitmap) error {
 
 	// TODO: if this node is closer than farthest peer, store locally and pop farthest peer
 
-	for _, node := range res.Contacts {
-		go dht.storeOnNode(hash, node)
+	wg := &sync.WaitGroup{}
+	for _, c := range res.Contacts {
+		wg.Add(1)
+		go func(c Contact) {
+			dht.storeOnNode(hash, c)
+			wg.Done()
+		}(c)
 	}
+
+	wg.Wait()
 
 	return nil
 }
 
-func (dht *DHT) storeOnNode(hash Bitmap, node Contact) {
+func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
 	dht.stopWG.Add(1)
 	defer dht.stopWG.Done()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	resCh := dht.node.SendAsync(ctx, node, Request{
+	resCh, cancel := dht.node.SendCancelable(c, Request{
 		Method: findValueMethod,
 		Arg:    &hash,
 	})
@@ -244,15 +249,14 @@ func (dht *DHT) storeOnNode(hash Bitmap, node Contact) {
 		return // request timed out
 	}
 
-	ctx, cancel = context.WithCancel(context.Background())
-	resCh = dht.node.SendAsync(ctx, node, Request{
+	resCh, cancel = dht.node.SendCancelable(c, Request{
 		Method: storeMethod,
 		StoreArgs: &storeArgs{
 			BlobHash: hash,
 			Value: storeArgsValue{
 				Token:  res.Token,
-				LbryID: dht.contact.id,
-				Port:   dht.contact.port,
+				LbryID: dht.contact.ID,
+				Port:   dht.contact.Port,
 			},
 		},
 	})
@@ -276,18 +280,12 @@ func (dht *DHT) PrintState() {
 	}
 }
 
-func printNodeList(list []Contact) {
-	for i, n := range list {
-		log.Printf("%d) %s", i, n.String())
-	}
-}
-
 func getContact(nodeID, addr string) (Contact, error) {
 	var c Contact
 	if nodeID == "" {
-		c.id = RandomBitmapP()
+		c.ID = RandomBitmapP()
 	} else {
-		c.id = BitmapFromHexP(nodeID)
+		c.ID = BitmapFromHexP(nodeID)
 	}
 
 	ip, port, err := net.SplitHostPort(addr)
@@ -299,12 +297,12 @@ func getContact(nodeID, addr string) (Contact, error) {
 		return c, errors.Err("address does not contain a port")
 	}
 
-	c.ip = net.ParseIP(ip)
-	if c.ip == nil {
+	c.IP = net.ParseIP(ip)
+	if c.IP == nil {
 		return c, errors.Err("invalid ip")
 	}
 
-	c.port, err = cast.ToIntE(port)
+	c.Port, err = cast.ToIntE(port)
 	if err != nil {
 		return c, errors.Err(err)
 	}

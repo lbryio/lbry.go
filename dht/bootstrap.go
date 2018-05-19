@@ -1,7 +1,6 @@
 package dht
 
 import (
-	"context"
 	"math/rand"
 	"net"
 	"sync"
@@ -13,25 +12,6 @@ import (
 const (
 	bootstrapDefaultRefreshDuration = 15 * time.Minute
 )
-
-type nullStore struct{}
-
-func (n nullStore) Upsert(id Bitmap, c Contact) {}
-func (n nullStore) Get(id Bitmap) []Contact     { return nil }
-func (n nullStore) CountStoredHashes() int      { return 0 }
-
-type nullRoutingTable struct{}
-
-// TODO: the bootstrap logic *could* be implemented just in the routing table, without a custom request handler
-// TODO: the only tricky part is triggering the ping when Fresh is called, as the rt doesnt have access to the node
-
-func (n nullRoutingTable) Update(c Contact)                          {}             // this
-func (n nullRoutingTable) Fresh(c Contact)                           {}             // this
-func (n nullRoutingTable) Fail(c Contact)                            {}             // this
-func (n nullRoutingTable) GetClosest(id Bitmap, limit int) []Contact { return nil } // this
-func (n nullRoutingTable) Count() int                                { return 0 }
-func (n nullRoutingTable) GetIDsForRefresh(d time.Duration) []Bitmap { return nil }
-func (n nullRoutingTable) BucketInfo() string                        { return "" }
 
 type BootstrapNode struct {
 	Node
@@ -57,8 +37,6 @@ func NewBootstrapNode(id Bitmap, initialPingInterval, rePingInterval time.Durati
 		nodeKeys: make(map[Bitmap]int),
 	}
 
-	b.rt = &nullRoutingTable{}
-	b.store = &nullStore{}
 	b.requestHandler = b.handleRequest
 
 	return b
@@ -98,14 +76,14 @@ func (b *BootstrapNode) upsert(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
 
-	if i, exists := b.nodeKeys[c.id]; exists {
-		log.Debugf("[%s] bootstrap: touching contact %s", b.id.HexShort(), b.nodes[i].contact.id.HexShort())
+	if i, exists := b.nodeKeys[c.ID]; exists {
+		log.Debugf("[%s] bootstrap: touching contact %s", b.id.HexShort(), b.nodes[i].Contact.ID.HexShort())
 		b.nodes[i].Touch()
 		return
 	}
 
-	log.Debugf("[%s] bootstrap: adding new contact %s", b.id.HexShort(), c.id.HexShort())
-	b.nodeKeys[c.id] = len(b.nodes)
+	log.Debugf("[%s] bootstrap: adding new contact %s", b.id.HexShort(), c.ID.HexShort())
+	b.nodeKeys[c.ID] = len(b.nodes)
 	b.nodes = append(b.nodes, peer{c, time.Now(), 0})
 }
 
@@ -114,14 +92,14 @@ func (b *BootstrapNode) remove(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
 
-	i, exists := b.nodeKeys[c.id]
+	i, exists := b.nodeKeys[c.ID]
 	if !exists {
 		return
 	}
 
-	log.Debugf("[%s] bootstrap: removing contact %s", b.id.HexShort(), c.id.HexShort())
+	log.Debugf("[%s] bootstrap: removing contact %s", b.id.HexShort(), c.ID.HexShort())
 	b.nodes = append(b.nodes[:i], b.nodes[i+1:]...)
-	delete(b.nodeKeys, c.id)
+	delete(b.nodeKeys, c.ID)
 }
 
 // get returns up to `limit` random contacts from the list
@@ -135,7 +113,7 @@ func (b *BootstrapNode) get(limit int) []Contact {
 
 	ret := make([]Contact, limit)
 	for i, k := range randKeys(len(b.nodes))[:limit] {
-		ret[i] = b.nodes[k].contact
+		ret[i] = b.nodes[k].Contact
 	}
 
 	return ret
@@ -146,8 +124,7 @@ func (b *BootstrapNode) ping(c Contact) {
 	b.stopWG.Add(1)
 	defer b.stopWG.Done()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	resCh := b.SendAsync(ctx, c, Request{Method: pingMethod})
+	resCh, cancel := b.SendCancelable(c, Request{Method: pingMethod})
 
 	var res *Response
 
@@ -171,7 +148,7 @@ func (b *BootstrapNode) check() {
 
 	for i := range b.nodes {
 		if !b.nodes[i].ActiveInLast(b.checkInterval) {
-			go b.ping(b.nodes[i].contact)
+			go b.ping(b.nodes[i].Contact)
 		}
 	}
 }
@@ -196,7 +173,7 @@ func (b *BootstrapNode) handleRequest(addr *net.UDPAddr, request Request) {
 	go func() {
 		log.Debugf("[%s] bootstrap: queuing %s to ping", b.id.HexShort(), request.NodeID.HexShort())
 		<-time.After(b.initialPingInterval)
-		b.ping(Contact{id: request.NodeID, ip: addr.IP, port: addr.Port})
+		b.ping(Contact{ID: request.NodeID, IP: addr.IP, Port: addr.Port})
 	}()
 }
 
