@@ -20,8 +20,8 @@ import (
 
 func init() {
 	var selfSyncCmd = &cobra.Command{
-		Use:   "selfsync <youtube_api_key> <auth_token>",
-		Args:  cobra.RangeArgs(2, 2),
+		Use:   "selfsync <youtube_api_key> <auth_token> [<sync_status>]",
+		Args:  cobra.RangeArgs(2, 3),
 		Short: "Publish youtube channels into LBRY network automatically.",
 		Run:   selfSync,
 	}
@@ -30,6 +30,7 @@ func init() {
 	selfSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
 	selfSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
 	selfSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
+	selfSyncCmd.Flags().BoolVar(&skipSpaceCheck, "update", false, "Update previously synced channels instead of syncing new ones")
 
 	RootCmd.AddCommand(selfSyncCmd)
 }
@@ -48,9 +49,11 @@ type APIYoutubeChannel struct {
 }
 
 //PoC
-func fetchChannels(authToken string) ([]APIYoutubeChannel, error) {
+func fetchChannels(authToken string, status string) ([]APIYoutubeChannel, error) {
 	url := "https://api.lbry.io/yt/jobs"
-	payload := strings.NewReader("------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"auth_token\"\r\n\r\n" + authToken + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--")
+	payload := strings.NewReader("------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n" +
+		"Content-Disposition: form-data; name=\"auth_token\"\r\n\r\n" + authToken + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n" +
+		"Content-Disposition: form-data; name=\"sync_status\"\r\n\r\n" + status + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--")
 	req, _ := http.NewRequest("POST", url, payload)
 	req.Header.Add("content-type", "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW")
 	res, _ := http.DefaultClient.Do(req)
@@ -131,6 +134,15 @@ func selfSync(cmd *cobra.Command, args []string) {
 	ytAPIKey := args[0]
 	authToken := args[1]
 
+	status := StatusQueued
+	if len(args) > 2 {
+		if util.InSlice(args[2], SyncStatuses) {
+			status = args[2]
+		} else {
+			log.Errorf("status must be one of the following: %v\n", SyncStatuses)
+			return
+		}
+	}
 	if stopOnError && maxTries != defaultMaxTries {
 		log.Errorln("--stop-on-error and --max-tries are mutually exclusive")
 		return
@@ -144,7 +156,7 @@ func selfSync(cmd *cobra.Command, args []string) {
 		log.Errorln("setting --limit less than 0 (unlimited) doesn't make sense")
 		return
 	}
-	channelsToSync, err := fetchChannels(authToken)
+	channelsToSync, err := fetchChannels(authToken, status)
 	if err != nil {
 		util.SendToSlackError("failed to fetch channels: %v", err)
 		return
@@ -193,7 +205,6 @@ func selfSync(cmd *cobra.Command, args []string) {
 			fatalErrors := []string{
 				"default_wallet already exists",
 				"WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR",
-				"Initial wallet setup failed! Manual Intervention is required.",
 			}
 			if util.InSliceContains(err.Error(), fatalErrors) {
 				util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
