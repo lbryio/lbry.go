@@ -27,6 +27,10 @@ type Contact struct {
 	Port int
 }
 
+func (c Contact) Equals(other Contact) bool {
+	return c.ID == other.ID
+}
+
 func (c Contact) Addr() *net.UDPAddr {
 	return &net.UDPAddr{IP: c.IP, Port: c.Port}
 }

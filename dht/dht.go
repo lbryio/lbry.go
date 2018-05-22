@@ -219,7 +219,11 @@ func (dht *DHT) Announce(hash Bitmap) error {
 		return err
 	}
 
-	// TODO: if this node is closer than farthest peer, store locally and pop farthest peer
+	// if we found less than K contacts, or current node is closer than farthest contact
+	if len(res.Contacts) < bucketSize || dht.node.id.Xor(hash).Less(res.Contacts[bucketSize-1].ID.Xor(hash)) {
+		// pop last contact, and self-store instead
+		res.Contacts[bucketSize-1] = dht.contact
+	}
 
 	wg := &sync.WaitGroup{}
 	for _, c := range res.Contacts {
@@ -260,6 +264,12 @@ func (dht *DHT) startReannouncer() {
 func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
 	dht.stopWG.Add(1)
 	defer dht.stopWG.Done()
+
+	// self-store
+	if dht.contact.Equals(c) {
+		dht.node.Store(hash, c)
+		return
+	}
 
 	resCh, cancel := dht.node.SendCancelable(c, Request{
 		Method: findValueMethod,

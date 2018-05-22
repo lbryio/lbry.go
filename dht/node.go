@@ -238,7 +238,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		// TODO: we should be sending the IP in the request, not just using the sender's IP
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		if n.tokens.Verify(request.StoreArgs.Value.Token, request.NodeID, addr) {
-			n.store.Upsert(request.StoreArgs.BlobHash, Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: request.StoreArgs.Value.Port})
+			n.Store(request.StoreArgs.BlobHash, Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: request.StoreArgs.Value.Port})
 			n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
 		} else {
 			n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"})
@@ -440,4 +440,8 @@ func (n *Node) startRoutingTableGrooming() {
 			}
 		}
 	}()
+}
+
+func (n *Node) Store(hash Bitmap, c Contact) {
+	n.store.Upsert(hash, c)
 }
