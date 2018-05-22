@@ -36,11 +36,11 @@ const (
 
 	maxPeerFails = 3 // after this many failures, a peer is considered bad and will be removed from the routing table
 
-	tExpire      = 24 * time.Hour   // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
-	tRefresh     = 1 * time.Hour    // the time after which an otherwise unaccessed bucket must be refreshed
-	tReplicate   = 1 * time.Hour    // the interval between Kademlia replication events, when a node is required to publish its entire database
-	tRepublish   = 24 * time.Hour   // the time after which the original publisher must republish a key/value pair
-	tNodeRefresh = 15 * time.Minute // the time after which a good node becomes questionable if it has not messaged us
+	tExpire     = 60 * time.Minute // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date
+	tReannounce = 50 * time.Minute // the time after which the original publisher must republish a key/value pair
+	tRefresh    = 1 * time.Hour    // the time after which an otherwise unaccessed bucket must be refreshed
+	//tReplicate   = 1 * time.Hour    // the interval between Kademlia replication events, when a node is required to publish its entire database
+	//tNodeRefresh = 15 * time.Minute // the time after which a good node becomes questionable if it has not messaged us
 
 	compactNodeInfoLength = nodeIDLength + 6 // nodeID + 4 for IP + 2 for port
 
@@ -85,6 +85,10 @@ type DHT struct {
 	stopWG *sync.WaitGroup
 	// channel is closed when DHT joins network
 	joined chan struct{}
+	// lock for announced list
+	lock *sync.RWMutex
+	// list of bitmaps that need to be reannounced periodically
+	announced map[Bitmap]bool
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -99,12 +103,14 @@ func New(config *Config) (*DHT, error) {
 	}
 
 	d := &DHT{
-		conf:    config,
-		contact: contact,
-		node:    NewNode(contact.ID),
-		stop:    stopOnce.New(),
-		stopWG:  &sync.WaitGroup{},
-		joined:  make(chan struct{}),
+		conf:      config,
+		contact:   contact,
+		node:      NewNode(contact.ID),
+		stop:      stopOnce.New(),
+		stopWG:    &sync.WaitGroup{},
+		joined:    make(chan struct{}),
+		lock:      &sync.RWMutex{},
+		announced: make(map[Bitmap]bool),
 	}
 	return d, nil
 }
@@ -153,6 +159,8 @@ func (dht *DHT) Start() error {
 	}
 
 	dht.join()
+	dht.startReannouncer()
+
 	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)", dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
 	return nil
 }
@@ -224,7 +232,29 @@ func (dht *DHT) Announce(hash Bitmap) error {
 
 	wg.Wait()
 
+	dht.lock.Lock()
+	dht.announced[hash] = true
+	dht.lock.Unlock()
+
 	return nil
+}
+
+func (dht *DHT) startReannouncer() {
+	dht.stopWG.Add(1)
+	defer dht.stopWG.Done()
+	tick := time.NewTicker(tReannounce)
+	for {
+		select {
+		case <-dht.stop.Chan():
+			return
+		case <-tick.C:
+			dht.lock.RLock()
+			for h := range dht.announced {
+				go dht.Announce(h)
+			}
+			dht.lock.RUnlock()
+		}
+	}
 }
 
 func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {

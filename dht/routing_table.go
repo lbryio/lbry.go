@@ -16,6 +16,11 @@ import (
 	"github.com/lyoshenka/bencode"
 )
 
+// TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap
+
+// TODO: use a tree with bucket splitting instead of a fixed bucket list. include jack's optimization (see link in commit mesg)
+// https://github.com/lbryio/lbry/pull/1211/commits/341b27b6d21ac027671d42458826d02735aaae41
+
 type Contact struct {
 	ID   Bitmap
 	IP   net.IP

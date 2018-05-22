@@ -2,6 +2,8 @@ package dht
 
 import "sync"
 
+// TODO: expire stored data after tExpire time
+
 type contactStore struct {
 	// map of blob hashes to (map of node IDs to bools)
 	hashes map[Bitmap]map[Bitmap]bool
