@@ -37,7 +37,7 @@ func (tm *tokenManager) Start(interval time.Duration) {
 			select {
 			case <-tick.C:
 				tm.rotateSecret()
-			case <-tm.done.Chan():
+			case <-tm.done.Ch():
 				return
 			}
 		}

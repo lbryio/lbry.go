@@ -19,8 +19,7 @@ type contactFinder struct {
 	target    Bitmap
 	node      *Node
 
-	done   *stopOnce.Stopper
-	doneWG *sync.WaitGroup
+	stop *stopOnce.Stopper
 
 	findValueMutex  *sync.Mutex
 	findValueResult []Contact
@@ -50,15 +49,14 @@ func newContactFinder(node *Node, target Bitmap, findValue bool) *contactFinder 
 		activeContactsMutex: &sync.Mutex{},
 		shortlistMutex:      &sync.Mutex{},
 		shortlistAdded:      make(map[Bitmap]bool),
-		done:                stopOnce.New(),
-		doneWG:              &sync.WaitGroup{},
+		stop:                stopOnce.New(),
 		outstandingRequestsMutex: &sync.RWMutex{},
 	}
 }
 
 func (cf *contactFinder) Cancel() {
-	cf.done.Stop()
-	cf.doneWG.Wait()
+	cf.stop.Stop()
+	cf.stop.Wait()
 }
 
 func (cf *contactFinder) Find() (findNodeResponse, error) {
@@ -73,14 +71,14 @@ func (cf *contactFinder) Find() (findNodeResponse, error) {
 	}
 
 	for i := 0; i < alpha; i++ {
-		cf.doneWG.Add(1)
+		cf.stop.Add(1)
 		go func(i int) {
-			defer cf.doneWG.Done()
+			defer cf.stop.Done()
 			cf.iterationWorker(i + 1)
 		}(i)
 	}
 
-	cf.doneWG.Wait()
+	cf.stop.Wait()
 
 	// TODO: what to do if we have less than K active contacts, shortlist is empty, but we
 	// TODO: have other contacts in our routing table whom we have not contacted. prolly contact them
@@ -131,7 +129,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 			resCh, cancel := cf.node.SendCancelable(contact, req)
 			select {
 			case res = <-resCh:
-			case <-cf.done.Chan():
+			case <-cf.stop.Ch():
 				log.Debugf("[%s] worker %d: canceled", cf.node.id.HexShort(), num)
 				cancel()
 				return
@@ -145,7 +143,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 				cf.findValueMutex.Lock()
 				cf.findValueResult = res.Contacts
 				cf.findValueMutex.Unlock()
-				cf.done.Stop()
+				cf.stop.Stop()
 				return
 			} else {
 				log.Debugf("[%s] worker %d: got contacts", cf.node.id.HexShort(), num)
@@ -158,7 +156,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 
 		if cf.isSearchFinished() {
 			log.Debugf("[%s] worker %d: search is finished", cf.node.id.HexShort(), num)
-			cf.done.Stop()
+			cf.stop.Stop()
 			return
 		}
 	}
@@ -214,7 +212,7 @@ func (cf *contactFinder) isSearchFinished() bool {
 	}
 
 	select {
-	case <-cf.done.Chan():
+	case <-cf.stop.Ch():
 		return true
 	default:
 	}

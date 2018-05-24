@@ -10,6 +10,8 @@ import (
 	"github.com/lyoshenka/bencode"
 )
 
+// TODO: http://roaringbitmap.org/
+
 type Bitmap [nodeIDLength]byte
 
 func (b Bitmap) RawString() string {

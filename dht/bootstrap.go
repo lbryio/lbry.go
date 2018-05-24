@@ -62,7 +62,7 @@ func (b *BootstrapNode) Connect(conn UDPConn) error {
 			select {
 			case <-t.C:
 				b.check()
-			case <-b.stop.Chan():
+			case <-b.stop.Ch():
 				return
 			}
 		}
@@ -130,7 +130,7 @@ func (b *BootstrapNode) ping(c Contact) {
 
 	select {
 	case res = <-resCh:
-	case <-b.stop.Chan():
+	case <-b.stop.Ch():
 		cancel()
 		return
 	}

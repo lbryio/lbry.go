@@ -87,7 +87,7 @@ func (n *Node) Connect(conn UDPConn) error {
 	//			dht.PrintState()
 	//			select {
 	//			case <-t.C:
-	//			case <-dht.stop.Chan():
+	//			case <-dht.stop.Ch():
 	//				return
 	//			}
 	//		}
@@ -106,7 +106,7 @@ func (n *Node) Connect(conn UDPConn) error {
 
 		for {
 			select {
-			case <-n.stop.Chan():
+			case <-n.stop.Ch():
 				return
 			default:
 			}
@@ -128,7 +128,7 @@ func (n *Node) Connect(conn UDPConn) error {
 
 			select { // needs select here because packet consumer can quit and the packets channel gets filled up and blocks
 			case packets <- packet{data: data, raddr: raddr}:
-			case <-n.stop.Chan():
+			case <-n.stop.Ch():
 			}
 		}
 	}()
@@ -143,7 +143,7 @@ func (n *Node) Connect(conn UDPConn) error {
 			select {
 			case pkt = <-packets:
 				n.handlePacket(pkt)
-			case <-n.stop.Chan():
+			case <-n.stop.Ch():
 				return
 			}
 		}
@@ -434,8 +434,8 @@ func (n *Node) startRoutingTableGrooming() {
 		for {
 			select {
 			case <-refreshTicker.C:
-				RoutingTableRefresh(n, tRefresh, n.stop.Chan())
-			case <-n.stop.Chan():
+				RoutingTableRefresh(n, tRefresh, n.stop.Ch())
+			case <-n.stop.Ch():
 				return
 			}
 		}

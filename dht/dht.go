@@ -81,8 +81,6 @@ type DHT struct {
 	node *Node
 	// stopper to shut down DHT
 	stop *stopOnce.Stopper
-	// wait group for all the things that need to be stopped when DHT shuts down
-	stopWG *sync.WaitGroup
 	// channel is closed when DHT joins network
 	joined chan struct{}
 	// lock for announced list
@@ -107,7 +105,6 @@ func New(config *Config) (*DHT, error) {
 		contact:   contact,
 		node:      NewNode(contact.ID),
 		stop:      stopOnce.New(),
-		stopWG:    &sync.WaitGroup{},
 		joined:    make(chan struct{}),
 		lock:      &sync.RWMutex{},
 		announced: make(map[Bitmap]bool),
@@ -143,6 +140,9 @@ func (dht *DHT) join() {
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
+
+	// TODO: after joining, refresh all the buckets all buckets further away than our closest neighbor
+	// http://xlattice.sourceforge.net/components/protocol/kademlia/specs.html#join
 }
 
 // Start starts the dht
@@ -176,7 +176,7 @@ func (dht *DHT) WaitUntilJoined() {
 func (dht *DHT) Shutdown() {
 	log.Debugf("[%s] DHT shutting down", dht.node.id.HexShort())
 	dht.stop.Stop()
-	dht.stopWG.Wait()
+	dht.stop.Wait()
 	dht.node.Shutdown()
 	log.Debugf("[%s] DHT stopped", dht.node.id.HexShort())
 }
@@ -244,12 +244,12 @@ func (dht *DHT) Announce(hash Bitmap) error {
 }
 
 func (dht *DHT) startReannouncer() {
-	dht.stopWG.Add(1)
-	defer dht.stopWG.Done()
+	dht.stop.Add(1)
+	defer dht.stop.Done()
 	tick := time.NewTicker(tReannounce)
 	for {
 		select {
-		case <-dht.stop.Chan():
+		case <-dht.stop.Ch():
 			return
 		case <-tick.C:
 			dht.lock.RLock()
@@ -262,8 +262,8 @@ func (dht *DHT) startReannouncer() {
 }
 
 func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
-	dht.stopWG.Add(1)
-	defer dht.stopWG.Done()
+	dht.stop.Add(1)
+	defer dht.stop.Done()
 
 	// self-store
 	if dht.contact.Equals(c) {
@@ -280,7 +280,7 @@ func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
 
 	select {
 	case res = <-resCh:
-	case <-dht.stop.Chan():
+	case <-dht.stop.Ch():
 		cancel()
 		return
 	}
@@ -304,7 +304,7 @@ func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
 	go func() {
 		select {
 		case <-resCh:
-		case <-dht.stop.Chan():
+		case <-dht.stop.Ch():
 			cancel()
 		}
 	}()

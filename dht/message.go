@@ -154,8 +154,8 @@ type storeArgsValue struct {
 type storeArgs struct {
 	BlobHash  Bitmap
 	Value     storeArgsValue
-	NodeID    Bitmap
-	SelfStore bool // this is an int on the wire
+	NodeID    Bitmap // original publisher id? I think this is getting fixed in the new dht stuff
+	SelfStore bool   // this is an int on the wire
 }
 
 func (s storeArgs) MarshalBencode() ([]byte, error) {
