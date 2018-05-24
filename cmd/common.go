@@ -9,6 +9,8 @@ var (
 	refill                  int
 	limit                   int
 	skipSpaceCheck          bool
+	syncUpdate              bool
+	syncStatus              string
 )
 
 const (

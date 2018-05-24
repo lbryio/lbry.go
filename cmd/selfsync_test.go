@@ -6,7 +6,7 @@ import (
 )
 
 func TestFetchChannels(t *testing.T) {
-	res, err := fetchChannels("620280", StatusFailed)
+	res, err := fetchChannels("620280", StatusSynced)
 	if err != nil {
 		t.Error(err)
 	}
