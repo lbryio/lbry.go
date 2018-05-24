@@ -16,28 +16,26 @@ type tokenManager struct {
 	secret     []byte
 	prevSecret []byte
 	lock       *sync.RWMutex
-	wg         *sync.WaitGroup
-	done       *stopOnce.Stopper
+	stop       *stopOnce.Stopper
 }
 
 func (tm *tokenManager) Start(interval time.Duration) {
 	tm.secret = make([]byte, 64)
 	tm.prevSecret = make([]byte, 64)
 	tm.lock = &sync.RWMutex{}
-	tm.wg = &sync.WaitGroup{}
-	tm.done = stopOnce.New()
+	tm.stop = stopOnce.New()
 
 	tm.rotateSecret()
 
-	tm.wg.Add(1)
+	tm.stop.Add(1)
 	go func() {
-		defer tm.wg.Done()
+		defer tm.stop.Done()
 		tick := time.NewTicker(interval)
 		for {
 			select {
 			case <-tick.C:
 				tm.rotateSecret()
-			case <-tm.done.Ch():
+			case <-tm.stop.Ch():
 				return
 			}
 		}
@@ -45,8 +43,7 @@ func (tm *tokenManager) Start(interval time.Duration) {
 }
 
 func (tm *tokenManager) Stop() {
-	tm.done.Stop()
-	tm.wg.Wait()
+	tm.stop.StopAndWait()
 }
 
 func (tm *tokenManager) Get(nodeID Bitmap, addr *net.UDPAddr) string {

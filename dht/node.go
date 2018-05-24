@@ -40,6 +40,8 @@ type Node struct {
 	id Bitmap
 	// UDP connection for sending and receiving data
 	conn UDPConn
+	// true if we've closed the connection on purpose
+	connClosed bool
 	// token manager
 	tokens *tokenManager
 
@@ -56,8 +58,7 @@ type Node struct {
 	requestHandler RequestHandlerFunc
 
 	// stop the node neatly and clean up after itself
-	stop   *stopOnce.Stopper
-	stopWG *sync.WaitGroup
+	stop *stopOnce.Stopper
 }
 
 // New returns a Node pointer.
@@ -71,7 +72,6 @@ func NewNode(id Bitmap) *Node {
 		transactions: make(map[messageID]*transaction),
 
 		stop:   stopOnce.New(),
-		stopWG: &sync.WaitGroup{},
 		tokens: &tokenManager{},
 	}
 }
@@ -80,43 +80,31 @@ func NewNode(id Bitmap) *Node {
 func (n *Node) Connect(conn UDPConn) error {
 	n.conn = conn
 
-	//if dht.conf.PrintState > 0 {
-	//	go func() {
-	//		t := time.NewTicker(dht.conf.PrintState)
-	//		for {
-	//			dht.PrintState()
-	//			select {
-	//			case <-t.C:
-	//			case <-dht.stop.Ch():
-	//				return
-	//			}
-	//		}
-	//	}()
-	//}
-
 	n.tokens.Start(tokenSecretRotationInterval)
+
+	go func() {
+		// stop tokens and close the connection when we're shutting down
+		<-n.stop.Ch()
+		n.tokens.Stop()
+		n.connClosed = true
+		n.conn.Close()
+	}()
 
 	packets := make(chan packet)
 
 	go func() {
-		n.stopWG.Add(1)
-		defer n.stopWG.Done()
+		n.stop.Add(1)
+		defer n.stop.Done()
 
 		buf := make([]byte, udpMaxMessageLength)
 
 		for {
-			select {
-			case <-n.stop.Ch():
-				return
-			default:
-			}
-
-			n.conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // need this to periodically check shutdown chan
 			bytesRead, raddr, err := n.conn.ReadFromUDP(buf)
 			if err != nil {
-				if e, ok := err.(net.Error); !ok || !e.Timeout() {
-					log.Errorf("udp read error: %v", err)
+				if n.connClosed {
+					return
 				}
+				log.Errorf("udp read error: %v", err)
 				continue
 			} else if raddr == nil {
 				log.Errorf("udp read with no raddr")
@@ -129,13 +117,14 @@ func (n *Node) Connect(conn UDPConn) error {
 			select { // needs select here because packet consumer can quit and the packets channel gets filled up and blocks
 			case packets <- packet{data: data, raddr: raddr}:
 			case <-n.stop.Ch():
+				return
 			}
 		}
 	}()
 
 	go func() {
-		n.stopWG.Add(1)
-		defer n.stopWG.Done()
+		n.stop.Add(1)
+		defer n.stop.Done()
 
 		var pkt packet
 
@@ -157,10 +146,7 @@ func (n *Node) Connect(conn UDPConn) error {
 // Shutdown shuts down the node
 func (n *Node) Shutdown() {
 	log.Debugf("[%s] node shutting down", n.id.HexShort())
-	n.stop.Stop()
-	n.stopWG.Wait()
-	n.tokens.Stop()
-	n.conn.Close()
+	n.stop.StopAndWait()
 	log.Debugf("[%s] node stopped", n.id.HexShort())
 }
 
@@ -316,7 +302,7 @@ func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 		log.Debugf("[%s] (%d bytes) %s", n.id.HexShort(), len(encoded), spew.Sdump(data))
 	}
 
-	n.conn.SetWriteDeadline(time.Now().Add(time.Second * 15))
+	n.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 
 	_, err = n.conn.WriteToUDP(encoded, addr)
 	return errors.Err(err)
@@ -427,9 +413,9 @@ func (n *Node) CountActiveTransactions() int {
 }
 
 func (n *Node) startRoutingTableGrooming() {
-	n.stopWG.Add(1)
+	n.stop.Add(1)
 	go func() {
-		defer n.stopWG.Done()
+		defer n.stop.Done()
 		refreshTicker := time.NewTicker(tRefresh / 5) // how often to check for buckets that need to be refreshed
 		for {
 			select {

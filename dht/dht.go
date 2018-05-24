@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/errors.go"
+	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stopOnce"
 	"github.com/spf13/cast"
 

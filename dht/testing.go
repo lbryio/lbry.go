@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/errors.go"
+	"github.com/lbryio/lbry.go/errors"
 )
 
 var testingDHTIP = "127.0.0.1"
@@ -107,7 +107,10 @@ func (t testUDPConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	}
 
 	select {
-	case packet := <-t.toRead:
+	case packet, ok := <-t.toRead:
+		if !ok {
+			return 0, nil, errors.Err("conn closed")
+		}
 		n := copy(b, packet.data)
 		return n, packet.addr, nil
 	case <-timeoutCh:
@@ -130,7 +133,7 @@ func (t *testUDPConn) SetWriteDeadline(tm time.Time) error {
 }
 
 func (t *testUDPConn) Close() error {
-	t.toRead = nil
+	close(t.toRead)
 	t.writes = nil
 	return nil
 }

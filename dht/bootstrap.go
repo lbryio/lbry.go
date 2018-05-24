@@ -121,8 +121,8 @@ func (b *BootstrapNode) get(limit int) []Contact {
 
 // ping pings a node. if the node responds, it is added to the list. otherwise, it is removed
 func (b *BootstrapNode) ping(c Contact) {
-	b.stopWG.Add(1)
-	defer b.stopWG.Done()
+	b.stop.Add(1)
+	defer b.stop.Done()
 
 	resCh, cancel := b.SendCancelable(c, Request{Method: pingMethod})
 

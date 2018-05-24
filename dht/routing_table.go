@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/errors.go"
+	"github.com/lbryio/lbry.go/errors"
 
 	"github.com/lyoshenka/bencode"
 )
@@ -437,9 +437,8 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 // RoutingTableRefresh refreshes any buckets that need to be refreshed
 // It returns a channel that will be closed when the refresh is done
 func RoutingTableRefresh(n *Node, refreshInterval time.Duration, cancel <-chan struct{}) <-chan struct{} {
-	done := make(chan struct{})
-
 	var wg sync.WaitGroup
+	done := make(chan struct{})
 
 	for _, id := range n.rt.GetIDsForRefresh(refreshInterval) {
 		wg.Add(1)

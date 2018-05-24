@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/errors.go"
+	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stopOnce"
 
 	log "github.com/sirupsen/logrus"
