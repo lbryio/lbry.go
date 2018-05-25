@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"os/user"
-
 	url2 "net/url"
+	"os"
+
+	"os/user"
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/null"
@@ -31,7 +31,7 @@ func init() {
 	selfSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
 	selfSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
 	selfSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
-	selfSyncCmd.Flags().StringVar(&syncStatus, "status", StatusQueued, "Specify which queue to pull from. (Default: queued)")
+	selfSyncCmd.Flags().StringVar(&syncStatus, "status", StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
 
 	RootCmd.AddCommand(selfSyncCmd)
 }
@@ -100,6 +100,22 @@ func setChannelSyncStatus(authToken string, channelID string, status string) err
 	return errors.Err("invalid API response")
 }
 
+func spaceCheck() error {
+	usr, err := user.Current()
+	if err != nil {
+		return err
+	}
+	usedPctile, err := util.GetUsedSpace(usr.HomeDir + "/.lbrynet/blobfiles/")
+	if err != nil {
+		return err
+	}
+	if usedPctile > 0.90 && !skipSpaceCheck {
+		return errors.Err("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
+	}
+	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
+	return nil
+}
+
 func selfSync(cmd *cobra.Command, args []string) {
 	slackToken := os.Getenv("SLACK_TOKEN")
 	if slackToken == "" {
@@ -107,21 +123,6 @@ func selfSync(cmd *cobra.Command, args []string) {
 	} else {
 		util.InitSlack(os.Getenv("SLACK_TOKEN"))
 	}
-	usr, err := user.Current()
-	if err != nil {
-		util.SendToSlackError(err.Error())
-		return
-	}
-	usedPctile, err := util.GetUsedSpace(usr.HomeDir + "/.lbrynet/blobfiles/")
-	if err != nil {
-		util.SendToSlackError(err.Error())
-		return
-	}
-	if usedPctile > 0.90 && !skipSpaceCheck {
-		util.SendToSlackError("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
-		return
-	}
-	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
 
 	ytAPIKey := args[0]
 	authToken := args[1]
@@ -146,19 +147,93 @@ func selfSync(cmd *cobra.Command, args []string) {
 		log.Errorln("setting --limit less than 0 (unlimited) doesn't make sense")
 		return
 	}
-	channelsToSync, err := fetchChannels(authToken, syncStatus)
-	if err != nil {
-		util.SendToSlackError("failed to fetch channels: %v", err)
-		return
+	syncCount := 0
+	if syncStatus == StatusQueued {
+		for {
+			//before processing the queued ones first clear the pending ones (if any)
+			//TODO: extract method
+			syncingChannels, err := fetchChannels(authToken, StatusSyncing)
+			if err != nil {
+				util.SendToSlackError("failed to fetch channels: %v", err)
+				break
+			}
+			interruptedByUser, err := syncChannels(syncingChannels, authToken, ytAPIKey, &syncCount)
+			if err != nil {
+				util.SendToSlackError("%v", err)
+				break
+			}
+			if interruptedByUser {
+				break
+			}
+			util.SendToSlackInfo("Finished syncing pending channels")
+
+			//process queued channels
+			queuedChannels, err := fetchChannels(authToken, StatusQueued)
+			if err != nil {
+				util.SendToSlackError("failed to fetch channels: %v", err)
+				break
+			}
+			interruptedByUser, err = syncChannels(queuedChannels, authToken, ytAPIKey, &syncCount)
+			if err != nil {
+				util.SendToSlackError("%v", err)
+				break
+			}
+			if interruptedByUser {
+				break
+			}
+			util.SendToSlackInfo("Finished syncing queued channels")
+
+			if syncUpdate {
+				//update synced channels
+				syncedChannels, err := fetchChannels(authToken, StatusSynced)
+				if err != nil {
+					util.SendToSlackError("failed to fetch channels: %v", err)
+					break
+				}
+				interruptedByUser, err = syncChannels(syncedChannels, authToken, ytAPIKey, &syncCount)
+				if err != nil {
+					util.SendToSlackError("%v", err)
+					break
+				}
+				if interruptedByUser {
+					break
+				}
+				util.SendToSlackInfo("Finished updating channels")
+			}
+		}
+	} else {
+		// sync whatever was specified
+		channelsToSync, err := fetchChannels(authToken, syncStatus)
+		if err != nil {
+			util.SendToSlackError("failed to fetch channels: %v", err)
+			return
+		}
+		interruptedByUser, err := syncChannels(channelsToSync, authToken, ytAPIKey, &syncCount)
+		if err != nil {
+			util.SendToSlackError("%v", err)
+			return
+		}
+		if interruptedByUser {
+			return
+		}
 	}
+	util.SendToSlackInfo("Syncing process terminated!")
+}
+
+// syncChannels processes a slice of youtube channels (channelsToSync) and returns a bool that indicates whether
+// the execution finished by itself or was interrupted by the user and an error if anything happened
+func syncChannels(channelsToSync []APIYoutubeChannel, authToken string, ytAPIKey string, syncCount *int) (bool, error) {
 	host, err := os.Hostname()
 	if err != nil {
 		host = ""
 	}
-
-	for loops := 0; loops < len(channelsToSync) && (limit == 0 || loops < limit); loops++ {
+	for ; *syncCount < len(channelsToSync) && (limit == 0 || *syncCount < limit); *syncCount++ {
+		err = spaceCheck()
+		if err != nil {
+			return false, err
+		}
 		//avoid dereferencing
-		channel := channelsToSync[loops]
+		channel := channelsToSync[*syncCount]
 		channelID := channel.ChannelId
 		lbryChannelName := channel.DesiredChannelName
 		if channel.TotalVideos < 1 {
@@ -176,7 +251,7 @@ func selfSync(cmd *cobra.Command, args []string) {
 			util.SendToSlackError("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
 			continue
 		}
-		util.SendToSlackInfo("Syncing %s to LBRY! (iteration %d)", lbryChannelName, loops)
+		util.SendToSlackInfo("Syncing %s to LBRY! (iteration %d)", lbryChannelName, *syncCount)
 
 		s := sync.Sync{
 			YoutubeAPIKey:           ytAPIKey,
@@ -198,30 +273,25 @@ func selfSync(cmd *cobra.Command, args []string) {
 				"WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR",
 			}
 			if util.InSliceContains(err.Error(), fatalErrors) {
-				util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
-				break
+				return s.IsInterrupted(), errors.Prefix("@Nikooo777 this requires manual intervention! Exiting...", err)
 			}
 			//mark video as failed
 			err := setChannelSyncStatus(authToken, channelID, StatusFailed)
 			if err != nil {
-				msg := fmt.Sprintf("Failed setting failed state for channel %s: %v", lbryChannelName, err)
-				util.SendToSlackError(msg)
-				util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
-				break
+				msg := fmt.Sprintf("Failed setting failed state for channel %s. \n@Nikooo777 this requires manual intervention! Exiting...", lbryChannelName)
+				return s.IsInterrupted(), errors.Prefix(msg, err)
 			}
 			continue
 		}
 		if s.IsInterrupted() {
-			break
+			return true, nil
 		}
 		//mark video as synced
 		err = setChannelSyncStatus(authToken, channelID, StatusSynced)
 		if err != nil {
-			msg := fmt.Sprintf("Failed setting synced state for channel %s: %v", lbryChannelName, err)
-			util.SendToSlackError(msg)
-			util.SendToSlackError("@Nikooo777 this requires manual intervention! Exiting...")
-			break
+			msg := fmt.Sprintf("Failed setting failed state for channel %s. \n@Nikooo777 this requires manual intervention! Exiting...", lbryChannelName)
+			return false, errors.Prefix(msg, err)
 		}
 	}
-	util.SendToSlackInfo("Syncing process terminated!")
+	return false, nil
 }
