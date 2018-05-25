@@ -149,75 +149,46 @@ func selfSync(cmd *cobra.Command, args []string) {
 	}
 	syncCount := 0
 	if syncStatus == StatusQueued {
+	mainLoop:
 		for {
 			//before processing the queued ones first clear the pending ones (if any)
 			//TODO: extract method
-			syncingChannels, err := fetchChannels(authToken, StatusSyncing)
-			if err != nil {
-				util.SendToSlackError("failed to fetch channels: %v", err)
-				break
+			queuesToSync := []string{
+				StatusSyncing,
+				StatusQueued,
 			}
-			interruptedByUser, err := syncChannels(syncingChannels, authToken, ytAPIKey, &syncCount)
-			if err != nil {
-				util.SendToSlackError("%v", err)
-				break
-			}
-			if interruptedByUser {
-				break
-			}
-			util.SendToSlackInfo("Finished syncing pending channels")
-
-			//process queued channels
-			queuedChannels, err := fetchChannels(authToken, StatusQueued)
-			if err != nil {
-				util.SendToSlackError("failed to fetch channels: %v", err)
-				break
-			}
-			interruptedByUser, err = syncChannels(queuedChannels, authToken, ytAPIKey, &syncCount)
-			if err != nil {
-				util.SendToSlackError("%v", err)
-				break
-			}
-			if interruptedByUser {
-				break
-			}
-			util.SendToSlackInfo("Finished syncing queued channels")
-
 			if syncUpdate {
-				//update synced channels
-				syncedChannels, err := fetchChannels(authToken, StatusSynced)
+				queuesToSync = append(queuesToSync, StatusSynced)
+			}
+			for _, v := range queuesToSync {
+				interruptedByUser, err := processQueue(v, authToken, ytAPIKey, &syncCount)
 				if err != nil {
-					util.SendToSlackError("failed to fetch channels: %v", err)
-					break
-				}
-				interruptedByUser, err = syncChannels(syncedChannels, authToken, ytAPIKey, &syncCount)
-				if err != nil {
-					util.SendToSlackError("%v", err)
-					break
+					util.SendToSlackError(err.Error())
+					break mainLoop
 				}
 				if interruptedByUser {
-					break
+					break mainLoop
 				}
-				util.SendToSlackInfo("Finished updating channels")
 			}
 		}
 	} else {
 		// sync whatever was specified
-		channelsToSync, err := fetchChannels(authToken, syncStatus)
+		_, err := processQueue(syncStatus, authToken, ytAPIKey, &syncCount)
 		if err != nil {
-			util.SendToSlackError("failed to fetch channels: %v", err)
-			return
-		}
-		interruptedByUser, err := syncChannels(channelsToSync, authToken, ytAPIKey, &syncCount)
-		if err != nil {
-			util.SendToSlackError("%v", err)
-			return
-		}
-		if interruptedByUser {
+			util.SendToSlackError(err.Error())
 			return
 		}
 	}
 	util.SendToSlackInfo("Syncing process terminated!")
+}
+
+func processQueue(queueStatus string, authToken string, ytAPIKey string, syncCount *int) (bool, error) {
+	syncingChannels, err := fetchChannels(authToken, queueStatus)
+	if err != nil {
+		return false, errors.Prefix("failed to fetch channels", err)
+	}
+	util.SendToSlackInfo("Finished syncing %s channels", queueStatus)
+	return syncChannels(syncingChannels, authToken, ytAPIKey, syncCount)
 }
 
 // syncChannels processes a slice of youtube channels (channelsToSync) and returns a bool that indicates whether
