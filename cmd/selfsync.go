@@ -10,6 +10,10 @@ import (
 
 	"os/user"
 
+	"time"
+
+	"strconv"
+
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/null"
 	"github.com/lbryio/lbry.go/util"
@@ -17,6 +21,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+var APIURL string
+var APIToken string
 
 func init() {
 	var selfSyncCmd = &cobra.Command{
@@ -34,6 +41,16 @@ func init() {
 	selfSyncCmd.Flags().StringVar(&syncStatus, "status", StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
 
 	RootCmd.AddCommand(selfSyncCmd)
+	APIURL = os.Getenv("LBRY_API")
+	APIToken = os.Getenv("LBRY_API_TOKEN")
+	if APIURL == "" {
+		log.Errorln("An API URL was not defined. Please set the environment variable LBRY_API")
+		return
+	}
+	if APIToken == "" {
+		log.Errorln("An API Token was not defined. Please set the environment variable LBRY_API_TOKEN")
+		return
+	}
 }
 
 type APIJobsResponse struct {
@@ -49,11 +66,12 @@ type APIYoutubeChannel struct {
 	SyncServer         null.String `json:"sync_server"`
 }
 
-func fetchChannels(authToken string, status string) ([]APIYoutubeChannel, error) {
-	url := "http://localhost:8080/yt/jobs"
+func fetchChannels(status string) ([]APIYoutubeChannel, error) {
+	url := APIURL + "/yt/jobs"
 	res, _ := http.PostForm(url, url2.Values{
-		"auth_token":  {authToken},
+		"auth_token":  {APIToken},
 		"sync_status": {status},
+		"after":       {strconv.Itoa(int(time.Now().AddDate(0, 0, -1).Unix()))},
 	})
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
@@ -61,6 +79,9 @@ func fetchChannels(authToken string, status string) ([]APIYoutubeChannel, error)
 	err := json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
+	}
+	if response.Data == nil {
+		return nil, errors.Err(response.Error)
 	}
 	return response.Data, nil
 }
@@ -71,17 +92,17 @@ type APISyncUpdateResponse struct {
 	Data    null.String `json:"data"`
 }
 
-func setChannelSyncStatus(authToken string, channelID string, status string) error {
+func setChannelSyncStatus(channelID string, status string) error {
 	host, err := os.Hostname()
 	if err != nil {
 		return errors.Err("could not detect system hostname")
 	}
-	url := "http://localhost:8080/yt/sync_update"
+	url := APIURL + "/yt/sync_update"
 
 	res, _ := http.PostForm(url, url2.Values{
 		"channel_id":  {channelID},
 		"sync_server": {host},
-		"auth_token":  {authToken},
+		"auth_token":  {APIToken},
 		"sync_status": {status},
 	})
 	defer res.Body.Close()
@@ -123,17 +144,19 @@ func selfSync(cmd *cobra.Command, args []string) {
 	} else {
 		util.InitSlack(os.Getenv("SLACK_TOKEN"))
 	}
-
+	err := spaceCheck()
+	if err != nil {
+		util.SendToSlackError(err.Error())
+		return
+	}
 	ytAPIKey := args[0]
-	authToken := args[1]
+	//authToken := args[1]
 
 	if !util.InSlice(syncStatus, SyncStatuses) {
 		log.Errorf("status must be one of the following: %v\n", SyncStatuses)
 		return
 	}
-	if syncUpdate {
-		syncStatus = StatusSynced
-	}
+
 	if stopOnError && maxTries != defaultMaxTries {
 		log.Errorln("--stop-on-error and --max-tries are mutually exclusive")
 		return
@@ -161,19 +184,20 @@ func selfSync(cmd *cobra.Command, args []string) {
 				queuesToSync = append(queuesToSync, StatusSynced)
 			}
 			for _, v := range queuesToSync {
-				interruptedByUser, err := processQueue(v, authToken, ytAPIKey, &syncCount)
+				interruptedByUser, err := processQueue(v, ytAPIKey, &syncCount)
 				if err != nil {
 					util.SendToSlackError(err.Error())
 					break mainLoop
 				}
 				if interruptedByUser {
+					util.SendToSlackInfo("interrupted by user!")
 					break mainLoop
 				}
 			}
 		}
 	} else {
 		// sync whatever was specified
-		_, err := processQueue(syncStatus, authToken, ytAPIKey, &syncCount)
+		_, err := processQueue(syncStatus, ytAPIKey, &syncCount)
 		if err != nil {
 			util.SendToSlackError(err.Error())
 			return
@@ -182,18 +206,19 @@ func selfSync(cmd *cobra.Command, args []string) {
 	util.SendToSlackInfo("Syncing process terminated!")
 }
 
-func processQueue(queueStatus string, authToken string, ytAPIKey string, syncCount *int) (bool, error) {
-	syncingChannels, err := fetchChannels(authToken, queueStatus)
+func processQueue(queueStatus string, ytAPIKey string, syncCount *int) (bool, error) {
+	util.SendToSlackInfo("Syncing %s channels", queueStatus)
+	channelsToSync, err := fetchChannels(queueStatus)
 	if err != nil {
 		return false, errors.Prefix("failed to fetch channels", err)
 	}
 	util.SendToSlackInfo("Finished syncing %s channels", queueStatus)
-	return syncChannels(syncingChannels, authToken, ytAPIKey, syncCount)
+	return syncChannels(channelsToSync, ytAPIKey, syncCount)
 }
 
 // syncChannels processes a slice of youtube channels (channelsToSync) and returns a bool that indicates whether
 // the execution finished by itself or was interrupted by the user and an error if anything happened
-func syncChannels(channelsToSync []APIYoutubeChannel, authToken string, ytAPIKey string, syncCount *int) (bool, error) {
+func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount *int) (bool, error) {
 	host, err := os.Hostname()
 	if err != nil {
 		host = ""
@@ -217,7 +242,7 @@ func syncChannels(channelsToSync []APIYoutubeChannel, authToken string, ytAPIKey
 		}
 
 		//acquire the lock on the channel
-		err := setChannelSyncStatus(authToken, channelID, StatusSyncing)
+		err := setChannelSyncStatus(channelID, StatusSyncing)
 		if err != nil {
 			util.SendToSlackError("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
 			continue
@@ -247,7 +272,7 @@ func syncChannels(channelsToSync []APIYoutubeChannel, authToken string, ytAPIKey
 				return s.IsInterrupted(), errors.Prefix("@Nikooo777 this requires manual intervention! Exiting...", err)
 			}
 			//mark video as failed
-			err := setChannelSyncStatus(authToken, channelID, StatusFailed)
+			err := setChannelSyncStatus(channelID, StatusFailed)
 			if err != nil {
 				msg := fmt.Sprintf("Failed setting failed state for channel %s. \n@Nikooo777 this requires manual intervention! Exiting...", lbryChannelName)
 				return s.IsInterrupted(), errors.Prefix(msg, err)
@@ -258,7 +283,7 @@ func syncChannels(channelsToSync []APIYoutubeChannel, authToken string, ytAPIKey
 			return true, nil
 		}
 		//mark video as synced
-		err = setChannelSyncStatus(authToken, channelID, StatusSynced)
+		err = setChannelSyncStatus(channelID, StatusSynced)
 		if err != nil {
 			msg := fmt.Sprintf("Failed setting failed state for channel %s. \n@Nikooo777 this requires manual intervention! Exiting...", lbryChannelName)
 			return false, errors.Prefix(msg, err)

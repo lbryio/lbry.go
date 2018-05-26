@@ -5,8 +5,14 @@ import (
 	"testing"
 )
 
+/*
+func TestMain(m *testing.M) {
+	APIURL = os.Getenv("LBRY_API")
+	APIToken = os.Getenv("LBRY_API_TOKEN")
+}
+*/
 func TestFetchChannels(t *testing.T) {
-	res, err := fetchChannels("620280", StatusSynced)
+	res, err := fetchChannels(StatusQueued)
 	if err != nil {
 		t.Error(err)
 	}
@@ -20,11 +26,11 @@ func TestFetchChannels(t *testing.T) {
 // such field should be reset to null if the test must be run on a different machine (different hostname)
 // and obviously the auth token must be appropriate
 func TestSetChannelSyncStatus(t *testing.T) {
-	err := setChannelSyncStatus("620280", "UCNQfQvFMPnInwsU_iGYArJQ", StatusSyncing)
+	err := setChannelSyncStatus("UCNQfQvFMPnInwsU_iGYArJQ", StatusSyncing)
 	if err != nil {
 		t.Error(err)
 	}
-	err = setChannelSyncStatus("620280", "UCNQfQvFMPnInwsU_iGYArJQ", StatusQueued)
+	err = setChannelSyncStatus("UCNQfQvFMPnInwsU_iGYArJQ", StatusQueued)
 	if err != nil {
 		t.Error(err)
 	}
