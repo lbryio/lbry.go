@@ -13,7 +13,9 @@ func TestBootstrapPing(t *testing.T) {
 		panic(err)
 	}
 
-	b.Connect(listener.(*net.UDPConn))
+	if err := b.Connect(listener.(*net.UDPConn)); err != nil {
+		t.Error(err)
+	}
 	defer b.Shutdown()
 
 	b.Shutdown()

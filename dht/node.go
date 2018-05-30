@@ -33,8 +33,10 @@ type UDPConn interface {
 	Close() error
 }
 
+// RequestHandlerFunc is exported handler for requests.
 type RequestHandlerFunc func(addr *net.UDPAddr, request Request)
 
+// Node is a type representation of a node on the network.
 type Node struct {
 	// the node's id
 	id Bitmap
@@ -61,7 +63,7 @@ type Node struct {
 	stop *stopOnce.Stopper
 }
 
-// New returns a Node pointer.
+// NewNode returns an initialized Node's pointer.
 func NewNode(id Bitmap) *Node {
 	return &Node{
 		id:    id,
@@ -87,13 +89,14 @@ func (n *Node) Connect(conn UDPConn) error {
 		<-n.stop.Ch()
 		n.tokens.Stop()
 		n.connClosed = true
-		n.conn.Close()
+		if err := n.conn.Close(); err != nil {
+			log.Error("error closing node connection on shutdown - ", err)
+		}
 	}()
 
 	packets := make(chan packet)
-
+	n.stop.Add(1)
 	go func() {
-		n.stop.Add(1)
 		defer n.stop.Done()
 
 		buf := make([]byte, udpMaxMessageLength)
@@ -121,9 +124,8 @@ func (n *Node) Connect(conn UDPConn) error {
 			}
 		}
 	}()
-
+	n.stop.Add(1)
 	go func() {
-		n.stop.Add(1)
 		defer n.stop.Done()
 
 		var pkt packet
@@ -171,7 +173,7 @@ func (n *Node) handlePacket(pkt packet) {
 			log.Errorf("[%s] error decoding request from %s: %s: (%d bytes) %s", n.id.HexShort(), pkt.raddr.String(), err.Error(), len(pkt.data), hex.EncodeToString(pkt.data))
 			return
 		}
-		log.Debugf("[%s] query %s: received request from %s: %s(%s)", n.id.HexShort(), request.ID.HexShort(), request.NodeID.HexShort(), request.Method, request.ArgsDebug())
+		log.Debugf("[%s] query %s: received request from %s: %s(%s)", n.id.HexShort(), request.ID.HexShort(), request.NodeID.HexShort(), request.Method, request.argsDebug())
 		n.handleRequest(pkt.raddr, request)
 
 	case '0' + responseType:
@@ -181,7 +183,7 @@ func (n *Node) handlePacket(pkt packet) {
 			log.Errorf("[%s] error decoding response from %s: %s: (%d bytes) %s", n.id.HexShort(), pkt.raddr.String(), err.Error(), len(pkt.data), hex.EncodeToString(pkt.data))
 			return
 		}
-		log.Debugf("[%s] query %s: received response from %s: %s", n.id.HexShort(), response.ID.HexShort(), response.NodeID.HexShort(), response.ArgsDebug())
+		log.Debugf("[%s] query %s: received response from %s: %s", n.id.HexShort(), response.ID.HexShort(), response.NodeID.HexShort(), response.argsDebug())
 		n.handleResponse(pkt.raddr, response)
 
 	case '0' + errorType:
@@ -219,26 +221,34 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		log.Errorln("invalid request method")
 		return
 	case pingMethod:
-		n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: pingSuccessResponse})
+		if err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: pingSuccessResponse}); err != nil {
+			log.Error("error sending 'pingmethod' response message - ", err)
+		}
 	case storeMethod:
 		// TODO: we should be sending the IP in the request, not just using the sender's IP
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		if n.tokens.Verify(request.StoreArgs.Value.Token, request.NodeID, addr) {
 			n.Store(request.StoreArgs.BlobHash, Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: request.StoreArgs.Value.Port})
-			n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
+			if err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse}); err != nil {
+				log.Error("error sending 'storemethod' response message - ", err)
+			}
 		} else {
-			n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"})
+			if err := n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"}); err != nil {
+				log.Error("error sending 'storemethod'response message for invalid-token - ", err)
+			}
 		}
 	case findNodeMethod:
 		if request.Arg == nil {
 			log.Errorln("request is missing arg")
 			return
 		}
-		n.sendMessage(addr, Response{
+		if err := n.sendMessage(addr, Response{
 			ID:       request.ID,
 			NodeID:   n.id,
 			Contacts: n.rt.GetClosest(*request.Arg, bucketSize),
-		})
+		}); err != nil {
+			log.Error("error sending 'findnodemethod' response message - ", err)
+		}
 
 	case findValueMethod:
 		if request.Arg == nil {
@@ -253,13 +263,15 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		}
 
 		if contacts := n.store.Get(*request.Arg); len(contacts) > 0 {
-			res.FindValueKey = request.Arg.RawString()
+			res.FindValueKey = request.Arg.rawString()
 			res.Contacts = contacts
 		} else {
 			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize)
 		}
 
-		n.sendMessage(addr, res)
+		if err := n.sendMessage(addr, res); err != nil {
+			log.Error("error sending 'findvaluemethod' response message - ", err)
+		}
 	}
 
 	// nodes that send us requests should not be inserted, only refreshed.
@@ -294,15 +306,17 @@ func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 
 	if req, ok := data.(Request); ok {
 		log.Debugf("[%s] query %s: sending request to %s (%d bytes) %s(%s)",
-			n.id.HexShort(), req.ID.HexShort(), addr.String(), len(encoded), req.Method, req.ArgsDebug())
+			n.id.HexShort(), req.ID.HexShort(), addr.String(), len(encoded), req.Method, req.argsDebug())
 	} else if res, ok := data.(Response); ok {
 		log.Debugf("[%s] query %s: sending response to %s (%d bytes) %s",
-			n.id.HexShort(), res.ID.HexShort(), addr.String(), len(encoded), res.ArgsDebug())
+			n.id.HexShort(), res.ID.HexShort(), addr.String(), len(encoded), res.argsDebug())
 	} else {
 		log.Debugf("[%s] (%d bytes) %s", n.id.HexShort(), len(encoded), spew.Sdump(data))
 	}
 
-	n.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := n.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		log.Error("error setting write deadline - ", err)
+	}
 
 	_, err = n.conn.WriteToUDP(encoded, addr)
 	return errors.Err(err)
@@ -405,7 +419,7 @@ func (n *Node) SendCancelable(contact Contact, req Request) (<-chan *Response, c
 	return n.SendAsync(ctx, contact, req), cancel
 }
 
-// Count returns the number of transactions in the manager
+// CountActiveTransactions returns the number of transactions in the manager
 func (n *Node) CountActiveTransactions() int {
 	n.txLock.Lock()
 	defer n.txLock.Unlock()
@@ -428,6 +442,7 @@ func (n *Node) startRoutingTableGrooming() {
 	}()
 }
 
+// Store stores a node contact in the node's contact store.
 func (n *Node) Store(hash Bitmap, c Contact) {
 	n.store.Upsert(hash, c)
 }

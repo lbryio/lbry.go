@@ -101,7 +101,7 @@ func TestBencodeFindValueResponse(t *testing.T) {
 	res := Response{
 		ID:           newMessageID(),
 		NodeID:       RandomBitmapP(),
-		FindValueKey: RandomBitmapP().RawString(),
+		FindValueKey: RandomBitmapP().rawString(),
 		Token:        "arst",
 		Contacts: []Contact{
 			{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},

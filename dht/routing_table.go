@@ -14,6 +14,7 @@ import (
 	"github.com/lbryio/lbry.go/errors"
 
 	"github.com/lyoshenka/bencode"
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap
@@ -21,24 +22,29 @@ import (
 // TODO: use a tree with bucket splitting instead of a fixed bucket list. include jack's optimization (see link in commit mesg)
 // https://github.com/lbryio/lbry/pull/1211/commits/341b27b6d21ac027671d42458826d02735aaae41
 
+// Contact is a type representation of another node that a specific node is in communication with.
 type Contact struct {
 	ID   Bitmap
 	IP   net.IP
 	Port int
 }
 
+// Equals returns T/F if two contacts are the same.
 func (c Contact) Equals(other Contact) bool {
 	return c.ID == other.ID
 }
 
+// Addr returns the UPD Address of the contact.
 func (c Contact) Addr() *net.UDPAddr {
 	return &net.UDPAddr{IP: c.IP, Port: c.Port}
 }
 
+// String returns the concatenated short hex encoded string of its ID + @ + string represention of its UPD Address.
 func (c Contact) String() string {
 	return c.ID.HexShort() + "@" + c.Addr().String()
 }
 
+// MarshalCompact returns the compact byte slice representation of a contact.
 func (c Contact) MarshalCompact() ([]byte, error) {
 	if c.IP.To4() == nil {
 		return nil, errors.Err("ip not set")
@@ -60,6 +66,7 @@ func (c Contact) MarshalCompact() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// UnmarshalCompact unmarshals the compact byte slice representation of a contact.
 func (c *Contact) UnmarshalCompact(b []byte) error {
 	if len(b) != compactNodeInfoLength {
 		return errors.Err("invalid compact length")
@@ -70,10 +77,12 @@ func (c *Contact) UnmarshalCompact(b []byte) error {
 	return nil
 }
 
+// MarshalBencode returns the serialized byte slice representation of a contact.
 func (c Contact) MarshalBencode() ([]byte, error) {
 	return bencode.EncodeBytes([]interface{}{c.ID, c.IP.String(), c.Port})
 }
 
+// UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the contact.
 func (c *Contact) UnmarshalBencode(b []byte) error {
 	var raw []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &raw)
@@ -139,7 +148,7 @@ func (p *peer) Touch() {
 // ActiveSince returns whether a peer has responded in the last `d` duration
 // this is used to check if the peer is "good", meaning that we believe the peer will respond to our requests
 func (p *peer) ActiveInLast(d time.Duration) bool {
-	return time.Now().Sub(p.LastActivity) > d
+	return time.Since(p.LastActivity) > d
 }
 
 // IsBad returns whether a peer is "bad", meaning that it has failed to respond to multiple pings in a row
@@ -236,7 +245,7 @@ func find(id Bitmap, peers []peer) int {
 func (b *bucket) NeedsRefresh(refreshInterval time.Duration) bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return time.Now().Sub(b.lastUpdate) > refreshInterval
+	return time.Since(b.lastUpdate) > refreshInterval
 }
 
 type routingTable struct {
@@ -341,6 +350,7 @@ func (rt *routingTable) Count() int {
 	return count
 }
 
+// Range is a structure that holds a min and max bitmaps. The range is used in bucket sizing.
 type Range struct {
 	start Bitmap
 	end   Bitmap
@@ -457,7 +467,9 @@ func RoutingTableRefresh(n *Node, refreshInterval time.Duration, cancel <-chan s
 				}()
 			}
 
-			nf.Find()
+			if _, err := nf.Find(); err != nil {
+				log.Error("error finding contact during routing table refresh - ", err)
+			}
 		}(id)
 	}
 

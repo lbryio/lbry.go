@@ -54,13 +54,10 @@ func TestBitmap(t *testing.T) {
 
 func TestBitmap_GetBit(t *testing.T) {
 	tt := []struct {
-		hex      string
 		bit      int
 		expected bool
 		panic    bool
 	}{
-		//{hex: "0", bit: 385, one: true, expected: "1", panic:true}, // should error
-		//{hex: "0", bit: 384, one: true, expected: "1", panic:true},
 		{bit: 383, expected: false, panic: false},
 		{bit: 382, expected: true, panic: false},
 		{bit: 381, expected: false, panic: false},

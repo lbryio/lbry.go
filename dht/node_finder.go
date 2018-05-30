@@ -195,6 +195,9 @@ func (cf *contactFinder) insertIntoActiveList(contact Contact) {
 
 	inserted := false
 	for i, n := range cf.activeContacts {
+		// 5000ft: insert contact into sorted active contacts list
+		// Detail: if diff between new contact id and the target id has fewer changes than the n contact from target
+		//	it should be inserted in between the previous and current.
 		if contact.ID.Xor(cf.target).Less(n.ID.Xor(cf.target)) {
 			cf.activeContacts = append(cf.activeContacts[:i], append([]Contact{contact}, cf.activeContacts[i:]...)...)
 			inserted = true

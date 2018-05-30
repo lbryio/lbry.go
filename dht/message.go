@@ -42,16 +42,19 @@ const (
 	tokenField           = "token"
 )
 
+// Message is an extension of the bencode marshalling interface for serialized message passing.
 type Message interface {
 	bencode.Marshaler
 }
 
 type messageID [messageIDLength]byte
 
+// HexShort returns the first 8 hex characters of the hex encoded message id.
 func (m messageID) HexShort() string {
 	return hex.EncodeToString(m[:])[:8]
 }
 
+// UnmarshalBencode takes a byte slice and unmarshals the message id.
 func (m *messageID) UnmarshalBencode(encoded []byte) error {
 	var str string
 	err := bencode.DecodeBytes(encoded, &str)
@@ -62,6 +65,7 @@ func (m *messageID) UnmarshalBencode(encoded []byte) error {
 	return nil
 }
 
+// MarshallBencode returns the encoded byte slice of the message id.
 func (m messageID) MarshalBencode() ([]byte, error) {
 	str := string(m[:])
 	return bencode.EncodeBytes(str)
@@ -76,6 +80,7 @@ func newMessageID() messageID {
 	return m
 }
 
+// Request represents the structured request from one node to another.
 type Request struct {
 	ID        messageID
 	NodeID    Bitmap
@@ -84,6 +89,7 @@ type Request struct {
 	StoreArgs *storeArgs
 }
 
+// MarshalBencode returns the serialized byte slice representation of the request
 func (r Request) MarshalBencode() ([]byte, error) {
 	var args interface{}
 	if r.StoreArgs != nil {
@@ -102,6 +108,7 @@ func (r Request) MarshalBencode() ([]byte, error) {
 	})
 }
 
+// UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the request.
 func (r *Request) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID     messageID          `bencode:"1"`
@@ -136,7 +143,7 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-func (r Request) ArgsDebug() string {
+func (r Request) argsDebug() string {
 	if r.StoreArgs != nil {
 		return r.StoreArgs.BlobHash.HexShort() + ", " + r.StoreArgs.Value.LbryID.HexShort() + ":" + strconv.Itoa(r.StoreArgs.Value.Port)
 	} else if r.Arg != nil {
@@ -158,6 +165,7 @@ type storeArgs struct {
 	SelfStore bool   // this is an int on the wire
 }
 
+// MarshalBencode returns the serialized byte slice representation of the storage arguments.
 func (s storeArgs) MarshalBencode() ([]byte, error) {
 	encodedValue, err := bencode.EncodeString(s.Value)
 	if err != nil {
@@ -177,6 +185,7 @@ func (s storeArgs) MarshalBencode() ([]byte, error) {
 	})
 }
 
+// UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the store arguments.
 func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	var argsInt []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &argsInt)
@@ -219,6 +228,7 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
+// Response represents the structured response one node returns to another.
 type Response struct {
 	ID           messageID
 	NodeID       Bitmap
@@ -228,7 +238,7 @@ type Response struct {
 	Token        string
 }
 
-func (r Response) ArgsDebug() string {
+func (r Response) argsDebug() string {
 	if r.Data != "" {
 		return r.Data
 	}
@@ -251,6 +261,7 @@ func (r Response) ArgsDebug() string {
 	return str
 }
 
+// MarshalBencode returns the serialized byte slice representation of the response.
 func (r Response) MarshalBencode() ([]byte, error) {
 	data := map[string]interface{}{
 		headerTypeField:      responseType,
@@ -293,6 +304,7 @@ func (r Response) MarshalBencode() ([]byte, error) {
 	return bencode.EncodeBytes(data)
 }
 
+// UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the store arguments.
 func (r *Response) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID     messageID          `bencode:"1"`
@@ -362,6 +374,7 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
+// Error represents an error message that is returned from one node to another in communication.
 type Error struct {
 	ID            messageID
 	NodeID        Bitmap
@@ -369,6 +382,7 @@ type Error struct {
 	Response      []string
 }
 
+// MarshalBencode returns the serialized byte slice representation of an error message.
 func (e Error) MarshalBencode() ([]byte, error) {
 	return bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      errorType,
@@ -379,6 +393,7 @@ func (e Error) MarshalBencode() ([]byte, error) {
 	})
 }
 
+// UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the error message.
 func (e *Error) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID            messageID   `bencode:"1"`

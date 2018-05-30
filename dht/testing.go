@@ -13,7 +13,8 @@ import (
 var testingDHTIP = "127.0.0.1"
 var testingDHTFirstPort = 21000
 
-func TestingCreateDHT(numNodes int, bootstrap, concurrent bool) (*BootstrapNode, []*DHT) {
+// TestingCreateDHT initializes a testable DHT network with a specific number of nodes, with bootstrap and concurrent options.
+func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*BootstrapNode, []*DHT) {
 	var bootstrapNode *BootstrapNode
 	var seeds []string
 
@@ -25,7 +26,9 @@ func TestingCreateDHT(numNodes int, bootstrap, concurrent bool) (*BootstrapNode,
 		if err != nil {
 			panic(err)
 		}
-		bootstrapNode.Connect(listener.(*net.UDPConn))
+		if err := bootstrapNode.Connect(listener.(*net.UDPConn)); err != nil {
+			t.Error("error connecting bootstrap node - ", err)
+		}
 	}
 
 	if numNodes < 1 {
@@ -41,7 +44,11 @@ func TestingCreateDHT(numNodes int, bootstrap, concurrent bool) (*BootstrapNode,
 			panic(err)
 		}
 
-		go dht.Start()
+		go func() {
+			if err := dht.Start(); err != nil {
+				t.Error("error starting dht - ", err)
+			}
+		}()
 		if !concurrent {
 			dht.WaitUntilJoined()
 		}
@@ -103,7 +110,7 @@ func newTestUDPConn(addr string) *testUDPConn {
 func (t testUDPConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	var timeoutCh <-chan time.Time
 	if !t.readDeadline.IsZero() {
-		timeoutCh = time.After(t.readDeadline.Sub(time.Now()))
+		timeoutCh = time.After(time.Until(t.readDeadline))
 	}
 
 	select {
@@ -218,7 +225,7 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 				continue
 			}
 			for _, n := range nodes {
-				if n.ID.RawString() == id {
+				if n.ID.rawString() == id {
 					currNode = n
 					currNodeFound = true
 					foundNodes[id] = true

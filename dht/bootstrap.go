@@ -13,6 +13,7 @@ const (
 	bootstrapDefaultRefreshDuration = 15 * time.Minute
 )
 
+// BootstrapNode is a configured node setup for testing.
 type BootstrapNode struct {
 	Node
 
@@ -24,7 +25,7 @@ type BootstrapNode struct {
 	nodeKeys map[Bitmap]int
 }
 
-// New returns a BootstrapNode pointer.
+// NewBootstrapNode returns a BootstrapNode pointer.
 func NewBootstrapNode(id Bitmap, initialPingInterval, rePingInterval time.Duration) *BootstrapNode {
 	b := &BootstrapNode{
 		Node: *NewNode(id),
@@ -71,7 +72,7 @@ func (b *BootstrapNode) Connect(conn UDPConn) error {
 	return nil
 }
 
-// ypsert adds the contact to the list, or updates the lastPinged time
+// upsert adds the contact to the list, or updates the lastPinged time
 func (b *BootstrapNode) upsert(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
@@ -157,17 +158,21 @@ func (b *BootstrapNode) check() {
 func (b *BootstrapNode) handleRequest(addr *net.UDPAddr, request Request) {
 	switch request.Method {
 	case pingMethod:
-		b.sendMessage(addr, Response{ID: request.ID, NodeID: b.id, Data: pingSuccessResponse})
+		if err := b.sendMessage(addr, Response{ID: request.ID, NodeID: b.id, Data: pingSuccessResponse}); err != nil {
+			log.Error("error sending response message - ", err)
+		}
 	case findNodeMethod:
 		if request.Arg == nil {
 			log.Errorln("request is missing arg")
 			return
 		}
-		b.sendMessage(addr, Response{
+		if err := b.sendMessage(addr, Response{
 			ID:       request.ID,
 			NodeID:   b.id,
 			Contacts: b.get(bucketSize),
-		})
+		}); err != nil {
+			log.Error("error sending 'findnodemethod' response message - ", err)
+		}
 	}
 
 	go func() {

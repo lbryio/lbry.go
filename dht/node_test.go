@@ -30,7 +30,7 @@ func TestPing(t *testing.T) {
 	data, err := bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      requestType,
 		headerMessageIDField: messageID,
-		headerNodeIDField:    testNodeID.RawString(),
+		headerNodeIDField:    testNodeID.rawString(),
 		headerPayloadField:   "ping",
 		headerArgsField:      []string{},
 	})
@@ -86,7 +86,7 @@ func TestPing(t *testing.T) {
 			rNodeID, ok := response[headerNodeIDField].(string)
 			if !ok {
 				t.Error("node ID is not a string")
-			} else if rNodeID != dhtNodeID.RawString() {
+			} else if rNodeID != dhtNodeID.rawString() {
 				t.Error("unexpected node ID")
 			}
 		}
@@ -176,7 +176,7 @@ func TestStore(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+	verifyResponse(t, response, messageID, dhtNodeID.rawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
@@ -257,7 +257,7 @@ func TestFindNode(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+	verifyResponse(t, response, messageID, dhtNodeID.rawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
@@ -290,10 +290,8 @@ func TestFindValueExisting(t *testing.T) {
 	defer dht.Shutdown()
 
 	nodesToInsert := 3
-	var nodes []Contact
 	for i := 0; i < nodesToInsert; i++ {
 		n := Contact{ID: RandomBitmapP(), IP: net.ParseIP("127.0.0.1"), Port: 10000 + i}
-		nodes = append(nodes, n)
 		dht.node.rt.Update(n)
 	}
 
@@ -333,7 +331,7 @@ func TestFindValueExisting(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+	verifyResponse(t, response, messageID, dhtNodeID.rawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
@@ -345,7 +343,7 @@ func TestFindValueExisting(t *testing.T) {
 		t.Fatal("payload is not a dictionary")
 	}
 
-	compactContacts, ok := payload[valueToFind.RawString()]
+	compactContacts, ok := payload[valueToFind.rawString()]
 	if !ok {
 		t.Fatal("payload is missing key for search value")
 	}
@@ -412,7 +410,7 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.RawString())
+	verifyResponse(t, response, messageID, dhtNodeID.rawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
