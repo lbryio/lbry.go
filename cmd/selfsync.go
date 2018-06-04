@@ -71,7 +71,8 @@ func fetchChannels(status string) ([]APIYoutubeChannel, error) {
 	res, _ := http.PostForm(url, url2.Values{
 		"auth_token":  {APIToken},
 		"sync_status": {status},
-		"after":       {strconv.Itoa(int(time.Now().AddDate(0, 0, -1).Unix()))},
+		"after":       {strconv.Itoa(int(time.Date(2018, 5, 25, 0, 0, 0, 0, time.UTC).Unix()))},
+		"min_videos":  {strconv.Itoa(1)},
 	})
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
@@ -83,6 +84,7 @@ func fetchChannels(status string) ([]APIYoutubeChannel, error) {
 	if response.Data == nil {
 		return nil, errors.Err(response.Error)
 	}
+	log.Printf("Fetched channels: %d", len(response.Data))
 	return response.Data, nil
 }
 
@@ -212,8 +214,21 @@ func processQueue(queueStatus string, ytAPIKey string, syncCount *int) (bool, er
 	if err != nil {
 		return false, errors.Prefix("failed to fetch channels", err)
 	}
+	filteredChannelsToSync := make([]APIYoutubeChannel, len(channelsToSync))
+	host, err := os.Hostname()
+	if err != nil {
+		return false, errors.Err("could not detect system hostname")
+	}
+	index := 0
+	for _, v := range channelsToSync {
+		if !v.SyncServer.IsNull() && v.SyncServer.String != host {
+			filteredChannelsToSync[index] = v
+			index++
+		}
+	}
+	interrupted, err := syncChannels(channelsToSync, ytAPIKey, syncCount)
 	util.SendToSlackInfo("Finished syncing %s channels", queueStatus)
-	return syncChannels(channelsToSync, ytAPIKey, syncCount)
+	return interrupted, err
 }
 
 // syncChannels processes a slice of youtube channels (channelsToSync) and returns a bool that indicates whether
@@ -223,13 +238,14 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 	if err != nil {
 		host = ""
 	}
-	for ; *syncCount < len(channelsToSync) && (limit == 0 || *syncCount < limit); *syncCount++ {
+	for loop := 0; loop < len(channelsToSync) && (limit == 0 || *syncCount < limit); loop++ {
+		//log.Printf("inside loop: %d", loop)
 		err = spaceCheck()
 		if err != nil {
 			return false, err
 		}
 		//avoid dereferencing
-		channel := channelsToSync[*syncCount]
+		channel := channelsToSync[loop]
 		channelID := channel.ChannelId
 		lbryChannelName := channel.DesiredChannelName
 		if channel.TotalVideos < 1 {
@@ -247,6 +263,8 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 			util.SendToSlackError("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
 			continue
 		}
+		//increment only if successfully acquired lock
+		*syncCount++
 		util.SendToSlackInfo("Syncing %s to LBRY! (iteration %d)", lbryChannelName, *syncCount)
 
 		s := sync.Sync{
@@ -288,6 +306,9 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 			msg := fmt.Sprintf("Failed setting failed state for channel %s. \n@Nikooo777 this requires manual intervention! Exiting...", lbryChannelName)
 			return false, errors.Prefix(msg, err)
 		}
+	}
+	if limit != 0 && *syncCount >= limit {
+		return true, nil
 	}
 	return false, nil
 }

@@ -11,9 +11,9 @@ func InSlice(str string, values []string) bool {
 	return false
 }
 
-func InSliceContains(str string, values []string) bool {
+func InSliceContains(subStr string, values []string) bool {
 	for _, v := range values {
-		if strings.Contains(v, str) {
+		if strings.Contains(v, subStr) {
 			return true
 		}
 	}
