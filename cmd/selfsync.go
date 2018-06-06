@@ -27,8 +27,8 @@ var APIToken string
 
 func init() {
 	var selfSyncCmd = &cobra.Command{
-		Use:   "selfsync <youtube_api_key> <auth_token>",
-		Args:  cobra.RangeArgs(2, 2),
+		Use:   "selfsync <youtube_api_key>",
+		Args:  cobra.RangeArgs(1, 1),
 		Short: "Publish youtube channels into LBRY network automatically.",
 		Run:   selfSync,
 	}
@@ -39,6 +39,8 @@ func init() {
 	selfSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
 	selfSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
 	selfSyncCmd.Flags().StringVar(&syncStatus, "status", StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
+	selfSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
+	selfSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
 
 	RootCmd.AddCommand(selfSyncCmd)
 	APIURL = os.Getenv("LBRY_API")
@@ -71,8 +73,9 @@ func fetchChannels(status string) ([]APIYoutubeChannel, error) {
 	res, _ := http.PostForm(url, url2.Values{
 		"auth_token":  {APIToken},
 		"sync_status": {status},
-		"after":       {strconv.Itoa(int(time.Date(2018, 5, 25, 0, 0, 0, 0, time.UTC).Unix()))},
 		"min_videos":  {strconv.Itoa(1)},
+		"after":       {strconv.Itoa(int(syncFrom))},
+		"before":      {strconv.Itoa(int(syncUntil))},
 	})
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
@@ -132,7 +135,7 @@ func spaceCheck() error {
 	if err != nil {
 		return err
 	}
-	if usedPctile > 0.90 && !skipSpaceCheck {
+	if usedPctile >= 0.90 && !skipSpaceCheck {
 		return errors.Err("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
 	}
 	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)

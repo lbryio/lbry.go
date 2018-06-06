@@ -11,6 +11,8 @@ var (
 	skipSpaceCheck          bool
 	syncUpdate              bool
 	syncStatus              string
+	syncFrom                int64
+	syncUntil               int64
 )
 
 const (
