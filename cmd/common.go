@@ -13,6 +13,7 @@ var (
 	syncStatus              string
 	syncFrom                int64
 	syncUntil               int64
+	concurrentJobs          int
 )
 
 const (

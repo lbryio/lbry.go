@@ -19,14 +19,20 @@ func InitSlack(token string, channel string, username string) {
 	defaultUsername = username
 }
 func SendToSlackInfo(format string, a ...interface{}) {
-	message := fmt.Sprintf(format, a...)
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	if slackApi != nil {
 		sendToSlack(":information_source: " + message)
 	}
 	log.Debugln(message)
 }
 func SendToSlackError(format string, a ...interface{}) {
-	message := fmt.Sprintf(format, a...)
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	if slackApi != nil {
 		sendToSlack(":sos: " + message)
 	}

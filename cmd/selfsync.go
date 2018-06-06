@@ -41,6 +41,7 @@ func init() {
 	selfSyncCmd.Flags().StringVar(&syncStatus, "status", StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
 	selfSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
 	selfSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
+	selfSyncCmd.Flags().IntVar(&concurrentJobs, "concurrent-jobs", 1, "how many jobs to process concurrently (Default: 1)")
 
 	RootCmd.AddCommand(selfSyncCmd)
 	APIURL = os.Getenv("LBRY_API")
@@ -136,7 +137,7 @@ func spaceCheck() error {
 		return err
 	}
 	if usedPctile >= 0.90 && !skipSpaceCheck {
-		return errors.Err("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
+		return errors.Err(fmt.Sprintf("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100))
 	}
 	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
 	return nil
@@ -276,7 +277,7 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 			LbryChannelName:         lbryChannelName,
 			StopOnError:             stopOnError,
 			MaxTries:                maxTries,
-			ConcurrentVideos:        1,
+			ConcurrentVideos:        concurrentJobs,
 			TakeOverExistingChannel: takeOverExistingChannel,
 			Refill:                  refill,
 		}
