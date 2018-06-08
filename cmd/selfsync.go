@@ -70,6 +70,10 @@ type APIYoutubeChannel struct {
 }
 
 func fetchChannels(status string) ([]APIYoutubeChannel, error) {
+	host, err := os.Hostname()
+	if err != nil {
+		return nil, errors.Err("could not detect system hostname")
+	}
 	url := APIURL + "/yt/jobs"
 	res, _ := http.PostForm(url, url2.Values{
 		"auth_token":  {APIToken},
@@ -77,11 +81,12 @@ func fetchChannels(status string) ([]APIYoutubeChannel, error) {
 		"min_videos":  {strconv.Itoa(1)},
 		"after":       {strconv.Itoa(int(syncFrom))},
 		"before":      {strconv.Itoa(int(syncUntil))},
+		"sync_server": {host},
 	})
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 	var response APIJobsResponse
-	err := json.Unmarshal(body, &response)
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
 	}
