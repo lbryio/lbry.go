@@ -29,9 +29,9 @@ import (
 func publicKey(isPrivateRepo bool) (*rsa.PublicKey, error) {
 	var response *http.Response
 	var err error
-	if !isPrivateRepo{
+	if !isPrivateRepo {
 		response, err = http.Get("https://api.travis-ci.org/config")
-	}else{
+	} else {
 		response, err = http.Get("https://api.travis-ci.com/config")
 	}
 	if err != nil {
@@ -76,7 +76,7 @@ func payloadDigest(payload string) []byte {
 	return hash.Sum(nil)
 }
 
-func ValidateSignature(isPrivateRepo bool,r *http.Request) error {
+func ValidateSignature(isPrivateRepo bool, r *http.Request) error {
 	key, err := publicKey(isPrivateRepo)
 	if err != nil {
 		return errors.Err(err)
