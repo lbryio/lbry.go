@@ -189,10 +189,11 @@ func selfSync(cmd *cobra.Command, args []string) {
 			//TODO: extract method
 			queuesToSync := []string{
 				StatusSyncing,
-				StatusQueued,
 			}
 			if syncUpdate {
 				queuesToSync = append(queuesToSync, StatusSynced)
+			} else {
+				queuesToSync = append(queuesToSync, StatusQueued)
 			}
 			for _, v := range queuesToSync {
 				interruptedByUser, err := processQueue(v, ytAPIKey, &syncCount)
@@ -269,7 +270,7 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 		//acquire the lock on the channel
 		err := setChannelSyncStatus(channelID, StatusSyncing)
 		if err != nil {
-			util.SendToSlackError("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
+			//util.SendToSlackError("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
 			continue
 		}
 		//increment only if successfully acquired lock
