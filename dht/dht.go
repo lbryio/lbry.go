@@ -136,10 +136,12 @@ func (dht *DHT) join() {
 	// now call iterativeFind on yourself
 	nf := newContactFinder(dht.node, dht.node.id, false)
 	// stop if dht is stopped
-	go func(finder *contactFinder) {
+	go func() {
 		<-dht.stop.Ch()
-		nf.Cancel()
-	}(nf)
+		if nf != nil {
+			nf.Cancel()
+		}
+	}()
 	_, err := nf.Find()
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
@@ -160,18 +162,21 @@ func (dht *DHT) Start() error {
 	if err != nil {
 		return err
 	}
+	//Perform join in the background
 	dht.stop.Add(1)
 	go func() {
 		defer dht.stop.Done()
 		dht.join()
-	}()
-	dht.stop.Add(1)
-	go func() {
-		defer dht.stop.Done()
-		dht.startReannouncer()
+		log.Debugf("[%s] DHT ready on %s (%d nodes found during join)",
+			dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
+		//Reannouncer can only be launched after join is complete.
+		dht.stop.Add(1)
+		go func() {
+			defer dht.stop.Done()
+			dht.startReannouncer()
+		}()
 	}()
 
-	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)", dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
 	return nil
 }
 
