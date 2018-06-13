@@ -89,12 +89,14 @@ func (n *Node) Connect(conn UDPConn) error {
 		<-n.stop.Ch()
 		n.tokens.Stop()
 		n.connClosed = true
-		if err := n.conn.Close(); err != nil {
+		err := n.conn.Close()
+		if err != nil {
 			log.Error("error closing node connection on shutdown - ", err)
 		}
 	}()
 
 	packets := make(chan packet)
+
 	n.stop.Add(1)
 	go func() {
 		defer n.stop.Done()
@@ -124,6 +126,7 @@ func (n *Node) Connect(conn UDPConn) error {
 			}
 		}
 	}()
+
 	n.stop.Add(1)
 	go func() {
 		defer n.stop.Done()
@@ -140,7 +143,11 @@ func (n *Node) Connect(conn UDPConn) error {
 		}
 	}()
 
-	n.startRoutingTableGrooming()
+	n.stop.Add(1)
+	go func() {
+		defer n.stop.Done()
+		n.startRoutingTableGrooming()
+	}()
 
 	return nil
 }
@@ -427,19 +434,15 @@ func (n *Node) CountActiveTransactions() int {
 }
 
 func (n *Node) startRoutingTableGrooming() {
-	n.stop.Add(1)
-	go func() {
-		defer n.stop.Done()
-		refreshTicker := time.NewTicker(tRefresh / 5) // how often to check for buckets that need to be refreshed
-		for {
-			select {
-			case <-refreshTicker.C:
-				RoutingTableRefresh(n, tRefresh, n.stop.Ch())
-			case <-n.stop.Ch():
-				return
-			}
+	refreshTicker := time.NewTicker(tRefresh / 5) // how often to check for buckets that need to be refreshed
+	for {
+		select {
+		case <-refreshTicker.C:
+			RoutingTableRefresh(n, tRefresh, n.stop.Ch())
+		case <-n.stop.Ch():
+			return
 		}
-	}()
+	}
 }
 
 // Store stores a node contact in the node's contact store.

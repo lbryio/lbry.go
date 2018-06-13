@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/stopOnce"
 
 	"github.com/lyoshenka/bencode"
 	log "github.com/sirupsen/logrus"
@@ -445,40 +446,22 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 }
 
 // RoutingTableRefresh refreshes any buckets that need to be refreshed
-// It returns a channel that will be closed when the refresh is done
-func RoutingTableRefresh(n *Node, refreshInterval time.Duration, cancel <-chan struct{}) <-chan struct{} {
-	var wg sync.WaitGroup
-	done := make(chan struct{})
+func RoutingTableRefresh(n *Node, refreshInterval time.Duration, upstreamStop stopOnce.Chan) {
+	done := stopOnce.New()
 
 	for _, id := range n.rt.GetIDsForRefresh(refreshInterval) {
-		wg.Add(1)
+		done.Add(1)
 		go func(id Bitmap) {
-			defer wg.Done()
-
-			nf := newContactFinder(n, id, false)
-
-			if cancel != nil {
-				go func() {
-					select {
-					case <-cancel:
-						nf.Cancel()
-					case <-done:
-					}
-				}()
-			}
-
-			if _, err := nf.Find(); err != nil {
+			defer done.Done()
+			_, _, err := FindContacts(n, id, false, upstreamStop)
+			if err != nil {
 				log.Error("error finding contact during routing table refresh - ", err)
 			}
 		}(id)
 	}
 
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	return done
+	done.Wait()
+	done.Stop()
 }
 
 func moveToBack(peers []peer, index int) {

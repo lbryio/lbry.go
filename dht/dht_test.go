@@ -16,26 +16,24 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 		bs.Shutdown()
 	}()
 
-	nf := newContactFinder(dhts[2].node, RandomBitmapP(), false)
-	res, err := nf.Find()
+	contacts, found, err := FindContacts(dhts[2].node, RandomBitmapP(), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundNodes, found := res.Contacts, res.Found
 
 	if found {
 		t.Fatal("something was found, but it should not have been")
 	}
 
-	if len(foundNodes) != 3 {
-		t.Errorf("expected 3 node, found %d", len(foundNodes))
+	if len(contacts) != 3 {
+		t.Errorf("expected 3 node, found %d", len(contacts))
 	}
 
 	foundBootstrap := false
 	foundOne := false
 	foundTwo := false
 
-	for _, n := range foundNodes {
+	for _, n := range contacts {
 		if n.ID.Equals(bs.id) {
 			foundBootstrap = true
 		}
@@ -66,8 +64,7 @@ func TestNodeFinder_FindNodes_NoBootstrap(t *testing.T) {
 		}
 	}()
 
-	nf := newContactFinder(dhts[2].node, RandomBitmapP(), false)
-	_, err := nf.Find()
+	_, _, err := FindContacts(dhts[2].node, RandomBitmapP(), false, nil)
 	if err == nil {
 		t.Fatal("contact finder should have errored saying that there are no contacts in the routing table")
 	}
@@ -86,23 +83,21 @@ func TestNodeFinder_FindValue(t *testing.T) {
 	nodeToFind := Contact{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4), Port: 5678}
 	dhts[0].node.store.Upsert(blobHashToFind, nodeToFind)
 
-	nf := newContactFinder(dhts[2].node, blobHashToFind, true)
-	res, err := nf.Find()
+	contacts, found, err := FindContacts(dhts[2].node, blobHashToFind, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundNodes, found := res.Contacts, res.Found
 
 	if !found {
 		t.Fatal("node was not found")
 	}
 
-	if len(foundNodes) != 1 {
-		t.Fatalf("expected one node, found %d", len(foundNodes))
+	if len(contacts) != 1 {
+		t.Fatalf("expected one node, found %d", len(contacts))
 	}
 
-	if !foundNodes[0].ID.Equals(nodeToFind.ID) {
-		t.Fatalf("found node id %s, expected %s", foundNodes[0].ID.Hex(), nodeToFind.ID.Hex())
+	if !contacts[0].ID.Equals(nodeToFind.ID) {
+		t.Fatalf("found node id %s, expected %s", contacts[0].ID.Hex(), nodeToFind.ID.Hex())
 	}
 }
 

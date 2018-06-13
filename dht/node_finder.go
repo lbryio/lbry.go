@@ -35,13 +35,8 @@ type contactFinder struct {
 	outstandingRequests      uint
 }
 
-type findNodeResponse struct {
-	Found    bool
-	Contacts []Contact
-}
-
-func newContactFinder(node *Node, target Bitmap, findValue bool) *contactFinder {
-	return &contactFinder{
+func FindContacts(node *Node, target Bitmap, findValue bool, upstreamStop stopOnce.Chan) ([]Contact, bool, error) {
+	cf := &contactFinder{
 		node:                node,
 		target:              target,
 		findValue:           findValue,
@@ -52,14 +47,18 @@ func newContactFinder(node *Node, target Bitmap, findValue bool) *contactFinder 
 		stop:                stopOnce.New(),
 		outstandingRequestsMutex: &sync.RWMutex{},
 	}
+	if upstreamStop != nil {
+		cf.stop.Link(upstreamStop)
+	}
+	return cf.Find()
 }
 
-func (cf *contactFinder) Cancel() {
+func (cf *contactFinder) Stop() {
 	cf.stop.Stop()
 	cf.stop.Wait()
 }
 
-func (cf *contactFinder) Find() (findNodeResponse, error) {
+func (cf *contactFinder) Find() ([]Contact, bool, error) {
 	if cf.findValue {
 		log.Debugf("[%s] starting an iterative Find for the value %s", cf.node.id.HexShort(), cf.target.HexShort())
 	} else {
@@ -67,7 +66,7 @@ func (cf *contactFinder) Find() (findNodeResponse, error) {
 	}
 	cf.appendNewToShortlist(cf.node.rt.GetClosest(cf.target, alpha))
 	if len(cf.shortlist) == 0 {
-		return findNodeResponse{}, errors.Err("no contacts in routing table")
+		return nil, false, errors.Err("no contacts in routing table")
 	}
 
 	for i := 0; i < alpha; i++ {
@@ -83,18 +82,20 @@ func (cf *contactFinder) Find() (findNodeResponse, error) {
 	// TODO: what to do if we have less than K active contacts, shortlist is empty, but we
 	// TODO: have other contacts in our routing table whom we have not contacted. prolly contact them
 
-	result := findNodeResponse{}
+	var contacts []Contact
+	var found bool
 	if cf.findValue && len(cf.findValueResult) > 0 {
-		result.Found = true
-		result.Contacts = cf.findValueResult
+		contacts = cf.findValueResult
+		found = true
 	} else {
-		result.Contacts = cf.activeContacts
-		if len(result.Contacts) > bucketSize {
-			result.Contacts = result.Contacts[:bucketSize]
+		contacts = cf.activeContacts
+		if len(contacts) > bucketSize {
+			contacts = contacts[:bucketSize]
 		}
 	}
 
-	return result, nil
+	cf.Stop()
+	return contacts, found, nil
 }
 
 func (cf *contactFinder) iterationWorker(num int) {

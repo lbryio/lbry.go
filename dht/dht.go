@@ -134,20 +134,12 @@ func (dht *DHT) join() {
 	}
 
 	// now call iterativeFind on yourself
-	nf := newContactFinder(dht.node, dht.node.id, false)
-	// stop if dht is stopped
-	go func() {
-		<-dht.stop.Ch()
-		if nf != nil {
-			nf.Cancel()
-		}
-	}()
-	_, err := nf.Find()
+	_, _, err := FindContacts(dht.node, dht.node.id, false, dht.stop.Ch())
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
 
-	// TODO: after joining, refresh all the buckets all buckets further away than our closest neighbor
+	// TODO: after joining, refresh all buckets further away than our closest neighbor
 	// http://xlattice.sourceforge.net/components/protocol/kademlia/specs.html#join
 }
 
@@ -162,20 +154,12 @@ func (dht *DHT) Start() error {
 	if err != nil {
 		return err
 	}
-	//Perform join in the background
-	dht.stop.Add(1)
-	go func() {
-		defer dht.stop.Done()
-		dht.join()
-		log.Debugf("[%s] DHT ready on %s (%d nodes found during join)",
-			dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
-		//Reannouncer can only be launched after join is complete.
-		dht.stop.Add(1)
-		go func() {
-			defer dht.stop.Done()
-			dht.startReannouncer()
-		}()
-	}()
+
+	dht.join()
+	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)",
+		dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
+
+	go dht.startReannouncer()
 
 	return nil
 }
@@ -215,34 +199,32 @@ func (dht *DHT) Ping(addr string) error {
 
 // Get returns the list of nodes that have the blob for the given hash
 func (dht *DHT) Get(hash Bitmap) ([]Contact, error) {
-	nf := newContactFinder(dht.node, hash, true)
-	res, err := nf.Find()
+	contacts, found, err := FindContacts(dht.node, hash, true, dht.stop.Ch())
 	if err != nil {
 		return nil, err
 	}
 
-	if res.Found {
-		return res.Contacts, nil
+	if found {
+		return contacts, nil
 	}
 	return nil, nil
 }
 
 // Announce announces to the DHT that this node has the blob for the given hash
 func (dht *DHT) Announce(hash Bitmap) error {
-	nf := newContactFinder(dht.node, hash, false)
-	res, err := nf.Find()
+	contacts, _, err := FindContacts(dht.node, hash, false, dht.stop.Ch())
 	if err != nil {
 		return err
 	}
 
 	// if we found less than K contacts, or current node is closer than farthest contact
-	if len(res.Contacts) < bucketSize || dht.node.id.Xor(hash).Less(res.Contacts[bucketSize-1].ID.Xor(hash)) {
+	if len(contacts) < bucketSize || dht.node.id.Xor(hash).Less(contacts[bucketSize-1].ID.Xor(hash)) {
 		// pop last contact, and self-store instead
-		res.Contacts[bucketSize-1] = dht.contact
+		contacts[bucketSize-1] = dht.contact
 	}
 
 	wg := &sync.WaitGroup{}
-	for _, c := range res.Contacts {
+	for _, c := range contacts {
 		wg.Add(1)
 		go func(c Contact) {
 			dht.storeOnNode(hash, c)
@@ -271,7 +253,8 @@ func (dht *DHT) startReannouncer() {
 				dht.stop.Add(1)
 				go func(bm Bitmap) {
 					defer dht.stop.Done()
-					if err := dht.Announce(bm); err != nil {
+					err := dht.Announce(bm)
+					if err != nil {
 						log.Error("error re-announcing bitmap - ", err)
 					}
 				}(h)
@@ -282,9 +265,6 @@ func (dht *DHT) startReannouncer() {
 }
 
 func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
-	dht.stop.Add(1)
-	defer dht.stop.Done()
-
 	// self-store
 	if dht.contact.Equals(c) {
 		dht.node.Store(hash, c)
