@@ -157,6 +157,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/mitchellh/go-ps"
+  packages = ["."]
+  revision = "4fdf99ab29366514c69ccccddab5dc58b8d84062"
+
+[[projects]]
+  branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
@@ -180,10 +186,10 @@
   revision = "19e3cb6c29303990525b56f51acf77c5630dd88a"
 
 [[projects]]
+  branch = "master"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
-  version = "v1.0.5"
+  revision = "ea8897e79973357ba785ac2533559a6297e83c44"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -266,6 +272,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a335f49e704ad628a3910e0f073dcbb9c35bcaafa41199054b74d1c89dab3359"
+  inputs-digest = "adebfeec40e94ad17cba1f18d8f47da60af4106a50386ebce51650d036e3d4ac"
   solver-name = "gps-cdcl"
   solver-version = 1
