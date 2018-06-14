@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/lbryio/reflector.go/dht/bits"
 	"github.com/lyoshenka/bencode"
 )
 
@@ -76,10 +77,10 @@ func TestBencodeDecodeStoreArgs(t *testing.T) {
 func TestBencodeFindNodesResponse(t *testing.T) {
 	res := Response{
 		ID:     newMessageID(),
-		NodeID: RandomBitmapP(),
+		NodeID: bits.Rand(),
 		Contacts: []Contact{
-			{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
-			{ID: RandomBitmapP(), IP: net.IPv4(4, 3, 2, 1).To4(), Port: 8765},
+			{ID: bits.Rand(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
+			{ID: bits.Rand(), IP: net.IPv4(4, 3, 2, 1).To4(), Port: 8765},
 		},
 	}
 
@@ -100,11 +101,11 @@ func TestBencodeFindNodesResponse(t *testing.T) {
 func TestBencodeFindValueResponse(t *testing.T) {
 	res := Response{
 		ID:           newMessageID(),
-		NodeID:       RandomBitmapP(),
-		FindValueKey: RandomBitmapP().rawString(),
+		NodeID:       bits.Rand(),
+		FindValueKey: bits.Rand().String(),
 		Token:        "arst",
 		Contacts: []Contact{
-			{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
+			{ID: bits.Rand(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
 		},
 	}
 

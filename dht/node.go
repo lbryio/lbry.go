@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/errors.go"
 	"github.com/lbryio/lbry.go/stopOnce"
 	"github.com/lbryio/lbry.go/util"
+	"github.com/lbryio/reflector.go/dht/bits"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lyoshenka/bencode"
@@ -39,7 +40,7 @@ type RequestHandlerFunc func(addr *net.UDPAddr, request Request)
 // Node is a type representation of a node on the network.
 type Node struct {
 	// the node's id
-	id Bitmap
+	id bits.Bitmap
 	// UDP connection for sending and receiving data
 	conn UDPConn
 	// true if we've closed the connection on purpose
@@ -64,7 +65,7 @@ type Node struct {
 }
 
 // NewNode returns an initialized Node's pointer.
-func NewNode(id Bitmap) *Node {
+func NewNode(id bits.Bitmap) *Node {
 	return &Node{
 		id:    id,
 		rt:    newRoutingTable(id),
@@ -270,7 +271,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		}
 
 		if contacts := n.store.Get(*request.Arg); len(contacts) > 0 {
-			res.FindValueKey = request.Arg.rawString()
+			res.FindValueKey = request.Arg.String()
 			res.Contacts = contacts
 		} else {
 			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize)
@@ -446,6 +447,6 @@ func (n *Node) startRoutingTableGrooming() {
 }
 
 // Store stores a node contact in the node's contact store.
-func (n *Node) Store(hash Bitmap, c Contact) {
+func (n *Node) Store(hash bits.Bitmap, c Contact) {
 	n.store.Upsert(hash, c)
 }

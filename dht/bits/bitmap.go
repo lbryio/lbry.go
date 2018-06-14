@@ -1,38 +1,38 @@
-package dht
+package bits
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"strconv"
 	"strings"
 
-	"strconv"
-
 	"github.com/lbryio/lbry.go/errors"
+
 	"github.com/lyoshenka/bencode"
 )
 
 // TODO: http://roaringbitmap.org/
 
+const (
+	NumBytes = 48 // bytes
+	NumBits  = NumBytes * 8
+)
+
 // Bitmap is a generalized representation of an identifier or data that can be sorted, compared fast. Used by the DHT
 // package as a way to handle the unique identifiers of a DHT node.
-type Bitmap [nodeIDLength]byte
+type Bitmap [NumBytes]byte
 
-func (b Bitmap) rawString() string {
+func (b Bitmap) String() string {
 	return string(b[:])
 }
 
 // BString returns the bitmap as a string of 0s and 1s
 func (b Bitmap) BString() string {
-	var buf bytes.Buffer
-	for i := 0; i < nodeIDBits; i++ {
-		if b.Get(i) {
-			buf.WriteString("1")
-		} else {
-			buf.WriteString("0")
-		}
+	var s string
+	for _, byte := range b {
+		s += strconv.FormatInt(int64(byte), 2)
 	}
-	return buf.String()
+	return s
 }
 
 // Hex returns a hexadecimal representation of the bitmap.
@@ -147,7 +147,7 @@ func (b Bitmap) Not() Bitmap {
 func (b Bitmap) add(other Bitmap) (Bitmap, bool) {
 	var ret Bitmap
 	carry := false
-	for i := nodeIDBits - 1; i >= 0; i-- {
+	for i := NumBits - 1; i >= 0; i-- {
 		bBit := getBit(b[:], i)
 		oBit := getBit(other[:], i)
 		setBit(ret[:], i, bBit != oBit != carry)
@@ -161,7 +161,7 @@ func (b Bitmap) add(other Bitmap) (Bitmap, bool) {
 func (b Bitmap) Add(other Bitmap) Bitmap {
 	ret, carry := b.add(other)
 	if carry {
-		panic("overflow in bitmap addition. limited to " + strconv.Itoa(nodeIDBits) + " bits.")
+		panic("overflow in bitmap addition. limited to " + strconv.Itoa(NumBits) + " bits.")
 	}
 	return ret
 }
@@ -173,7 +173,7 @@ func (b Bitmap) Sub(other Bitmap) Bitmap {
 		// ToDo: Why is this not supported? Should it say not implemented? BitMap might have a generic use case outside of dht.
 		panic("negative bitmaps not supported")
 	}
-	complement, _ := other.Not().add(BitmapFromShortHexP("1"))
+	complement, _ := other.Not().add(FromShortHexP("1"))
 	ret, _ := b.add(complement)
 	return ret
 }
@@ -199,7 +199,7 @@ func (b Bitmap) PrefixLen() int {
 			}
 		}
 	}
-	return nodeIDBits
+	return NumBits
 }
 
 // Prefix returns a copy of b with the first n bits set to 1 (if `one` is true) or 0 (if `one` is false)
@@ -233,7 +233,7 @@ func (b Bitmap) Suffix(n int, one bool) Bitmap {
 Outer:
 	for i := len(ret) - 1; i >= 0; i-- {
 		for j := 7; j >= 0; j-- {
-			if i*8+j >= nodeIDBits-n {
+			if i*8+j >= NumBits-n {
 				if one {
 					ret[i] |= 1 << uint(7-j)
 				} else {
@@ -261,15 +261,15 @@ func (b *Bitmap) UnmarshalBencode(encoded []byte) error {
 	if err != nil {
 		return err
 	}
-	if len(str) != nodeIDLength {
+	if len(str) != NumBytes {
 		return errors.Err("invalid bitmap length")
 	}
 	copy(b[:], str)
 	return nil
 }
 
-// BitmapFromBytes returns a bitmap as long as the byte array is of a specific length specified in the parameters.
-func BitmapFromBytes(data []byte) (Bitmap, error) {
+// FromBytes returns a bitmap as long as the byte array is of a specific length specified in the parameters.
+func FromBytes(data []byte) (Bitmap, error) {
 	var bmp Bitmap
 
 	if len(data) != len(bmp) {
@@ -280,71 +280,71 @@ func BitmapFromBytes(data []byte) (Bitmap, error) {
 	return bmp, nil
 }
 
-// BitmapFromBytesP returns a bitmap as long as the byte array is of a specific length specified in the parameters
+// FromBytesP returns a bitmap as long as the byte array is of a specific length specified in the parameters
 // otherwise it wil panic.
-func BitmapFromBytesP(data []byte) Bitmap {
-	bmp, err := BitmapFromBytes(data)
+func FromBytesP(data []byte) Bitmap {
+	bmp, err := FromBytes(data)
 	if err != nil {
 		panic(err)
 	}
 	return bmp
 }
 
-//BitmapFromString returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
+//FromString returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters
-func BitmapFromString(data string) (Bitmap, error) {
-	return BitmapFromBytes([]byte(data))
+func FromString(data string) (Bitmap, error) {
+	return FromBytes([]byte(data))
 }
 
-//BitmapFromStringP returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
+//FromStringP returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters otherwise it wil panic.
-func BitmapFromStringP(data string) Bitmap {
-	bmp, err := BitmapFromString(data)
+func FromStringP(data string) Bitmap {
+	bmp, err := FromString(data)
 	if err != nil {
 		panic(err)
 	}
 	return bmp
 }
 
-//BitmapFromHex returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
+//FromHex returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters
-func BitmapFromHex(hexStr string) (Bitmap, error) {
+func FromHex(hexStr string) (Bitmap, error) {
 	decoded, err := hex.DecodeString(hexStr)
 	if err != nil {
 		return Bitmap{}, errors.Err(err)
 	}
-	return BitmapFromBytes(decoded)
+	return FromBytes(decoded)
 }
 
-//BitmapFromHexP returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
+//FromHexP returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters otherwise it wil panic.
-func BitmapFromHexP(hexStr string) Bitmap {
-	bmp, err := BitmapFromHex(hexStr)
+func FromHexP(hexStr string) Bitmap {
+	bmp, err := FromHex(hexStr)
 	if err != nil {
 		panic(err)
 	}
 	return bmp
 }
 
-//BitmapFromShortHex returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
+//FromShortHex returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
 // hex string and creating from bytes as long as the byte array is of a specific length specified in the parameters
-func BitmapFromShortHex(hexStr string) (Bitmap, error) {
-	return BitmapFromHex(strings.Repeat("0", nodeIDLength*2-len(hexStr)) + hexStr)
+func FromShortHex(hexStr string) (Bitmap, error) {
+	return FromHex(strings.Repeat("0", NumBytes*2-len(hexStr)) + hexStr)
 }
 
-//BitmapFromShortHexP returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
+//FromShortHexP returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
 // hex string and creating from bytes as long as the byte array is of a specific length specified in the parameters
 // otherwise it wil panic.
-func BitmapFromShortHexP(hexStr string) Bitmap {
-	bmp, err := BitmapFromShortHex(hexStr)
+func FromShortHexP(hexStr string) Bitmap {
+	bmp, err := FromShortHex(hexStr)
 	if err != nil {
 		panic(err)
 	}
 	return bmp
 }
 
-// RandomBitmapP generates a cryptographically random bitmap with the confines of the parameters specified.
-func RandomBitmapP() Bitmap {
+// Rand generates a cryptographically random bitmap with the confines of the parameters specified.
+func Rand() Bitmap {
 	var id Bitmap
 	_, err := rand.Read(id[:])
 	if err != nil {
@@ -353,11 +353,11 @@ func RandomBitmapP() Bitmap {
 	return id
 }
 
-// RandomBitmapInRangeP generates a cryptographically random bitmap and while it is greater than the high threshold
+// RandInRangeP generates a cryptographically random bitmap and while it is greater than the high threshold
 // bitmap will subtract the diff between high and low until it is no longer greater that the high.
-func RandomBitmapInRangeP(low, high Bitmap) Bitmap {
+func RandInRangeP(low, high Bitmap) Bitmap {
 	diff := high.Sub(low)
-	r := RandomBitmapP()
+	r := Rand()
 	for r.Greater(diff) {
 		r = r.Sub(diff)
 	}

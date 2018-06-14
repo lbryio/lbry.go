@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/reflector.go/dht/bits"
 )
 
 type tokenManager struct {
@@ -46,15 +47,15 @@ func (tm *tokenManager) Stop() {
 	tm.stop.StopAndWait()
 }
 
-func (tm *tokenManager) Get(nodeID Bitmap, addr *net.UDPAddr) string {
+func (tm *tokenManager) Get(nodeID bits.Bitmap, addr *net.UDPAddr) string {
 	return genToken(tm.secret, nodeID, addr)
 }
 
-func (tm *tokenManager) Verify(token string, nodeID Bitmap, addr *net.UDPAddr) bool {
+func (tm *tokenManager) Verify(token string, nodeID bits.Bitmap, addr *net.UDPAddr) bool {
 	return token == genToken(tm.secret, nodeID, addr) || token == genToken(tm.prevSecret, nodeID, addr)
 }
 
-func genToken(secret []byte, nodeID Bitmap, addr *net.UDPAddr) string {
+func genToken(secret []byte, nodeID bits.Bitmap, addr *net.UDPAddr) string {
 	buf := bytes.Buffer{}
 	buf.Write(nodeID[:])
 	buf.Write(addr.IP)

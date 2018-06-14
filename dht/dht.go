@@ -9,6 +9,7 @@ import (
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/reflector.go/dht/bits"
 	"github.com/spf13/cast"
 
 	log "github.com/sirupsen/logrus"
@@ -24,11 +25,11 @@ const (
 
 	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
 	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
-	alpha           = 3                // this is the constant alpha in the spec
-	bucketSize      = 8                // this is the constant k in the spec
-	nodeIDLength    = 48               // bytes. this is the constant B in the spec
-	nodeIDBits      = nodeIDLength * 8 // number of bits in node ID
-	messageIDLength = 20               // bytes.
+	alpha           = 3             // this is the constant alpha in the spec
+	bucketSize      = 8             // this is the constant k in the spec
+	nodeIDLength    = bits.NumBytes // bytes. this is the constant B in the spec
+	nodeIDBits      = bits.NumBits  // number of bits in node ID
+	messageIDLength = 20            // bytes.
 
 	udpRetry            = 3
 	udpTimeout          = 5 * time.Second
@@ -85,7 +86,7 @@ type DHT struct {
 	// lock for announced list
 	lock *sync.RWMutex
 	// list of bitmaps that need to be reannounced periodically
-	announced map[Bitmap]bool
+	announced map[bits.Bitmap]bool
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -106,7 +107,7 @@ func New(config *Config) (*DHT, error) {
 		stop:      stopOnce.New(),
 		joined:    make(chan struct{}),
 		lock:      &sync.RWMutex{},
-		announced: make(map[Bitmap]bool),
+		announced: make(map[bits.Bitmap]bool),
 	}
 	return d, nil
 }
@@ -188,7 +189,7 @@ func (dht *DHT) Ping(addr string) error {
 		return err
 	}
 
-	tmpNode := Contact{ID: RandomBitmapP(), IP: raddr.IP, Port: raddr.Port}
+	tmpNode := Contact{ID: bits.Rand(), IP: raddr.IP, Port: raddr.Port}
 	res := dht.node.Send(tmpNode, Request{Method: pingMethod})
 	if res == nil {
 		return errors.Err("no response from node %s", addr)
@@ -198,7 +199,7 @@ func (dht *DHT) Ping(addr string) error {
 }
 
 // Get returns the list of nodes that have the blob for the given hash
-func (dht *DHT) Get(hash Bitmap) ([]Contact, error) {
+func (dht *DHT) Get(hash bits.Bitmap) ([]Contact, error) {
 	contacts, found, err := FindContacts(dht.node, hash, true, dht.stop.Ch())
 	if err != nil {
 		return nil, err
@@ -211,7 +212,7 @@ func (dht *DHT) Get(hash Bitmap) ([]Contact, error) {
 }
 
 // Announce announces to the DHT that this node has the blob for the given hash
-func (dht *DHT) Announce(hash Bitmap) error {
+func (dht *DHT) Announce(hash bits.Bitmap) error {
 	contacts, _, err := FindContacts(dht.node, hash, false, dht.stop.Ch())
 	if err != nil {
 		return err
@@ -251,7 +252,7 @@ func (dht *DHT) startReannouncer() {
 			dht.lock.RLock()
 			for h := range dht.announced {
 				dht.stop.Add(1)
-				go func(bm Bitmap) {
+				go func(bm bits.Bitmap) {
 					defer dht.stop.Done()
 					err := dht.Announce(bm)
 					if err != nil {
@@ -264,7 +265,7 @@ func (dht *DHT) startReannouncer() {
 	}
 }
 
-func (dht *DHT) storeOnNode(hash Bitmap, c Contact) {
+func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 	// self-store
 	if dht.contact.Equals(c) {
 		dht.node.Store(hash, c)
@@ -322,12 +323,16 @@ func (dht *DHT) PrintState() {
 	}
 }
 
+func (dht DHT) ID() bits.Bitmap {
+	return dht.contact.ID
+}
+
 func getContact(nodeID, addr string) (Contact, error) {
 	var c Contact
 	if nodeID == "" {
-		c.ID = RandomBitmapP()
+		c.ID = bits.Rand()
 	} else {
-		c.ID = BitmapFromHexP(nodeID)
+		c.ID = bits.FromHexP(nodeID)
 	}
 
 	ip, port, err := net.SplitHostPort(addr)

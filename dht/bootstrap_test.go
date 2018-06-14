@@ -3,10 +3,12 @@ package dht
 import (
 	"net"
 	"testing"
+
+	"github.com/lbryio/reflector.go/dht/bits"
 )
 
 func TestBootstrapPing(t *testing.T) {
-	b := NewBootstrapNode(RandomBitmapP(), 10, bootstrapDefaultRefreshDuration)
+	b := NewBootstrapNode(bits.Rand(), 10, bootstrapDefaultRefreshDuration)
 
 	listener, err := net.ListenPacket(network, "127.0.0.1:54320")
 	if err != nil {

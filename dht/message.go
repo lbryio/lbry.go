@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/reflector.go/dht/bits"
 
 	"github.com/lyoshenka/bencode"
 	"github.com/spf13/cast"
@@ -83,9 +84,9 @@ func newMessageID() messageID {
 // Request represents the structured request from one node to another.
 type Request struct {
 	ID        messageID
-	NodeID    Bitmap
+	NodeID    bits.Bitmap
 	Method    string
-	Arg       *Bitmap
+	Arg       *bits.Bitmap
 	StoreArgs *storeArgs
 }
 
@@ -95,7 +96,7 @@ func (r Request) MarshalBencode() ([]byte, error) {
 	if r.StoreArgs != nil {
 		args = r.StoreArgs
 	} else if r.Arg != nil {
-		args = []Bitmap{*r.Arg}
+		args = []bits.Bitmap{*r.Arg}
 	} else {
 		args = []string{} // request must always have keys 0-4, so we use an empty list for PING
 	}
@@ -112,7 +113,7 @@ func (r Request) MarshalBencode() ([]byte, error) {
 func (r *Request) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID     messageID          `bencode:"1"`
-		NodeID Bitmap             `bencode:"2"`
+		NodeID bits.Bitmap        `bencode:"2"`
 		Method string             `bencode:"3"`
 		Args   bencode.RawMessage `bencode:"4"`
 	}
@@ -132,7 +133,7 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 			return errors.Prefix("request unmarshal", err)
 		}
 	} else if len(raw.Args) > 2 { // 2 because an empty list is `le`
-		tmp := []Bitmap{}
+		tmp := []bits.Bitmap{}
 		err = bencode.DecodeBytes(raw.Args, &tmp)
 		if err != nil {
 			return errors.Prefix("request unmarshal", err)
@@ -153,16 +154,16 @@ func (r Request) argsDebug() string {
 }
 
 type storeArgsValue struct {
-	Token  string `bencode:"token"`
-	LbryID Bitmap `bencode:"lbryid"`
-	Port   int    `bencode:"port"`
+	Token  string      `bencode:"token"`
+	LbryID bits.Bitmap `bencode:"lbryid"`
+	Port   int         `bencode:"port"`
 }
 
 type storeArgs struct {
-	BlobHash  Bitmap
+	BlobHash  bits.Bitmap
 	Value     storeArgsValue
-	NodeID    Bitmap // original publisher id? I think this is getting fixed in the new dht stuff
-	SelfStore bool   // this is an int on the wire
+	NodeID    bits.Bitmap // original publisher id? I think this is getting fixed in the new dht stuff
+	SelfStore bool        // this is an int on the wire
 }
 
 // MarshalBencode returns the serialized byte slice representation of the storage arguments.
@@ -231,7 +232,7 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 // Response represents the structured response one node returns to another.
 type Response struct {
 	ID           messageID
-	NodeID       Bitmap
+	NodeID       bits.Bitmap
 	Data         string
 	Contacts     []Contact
 	FindValueKey string
@@ -308,7 +309,7 @@ func (r Response) MarshalBencode() ([]byte, error) {
 func (r *Response) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID     messageID          `bencode:"1"`
-		NodeID Bitmap             `bencode:"2"`
+		NodeID bits.Bitmap        `bencode:"2"`
 		Data   bencode.RawMessage `bencode:"3"`
 	}
 	err := bencode.DecodeBytes(b, &raw)
@@ -377,7 +378,7 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 // Error represents an error message that is returned from one node to another in communication.
 type Error struct {
 	ID            messageID
-	NodeID        Bitmap
+	NodeID        bits.Bitmap
 	ExceptionType string
 	Response      []string
 }
@@ -397,7 +398,7 @@ func (e Error) MarshalBencode() ([]byte, error) {
 func (e *Error) UnmarshalBencode(b []byte) error {
 	var raw struct {
 		ID            messageID   `bencode:"1"`
-		NodeID        Bitmap      `bencode:"2"`
+		NodeID        bits.Bitmap `bencode:"2"`
 		ExceptionType string      `bencode:"3"`
 		Args          interface{} `bencode:"4"`
 	}

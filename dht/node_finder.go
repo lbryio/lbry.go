@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/reflector.go/dht/bits"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -16,7 +17,7 @@ import (
 
 type contactFinder struct {
 	findValue bool // true if we're using findValue
-	target    Bitmap
+	target    bits.Bitmap
 	node      *Node
 
 	stop *stopOnce.Stopper
@@ -29,13 +30,13 @@ type contactFinder struct {
 
 	shortlistMutex *sync.Mutex
 	shortlist      []Contact
-	shortlistAdded map[Bitmap]bool
+	shortlistAdded map[bits.Bitmap]bool
 
 	outstandingRequestsMutex *sync.RWMutex
 	outstandingRequests      uint
 }
 
-func FindContacts(node *Node, target Bitmap, findValue bool, upstreamStop stopOnce.Chan) ([]Contact, bool, error) {
+func FindContacts(node *Node, target bits.Bitmap, findValue bool, upstreamStop stopOnce.Chan) ([]Contact, bool, error) {
 	cf := &contactFinder{
 		node:                node,
 		target:              target,
@@ -43,7 +44,7 @@ func FindContacts(node *Node, target Bitmap, findValue bool, upstreamStop stopOn
 		findValueMutex:      &sync.Mutex{},
 		activeContactsMutex: &sync.Mutex{},
 		shortlistMutex:      &sync.Mutex{},
-		shortlistAdded:      make(map[Bitmap]bool),
+		shortlistAdded:      make(map[bits.Bitmap]bool),
 		stop:                stopOnce.New(),
 		outstandingRequestsMutex: &sync.RWMutex{},
 	}
@@ -259,7 +260,7 @@ func (cf *contactFinder) areRequestsOutstanding() bool {
 	return cf.outstandingRequests > 0
 }
 
-func sortInPlace(contacts []Contact, target Bitmap) {
+func sortInPlace(contacts []Contact, target bits.Bitmap) {
 	toSort := make([]sortedContact, len(contacts))
 
 	for i, n := range contacts {

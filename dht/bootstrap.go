@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lbryio/reflector.go/dht/bits"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,11 +23,11 @@ type BootstrapNode struct {
 
 	nlock    *sync.RWMutex
 	nodes    []peer
-	nodeKeys map[Bitmap]int
+	nodeKeys map[bits.Bitmap]int
 }
 
 // NewBootstrapNode returns a BootstrapNode pointer.
-func NewBootstrapNode(id Bitmap, initialPingInterval, rePingInterval time.Duration) *BootstrapNode {
+func NewBootstrapNode(id bits.Bitmap, initialPingInterval, rePingInterval time.Duration) *BootstrapNode {
 	b := &BootstrapNode{
 		Node: *NewNode(id),
 
@@ -35,7 +36,7 @@ func NewBootstrapNode(id Bitmap, initialPingInterval, rePingInterval time.Durati
 
 		nlock:    &sync.RWMutex{},
 		nodes:    make([]peer, 0),
-		nodeKeys: make(map[Bitmap]int),
+		nodeKeys: make(map[bits.Bitmap]int),
 	}
 
 	b.requestHandler = b.handleRequest

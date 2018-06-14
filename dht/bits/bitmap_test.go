@@ -1,4 +1,4 @@
-package dht
+package bits
 
 import (
 	"fmt"
@@ -47,8 +47,8 @@ func TestBitmap(t *testing.T) {
 	}
 
 	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	if BitmapFromHexP(id).Hex() != id {
-		t.Error(BitmapFromHexP(id).Hex())
+	if FromHexP(id).Hex() != id {
+		t.Error(FromHexP(id).Hex())
 	}
 }
 
@@ -64,7 +64,7 @@ func TestBitmap_GetBit(t *testing.T) {
 		{bit: 380, expected: true, panic: false},
 	}
 
-	b := BitmapFromShortHexP("a")
+	b := FromShortHexP("a")
 
 	for _, test := range tt {
 		actual := getBit(b[:], test.bit)
@@ -90,8 +90,8 @@ func TestBitmap_SetBit(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		expected := BitmapFromShortHexP(test.expected)
-		actual := BitmapFromShortHexP(test.hex)
+		expected := FromShortHexP(test.expected)
+		actual := FromShortHexP(test.hex)
 		if test.panic {
 			assertPanic(t, fmt.Sprintf("setting bit %d to %t", test.bit, test.one), func() { setBit(actual[:], test.bit, test.one) })
 		} else {
@@ -119,8 +119,8 @@ func TestBitmap_FromHexShort(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		short := BitmapFromShortHexP(test.short)
-		long := BitmapFromHexP(test.long)
+		short := FromShortHexP(test.short)
+		long := FromHexP(test.long)
 		if !short.Equals(long) {
 			t.Errorf("short hex %s: expected %s, got %s", test.short, long.Hex(), short.Hex())
 		}
@@ -128,7 +128,7 @@ func TestBitmap_FromHexShort(t *testing.T) {
 }
 
 func TestBitmapMarshal(t *testing.T) {
-	b := BitmapFromStringP("123456789012345678901234567890123456789012345678")
+	b := FromStringP("123456789012345678901234567890123456789012345678")
 	encoded, err := bencode.EncodeBytes(b)
 	if err != nil {
 		t.Error(err)
@@ -146,7 +146,7 @@ func TestBitmapMarshalEmbedded(t *testing.T) {
 		C int
 	}{
 		A: "1",
-		B: BitmapFromStringP("222222222222222222222222222222222222222222222222"),
+		B: FromStringP("222222222222222222222222222222222222222222222222"),
 		C: 3,
 	}
 
@@ -162,7 +162,7 @@ func TestBitmapMarshalEmbedded(t *testing.T) {
 
 func TestBitmapMarshalEmbedded2(t *testing.T) {
 	encoded, err := bencode.EncodeBytes([]interface{}{
-		BitmapFromStringP("333333333333333333333333333333333333333333333333"),
+		FromStringP("333333333333333333333333333333333333333333333333"),
 	})
 	if err != nil {
 		t.Error(err)
@@ -189,7 +189,7 @@ func TestBitmap_PrefixLen(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		len := BitmapFromHexP(test.hex).PrefixLen()
+		len := FromHexP(test.hex).PrefixLen()
 		if len != test.len {
 			t.Errorf("got prefix len %d; expected %d for %s", len, test.len, test.hex)
 		}
@@ -197,7 +197,7 @@ func TestBitmap_PrefixLen(t *testing.T) {
 }
 
 func TestBitmap_Prefix(t *testing.T) {
-	allOne := BitmapFromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	allOne := FromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
 	zerosTT := []struct {
 		zeros    int
@@ -213,21 +213,21 @@ func TestBitmap_Prefix(t *testing.T) {
 	}
 
 	for _, test := range zerosTT {
-		expected := BitmapFromHexP(test.expected)
+		expected := FromHexP(test.expected)
 		actual := allOne.Prefix(test.zeros, false)
 		if !actual.Equals(expected) {
 			t.Errorf("%d zeros: got %s; expected %s", test.zeros, actual.Hex(), expected.Hex())
 		}
 	}
 
-	for i := 0; i < nodeIDLength*8; i++ {
+	for i := 0; i < NumBits; i++ {
 		b := allOne.Prefix(i, false)
 		if b.PrefixLen() != i {
 			t.Errorf("got prefix len %d; expected %d for %s", b.PrefixLen(), i, b.Hex())
 		}
 	}
 
-	allZero := BitmapFromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	allZero := FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 	onesTT := []struct {
 		ones     int
@@ -243,7 +243,7 @@ func TestBitmap_Prefix(t *testing.T) {
 	}
 
 	for _, test := range onesTT {
-		expected := BitmapFromHexP(test.expected)
+		expected := FromHexP(test.expected)
 		actual := allZero.Prefix(test.ones, true)
 		if !actual.Equals(expected) {
 			t.Errorf("%d ones: got %s; expected %s", test.ones, actual.Hex(), expected.Hex())
@@ -252,7 +252,7 @@ func TestBitmap_Prefix(t *testing.T) {
 }
 
 func TestBitmap_Suffix(t *testing.T) {
-	allOne := BitmapFromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	allOne := FromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
 	zerosTT := []struct {
 		zeros    int
@@ -268,21 +268,21 @@ func TestBitmap_Suffix(t *testing.T) {
 	}
 
 	for _, test := range zerosTT {
-		expected := BitmapFromHexP(test.expected)
+		expected := FromHexP(test.expected)
 		actual := allOne.Suffix(test.zeros, false)
 		if !actual.Equals(expected) {
 			t.Errorf("%d zeros: got %s; expected %s", test.zeros, actual.Hex(), expected.Hex())
 		}
 	}
 
-	for i := 0; i < nodeIDLength*8; i++ {
+	for i := 0; i < NumBits; i++ {
 		b := allOne.Prefix(i, false)
 		if b.PrefixLen() != i {
 			t.Errorf("got prefix len %d; expected %d for %s", b.PrefixLen(), i, b.Hex())
 		}
 	}
 
-	allZero := BitmapFromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	allZero := FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 	onesTT := []struct {
 		ones     int
@@ -298,7 +298,7 @@ func TestBitmap_Suffix(t *testing.T) {
 	}
 
 	for _, test := range onesTT {
-		expected := BitmapFromHexP(test.expected)
+		expected := FromHexP(test.expected)
 		actual := allZero.Suffix(test.ones, true)
 		if !actual.Equals(expected) {
 			t.Errorf("%d ones: got %s; expected %s", test.ones, actual.Hex(), expected.Hex())
@@ -324,9 +324,9 @@ func TestBitmap_Add(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		a := BitmapFromShortHexP(test.a)
-		b := BitmapFromShortHexP(test.b)
-		expected := BitmapFromShortHexP(test.sum)
+		a := FromShortHexP(test.a)
+		b := FromShortHexP(test.b)
+		expected := FromShortHexP(test.sum)
 		if test.panic {
 			assertPanic(t, fmt.Sprintf("adding %s and %s", test.a, test.b), func() { a.Add(b) })
 		} else {
@@ -358,9 +358,9 @@ func TestBitmap_Sub(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		a := BitmapFromShortHexP(test.a)
-		b := BitmapFromShortHexP(test.b)
-		expected := BitmapFromShortHexP(test.sum)
+		a := FromShortHexP(test.a)
+		b := FromShortHexP(test.b)
+		expected := FromShortHexP(test.sum)
 		if test.panic {
 			assertPanic(t, fmt.Sprintf("subtracting %s - %s", test.a, test.b), func() { a.Sub(b) })
 		} else {
@@ -370,4 +370,13 @@ func TestBitmap_Sub(t *testing.T) {
 			}
 		}
 	}
+}
+
+func assertPanic(t *testing.T, text string, f func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("%s: did not panic as expected", text)
+		}
+	}()
+	f()
 }

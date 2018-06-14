@@ -1,36 +1,40 @@
 package dht
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/lbryio/reflector.go/dht/bits"
+)
 
 // TODO: expire stored data after tExpire time
 
 type contactStore struct {
 	// map of blob hashes to (map of node IDs to bools)
-	hashes map[Bitmap]map[Bitmap]bool
+	hashes map[bits.Bitmap]map[bits.Bitmap]bool
 	// stores the peers themselves, so they can be updated in one place
-	contacts map[Bitmap]Contact
+	contacts map[bits.Bitmap]Contact
 	lock     sync.RWMutex
 }
 
 func newStore() *contactStore {
 	return &contactStore{
-		hashes:   make(map[Bitmap]map[Bitmap]bool),
-		contacts: make(map[Bitmap]Contact),
+		hashes:   make(map[bits.Bitmap]map[bits.Bitmap]bool),
+		contacts: make(map[bits.Bitmap]Contact),
 	}
 }
 
-func (s *contactStore) Upsert(blobHash Bitmap, contact Contact) {
+func (s *contactStore) Upsert(blobHash bits.Bitmap, contact Contact) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if _, ok := s.hashes[blobHash]; !ok {
-		s.hashes[blobHash] = make(map[Bitmap]bool)
+		s.hashes[blobHash] = make(map[bits.Bitmap]bool)
 	}
 	s.hashes[blobHash][contact.ID] = true
 	s.contacts[contact.ID] = contact
 }
 
-func (s *contactStore) Get(blobHash Bitmap) []Contact {
+func (s *contactStore) Get(blobHash bits.Bitmap) []Contact {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 

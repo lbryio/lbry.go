@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/reflector.go/dht/bits"
 )
 
 var testingDHTIP = "127.0.0.1"
@@ -21,7 +22,7 @@ func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*
 	if bootstrap {
 		bootstrapAddress := testingDHTIP + ":" + strconv.Itoa(testingDHTFirstPort)
 		seeds = []string{bootstrapAddress}
-		bootstrapNode = NewBootstrapNode(RandomBitmapP(), 0, bootstrapDefaultRefreshDuration)
+		bootstrapNode = NewBootstrapNode(bits.Rand(), 0, bootstrapDefaultRefreshDuration)
 		listener, err := net.ListenPacket(network, bootstrapAddress)
 		if err != nil {
 			panic(err)
@@ -39,7 +40,7 @@ func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*
 	dhts := make([]*DHT, numNodes)
 
 	for i := 0; i < numNodes; i++ {
-		dht, err := New(&Config{Address: testingDHTIP + ":" + strconv.Itoa(firstPort+i), NodeID: RandomBitmapP().Hex(), SeedNodes: seeds})
+		dht, err := New(&Config{Address: testingDHTIP + ":" + strconv.Itoa(firstPort+i), NodeID: bits.Rand().Hex(), SeedNodes: seeds})
 		if err != nil {
 			panic(err)
 		}
@@ -225,7 +226,7 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 				continue
 			}
 			for _, n := range nodes {
-				if n.ID.rawString() == id {
+				if n.ID.String() == id {
 					currNode = n
 					currNodeFound = true
 					foundNodes[id] = true
@@ -304,13 +305,4 @@ func verifyCompactContacts(t *testing.T, contacts []interface{}, nodes []Contact
 			t.Errorf("contact port mismatch. got %d; expected %d", contact.Port, currNode.Port)
 		}
 	}
-}
-
-func assertPanic(t *testing.T, text string, f func()) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("%s: did not panic as expected", text)
-		}
-	}()
-	f()
 }

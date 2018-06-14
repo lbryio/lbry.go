@@ -13,6 +13,7 @@ import (
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/reflector.go/dht/bits"
 
 	"github.com/lyoshenka/bencode"
 	log "github.com/sirupsen/logrus"
@@ -25,7 +26,7 @@ import (
 
 // Contact is a type representation of another node that a specific node is in communication with.
 type Contact struct {
-	ID   Bitmap
+	ID   bits.Bitmap
 	IP   net.IP
 	Port int
 }
@@ -74,7 +75,7 @@ func (c *Contact) UnmarshalCompact(b []byte) error {
 	}
 	c.IP = net.IPv4(b[0], b[1], b[2], b[3]).To4()
 	c.Port = int(uint16(b[5]) | uint16(b[4])<<8)
-	c.ID = BitmapFromBytesP(b[6:])
+	c.ID = bits.FromBytesP(b[6:])
 	return nil
 }
 
@@ -120,7 +121,7 @@ func (c *Contact) UnmarshalBencode(b []byte) error {
 
 type sortedContact struct {
 	contact             Contact
-	xorDistanceToTarget Bitmap
+	xorDistanceToTarget bits.Bitmap
 }
 
 type byXorDistance []sortedContact
@@ -222,7 +223,7 @@ func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
 }
 
 // FailContact marks a contact as having failed, and removes it if it failed too many times
-func (b *bucket) FailContact(id Bitmap) {
+func (b *bucket) FailContact(id bits.Bitmap) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	i := find(id, b.peers)
@@ -233,7 +234,7 @@ func (b *bucket) FailContact(id Bitmap) {
 }
 
 // find returns the contact in the bucket, or nil if the bucket does not contain the contact
-func find(id Bitmap, peers []peer) int {
+func find(id bits.Bitmap, peers []peer) int {
 	for i := range peers {
 		if peers[i].Contact.ID.Equals(id) {
 			return i
@@ -250,11 +251,11 @@ func (b *bucket) NeedsRefresh(refreshInterval time.Duration) bool {
 }
 
 type routingTable struct {
-	id      Bitmap
+	id      bits.Bitmap
 	buckets [nodeIDBits]bucket
 }
 
-func newRoutingTable(id Bitmap) *routingTable {
+func newRoutingTable(id bits.Bitmap) *routingTable {
 	var rt routingTable
 	rt.id = id
 	for i := range rt.buckets {
@@ -301,7 +302,7 @@ func (rt *routingTable) Fail(c Contact) {
 
 // GetClosest returns the closest `limit` contacts from the routing table
 // It marks each bucket it accesses as having been accessed
-func (rt *routingTable) GetClosest(target Bitmap, limit int) []Contact {
+func (rt *routingTable) GetClosest(target bits.Bitmap, limit int) []Contact {
 	var toSort []sortedContact
 	var bucketNum int
 
@@ -335,7 +336,7 @@ func (rt *routingTable) GetClosest(target Bitmap, limit int) []Contact {
 	return contacts
 }
 
-func appendContacts(contacts []sortedContact, b bucket, target Bitmap) []sortedContact {
+func appendContacts(contacts []sortedContact, b bucket, target bits.Bitmap) []sortedContact {
 	for _, contact := range b.Contacts() {
 		contacts = append(contacts, sortedContact{contact, contact.ID.Xor(target)})
 	}
@@ -353,8 +354,8 @@ func (rt *routingTable) Count() int {
 
 // Range is a structure that holds a min and max bitmaps. The range is used in bucket sizing.
 type Range struct {
-	start Bitmap
-	end   Bitmap
+	start bits.Bitmap
+	end   bits.Bitmap
 }
 
 // BucketRanges returns a slice of ranges, where the `start` of each range is the smallest id that can
@@ -370,22 +371,22 @@ func (rt *routingTable) BucketRanges() []Range {
 	return ranges
 }
 
-func (rt *routingTable) bucketNumFor(target Bitmap) int {
+func (rt *routingTable) bucketNumFor(target bits.Bitmap) int {
 	if rt.id.Equals(target) {
 		panic("routing table does not have a bucket for its own id")
 	}
 	return nodeIDBits - 1 - target.Xor(rt.id).PrefixLen()
 }
 
-func (rt *routingTable) bucketFor(target Bitmap) *bucket {
+func (rt *routingTable) bucketFor(target bits.Bitmap) *bucket {
 	return &rt.buckets[rt.bucketNumFor(target)]
 }
 
-func (rt *routingTable) GetIDsForRefresh(refreshInterval time.Duration) []Bitmap {
-	var bitmaps []Bitmap
+func (rt *routingTable) GetIDsForRefresh(refreshInterval time.Duration) []bits.Bitmap {
+	var bitmaps []bits.Bitmap
 	for i, bucket := range rt.buckets {
 		if bucket.NeedsRefresh(refreshInterval) {
-			bitmaps = append(bitmaps, RandomBitmapP().Prefix(i, false))
+			bitmaps = append(bitmaps, bits.Rand().Prefix(i, false))
 		}
 	}
 	return bitmaps
@@ -416,7 +417,7 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	rt.id, err = BitmapFromHex(data.ID)
+	rt.id, err = bits.FromHex(data.ID)
 	if err != nil {
 		return errors.Prefix("decoding ID", err)
 	}
@@ -427,7 +428,7 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 			return errors.Err("decoding contact %s: wrong number of parts", s)
 		}
 		var c Contact
-		c.ID, err = BitmapFromHex(parts[0])
+		c.ID, err = bits.FromHex(parts[0])
 		if err != nil {
 			return errors.Err("decoding contact %s: invalid ID: %s", s, err)
 		}
@@ -451,7 +452,7 @@ func RoutingTableRefresh(n *Node, refreshInterval time.Duration, upstreamStop st
 
 	for _, id := range n.rt.GetIDsForRefresh(refreshInterval) {
 		done.Add(1)
-		go func(id Bitmap) {
+		go func(id bits.Bitmap) {
 			defer done.Done()
 			_, _, err := FindContacts(n, id, false, upstreamStop)
 			if err != nil {

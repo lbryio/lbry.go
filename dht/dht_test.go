@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/lbryio/reflector.go/dht/bits"
 )
 
 func TestNodeFinder_FindNodes(t *testing.T) {
@@ -16,7 +18,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 		bs.Shutdown()
 	}()
 
-	contacts, found, err := FindContacts(dhts[2].node, RandomBitmapP(), false, nil)
+	contacts, found, err := FindContacts(dhts[2].node, bits.Rand(), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,7 @@ func TestNodeFinder_FindNodes_NoBootstrap(t *testing.T) {
 		}
 	}()
 
-	_, _, err := FindContacts(dhts[2].node, RandomBitmapP(), false, nil)
+	_, _, err := FindContacts(dhts[2].node, bits.Rand(), false, nil)
 	if err == nil {
 		t.Fatal("contact finder should have errored saying that there are no contacts in the routing table")
 	}
@@ -79,8 +81,8 @@ func TestNodeFinder_FindValue(t *testing.T) {
 		bs.Shutdown()
 	}()
 
-	blobHashToFind := RandomBitmapP()
-	nodeToFind := Contact{ID: RandomBitmapP(), IP: net.IPv4(1, 2, 3, 4), Port: 5678}
+	blobHashToFind := bits.Rand()
+	nodeToFind := Contact{ID: bits.Rand(), IP: net.IPv4(1, 2, 3, 4), Port: 5678}
 	dhts[0].node.store.Upsert(blobHashToFind, nodeToFind)
 
 	contacts, found, err := FindContacts(dhts[2].node, blobHashToFind, true, nil)
@@ -113,9 +115,9 @@ func TestDHT_LargeDHT(t *testing.T) {
 	}()
 
 	wg := &sync.WaitGroup{}
-	ids := make([]Bitmap, nodes)
+	ids := make([]bits.Bitmap, nodes)
 	for i := range ids {
-		ids[i] = RandomBitmapP()
+		ids[i] = bits.Rand()
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
@@ -127,7 +129,7 @@ func TestDHT_LargeDHT(t *testing.T) {
 	wg.Wait()
 
 	// check that each node is in at learst 1 other routing table
-	rtCounts := make(map[Bitmap]int)
+	rtCounts := make(map[bits.Bitmap]int)
 	for _, d := range dhts {
 		for _, d2 := range dhts {
 			if d.node.id.Equals(d2.node.id) {
@@ -149,7 +151,7 @@ func TestDHT_LargeDHT(t *testing.T) {
 	}
 
 	// check that each ID is stored by at least 3 nodes
-	storeCounts := make(map[Bitmap]int)
+	storeCounts := make(map[bits.Bitmap]int)
 	for _, d := range dhts {
 		for _, id := range ids {
 			if len(d.node.store.Get(id)) > 0 {
