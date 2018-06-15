@@ -23,11 +23,13 @@ func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*
 		bootstrapAddress := testingDHTIP + ":" + strconv.Itoa(testingDHTFirstPort)
 		seeds = []string{bootstrapAddress}
 		bootstrapNode = NewBootstrapNode(bits.Rand(), 0, bootstrapDefaultRefreshDuration)
-		listener, err := net.ListenPacket(network, bootstrapAddress)
+		listener, err := net.ListenPacket(Network, bootstrapAddress)
 		if err != nil {
 			panic(err)
 		}
-		if err := bootstrapNode.Connect(listener.(*net.UDPConn)); err != nil {
+
+		err = bootstrapNode.Connect(listener.(*net.UDPConn))
+		if err != nil {
 			t.Error("error connecting bootstrap node - ", err)
 		}
 	}
@@ -40,13 +42,11 @@ func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*
 	dhts := make([]*DHT, numNodes)
 
 	for i := 0; i < numNodes; i++ {
-		dht, err := New(&Config{Address: testingDHTIP + ":" + strconv.Itoa(firstPort+i), NodeID: bits.Rand().Hex(), SeedNodes: seeds})
-		if err != nil {
-			panic(err)
-		}
+		dht := New(&Config{Address: testingDHTIP + ":" + strconv.Itoa(firstPort+i), NodeID: bits.Rand().Hex(), SeedNodes: seeds})
 
 		go func() {
-			if err := dht.Start(); err != nil {
+			err := dht.Start()
+			if err != nil {
 				t.Error("error starting dht - ", err)
 			}
 		}()

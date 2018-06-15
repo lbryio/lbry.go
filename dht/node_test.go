@@ -15,12 +15,9 @@ func TestPing(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 
-	err = dht.node.Connect(conn)
+	err := dht.connect(conn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,12 +109,9 @@ func TestStore(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 
-	err = dht.node.Connect(conn)
+	err := dht.connect(conn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,12 +204,9 @@ func TestFindNode(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 
-	err = dht.node.Connect(conn)
+	err := dht.connect(conn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,12 +270,9 @@ func TestFindValueExisting(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 
-	err = dht.node.Connect(conn)
+	err := dht.connect(conn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,12 +351,9 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 
 	conn := newTestUDPConn("127.0.0.1:21217")
 
-	dht, err := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	dht := New(&Config{Address: "127.0.0.1:21216", NodeID: dhtNodeID.Hex()})
 
-	err = dht.node.Connect(conn)
+	err := dht.connect(conn)
 	if err != nil {
 		t.Fatal(err)
 	}

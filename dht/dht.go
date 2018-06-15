@@ -21,7 +21,7 @@ func init() {
 }
 
 const (
-	network = "udp4"
+	Network = "udp4"
 
 	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
 	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
@@ -90,26 +90,57 @@ type DHT struct {
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
-func New(config *Config) (*DHT, error) {
+func New(config *Config) *DHT {
 	if config == nil {
 		config = NewStandardConfig()
 	}
 
-	contact, err := getContact(config.NodeID, config.Address)
-	if err != nil {
-		return nil, err
-	}
-
 	d := &DHT{
 		conf:      config,
-		contact:   contact,
-		node:      NewNode(contact.ID),
 		stop:      stopOnce.New(),
 		joined:    make(chan struct{}),
 		lock:      &sync.RWMutex{},
 		announced: make(map[bits.Bitmap]bool),
 	}
-	return d, nil
+	return d
+}
+
+func (dht *DHT) connect(conn UDPConn) error {
+	contact, err := getContact(dht.conf.NodeID, dht.conf.Address)
+	if err != nil {
+		return err
+	}
+
+	dht.contact = contact
+	dht.node = NewNode(contact.ID)
+
+	err = dht.node.Connect(conn)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Start starts the dht
+func (dht *DHT) Start() error {
+	listener, err := net.ListenPacket(Network, dht.conf.Address)
+	if err != nil {
+		return errors.Err(err)
+	}
+	conn := listener.(*net.UDPConn)
+
+	err = dht.connect(conn)
+	if err != nil {
+		return err
+	}
+
+	dht.join()
+	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)",
+		dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
+
+	go dht.startReannouncer()
+
+	return nil
 }
 
 // join makes current node join the dht network.
@@ -144,27 +175,6 @@ func (dht *DHT) join() {
 	// http://xlattice.sourceforge.net/components/protocol/kademlia/specs.html#join
 }
 
-// Start starts the dht
-func (dht *DHT) Start() error {
-	listener, err := net.ListenPacket(network, dht.conf.Address)
-	if err != nil {
-		return errors.Err(err)
-	}
-	conn := listener.(*net.UDPConn)
-	err = dht.node.Connect(conn)
-	if err != nil {
-		return err
-	}
-
-	dht.join()
-	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)",
-		dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
-
-	go dht.startReannouncer()
-
-	return nil
-}
-
 // WaitUntilJoined blocks until the node joins the network.
 func (dht *DHT) WaitUntilJoined() {
 	if dht.joined == nil {
@@ -184,7 +194,7 @@ func (dht *DHT) Shutdown() {
 // Ping pings a given address, creates a temporary contact for sending a message, and returns an error if communication
 // fails.
 func (dht *DHT) Ping(addr string) error {
-	raddr, err := net.ResolveUDPAddr(network, addr)
+	raddr, err := net.ResolveUDPAddr(Network, addr)
 	if err != nil {
 		return err
 	}
@@ -211,8 +221,20 @@ func (dht *DHT) Get(hash bits.Bitmap) ([]Contact, error) {
 	return nil, nil
 }
 
+// Add adds the hash to the list of hashes this node has
+func (dht *DHT) Add(hash bits.Bitmap) error {
+	// TODO: calling Add several times quickly could cause it to be announced multiple times before dht.announced[hash] is set to true
+	dht.lock.RLock()
+	exists := dht.announced[hash]
+	dht.lock.RUnlock()
+	if exists {
+		return nil
+	}
+	return dht.announce(hash)
+}
+
 // Announce announces to the DHT that this node has the blob for the given hash
-func (dht *DHT) Announce(hash bits.Bitmap) error {
+func (dht *DHT) announce(hash bits.Bitmap) error {
 	contacts, _, err := FindContacts(dht.node, hash, false, dht.stop.Ch())
 	if err != nil {
 		return err
@@ -254,7 +276,7 @@ func (dht *DHT) startReannouncer() {
 				dht.stop.Add(1)
 				go func(bm bits.Bitmap) {
 					defer dht.stop.Done()
-					err := dht.Announce(bm)
+					err := dht.announce(bm)
 					if err != nil {
 						log.Error("error re-announcing bitmap - ", err)
 					}

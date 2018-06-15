@@ -229,7 +229,8 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		log.Errorln("invalid request method")
 		return
 	case pingMethod:
-		if err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: pingSuccessResponse}); err != nil {
+		err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: pingSuccessResponse})
+		if err != nil {
 			log.Error("error sending 'pingmethod' response message - ", err)
 		}
 	case storeMethod:
@@ -237,11 +238,14 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		if n.tokens.Verify(request.StoreArgs.Value.Token, request.NodeID, addr) {
 			n.Store(request.StoreArgs.BlobHash, Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: request.StoreArgs.Value.Port})
-			if err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse}); err != nil {
+
+			err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
+			if err != nil {
 				log.Error("error sending 'storemethod' response message - ", err)
 			}
 		} else {
-			if err := n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"}); err != nil {
+			err := n.sendMessage(addr, Error{ID: request.ID, NodeID: n.id, ExceptionType: "invalid-token"})
+			if err != nil {
 				log.Error("error sending 'storemethod'response message for invalid-token - ", err)
 			}
 		}
@@ -250,11 +254,12 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 			log.Errorln("request is missing arg")
 			return
 		}
-		if err := n.sendMessage(addr, Response{
+		err := n.sendMessage(addr, Response{
 			ID:       request.ID,
 			NodeID:   n.id,
 			Contacts: n.rt.GetClosest(*request.Arg, bucketSize),
-		}); err != nil {
+		})
+		if err != nil {
 			log.Error("error sending 'findnodemethod' response message - ", err)
 		}
 
@@ -277,7 +282,8 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize)
 		}
 
-		if err := n.sendMessage(addr, res); err != nil {
+		err := n.sendMessage(addr, res)
+		if err != nil {
 			log.Error("error sending 'findvaluemethod' response message - ", err)
 		}
 	}
@@ -322,7 +328,8 @@ func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 		log.Debugf("[%s] (%d bytes) %s", n.id.HexShort(), len(encoded), spew.Sdump(data))
 	}
 
-	if err := n.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+	err = n.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err != nil {
 		log.Error("error setting write deadline - ", err)
 	}
 
@@ -391,7 +398,8 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 		defer n.txDelete(tx.req.ID)
 
 		for i := 0; i < udpRetry; i++ {
-			if err := n.sendMessage(contact.Addr(), tx.req); err != nil {
+			err := n.sendMessage(contact.Addr(), tx.req)
+			if err != nil {
 				if !strings.Contains(err.Error(), "use of closed network connection") { // this only happens on localhost. real UDP has no connections
 					log.Error("send error: ", err)
 				}

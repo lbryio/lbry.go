@@ -121,7 +121,8 @@ func TestDHT_LargeDHT(t *testing.T) {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			if err := dhts[index].Announce(ids[index]); err != nil {
+			err := dhts[index].announce(ids[index])
+			if err != nil {
 				t.Error("error announcing random bitmap - ", err)
 			}
 		}(i)

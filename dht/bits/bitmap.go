@@ -3,6 +3,7 @@ package bits
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -24,6 +25,12 @@ type Bitmap [NumBytes]byte
 
 func (b Bitmap) String() string {
 	return string(b[:])
+}
+
+func (b Bitmap) Big() *big.Int {
+	i := new(big.Int)
+	i.SetString(b.Hex(), 16)
+	return i
 }
 
 // BString returns the bitmap as a string of 0s and 1s
@@ -341,6 +348,15 @@ func FromShortHexP(hexStr string) Bitmap {
 		panic(err)
 	}
 	return bmp
+}
+
+func FromBigP(b *big.Int) Bitmap {
+	return FromShortHexP(b.Text(16))
+}
+
+// Max returns a bitmap with all bits set to 1
+func MaxP() Bitmap {
+	return FromHexP(strings.Repeat("1", NumBytes*2))
 }
 
 // Rand generates a cryptographically random bitmap with the confines of the parameters specified.
