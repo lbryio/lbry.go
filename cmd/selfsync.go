@@ -144,7 +144,7 @@ func spaceCheck() error {
 	if usedPctile >= 0.90 && !skipSpaceCheck {
 		return errors.Err(fmt.Sprintf("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100))
 	}
-	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
+	util.SendInfoToSlack("disk usage: %.1f%%", usedPctile*100)
 	return nil
 }
 
@@ -153,11 +153,16 @@ func selfSync(cmd *cobra.Command, args []string) {
 	if slackToken == "" {
 		log.Error("A slack token was not present in env vars! Slack messages disabled!")
 	} else {
-		util.InitSlack(os.Getenv("SLACK_TOKEN"))
+		host, err := os.Hostname()
+		if err != nil {
+			log.Error("could not detect system hostname")
+			host = "ytsync-unknown"
+		}
+		util.InitSlack(os.Getenv("SLACK_TOKEN"), os.Getenv("SLACK_CHANNEL"), host)
 	}
 	err := spaceCheck()
 	if err != nil {
-		util.SendToSlackError(err.Error())
+		util.SendErrorToSlack(err.Error())
 		return
 	}
 	ytAPIKey := args[0]
@@ -198,11 +203,11 @@ func selfSync(cmd *cobra.Command, args []string) {
 			for _, v := range queuesToSync {
 				interruptedByUser, err := processQueue(v, ytAPIKey, &syncCount)
 				if err != nil {
-					util.SendToSlackError(err.Error())
+					util.SendErrorToSlack(err.Error())
 					break mainLoop
 				}
 				if interruptedByUser {
-					util.SendToSlackInfo("interrupted by user!")
+					util.SendInfoToSlack("interrupted by user!")
 					break mainLoop
 				}
 			}
@@ -211,15 +216,15 @@ func selfSync(cmd *cobra.Command, args []string) {
 		// sync whatever was specified
 		_, err := processQueue(syncStatus, ytAPIKey, &syncCount)
 		if err != nil {
-			util.SendToSlackError(err.Error())
+			util.SendErrorToSlack(err.Error())
 			return
 		}
 	}
-	util.SendToSlackInfo("Syncing process terminated!")
+	util.SendInfoToSlack("Syncing process terminated!")
 }
 
 func processQueue(queueStatus string, ytAPIKey string, syncCount *int) (bool, error) {
-	util.SendToSlackInfo("Syncing %s channels", queueStatus)
+	util.SendInfoToSlack("Syncing %s channels", queueStatus)
 	channelsToSync, err := fetchChannels(queueStatus)
 	if err != nil {
 		return false, errors.Prefix("failed to fetch channels", err)
@@ -237,7 +242,7 @@ func processQueue(queueStatus string, ytAPIKey string, syncCount *int) (bool, er
 		}
 	}
 	interrupted, err := syncChannels(channelsToSync, ytAPIKey, syncCount)
-	util.SendToSlackInfo("Finished syncing %s channels", queueStatus)
+	util.SendInfoToSlack("Finished syncing %s channels", queueStatus)
 	return interrupted, err
 }
 
@@ -259,23 +264,23 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 		channelID := channel.ChannelId
 		lbryChannelName := channel.DesiredChannelName
 		if channel.TotalVideos < 1 {
-			util.SendToSlackInfo("Channel %s has no videos. Skipping", lbryChannelName)
+			util.SendInfoToSlack("Channel %s has no videos. Skipping", lbryChannelName)
 			continue
 		}
 		if !channel.SyncServer.IsNull() && channel.SyncServer.String != host {
-			util.SendToSlackInfo("Channel %s is being synced by another server: %s", lbryChannelName, channel.SyncServer.String)
+			util.SendInfoToSlack("Channel %s is being synced by another server: %s", lbryChannelName, channel.SyncServer.String)
 			continue
 		}
 
 		//acquire the lock on the channel
 		err := setChannelSyncStatus(channelID, StatusSyncing)
 		if err != nil {
-			//util.SendToSlackError("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
+			//util.SendErrorToSlack("Failed acquiring sync rights for channel %s: %v", lbryChannelName, err)
 			continue
 		}
 		//increment only if successfully acquired lock
 		*syncCount++
-		util.SendToSlackInfo("Syncing %s to LBRY! (iteration %d)", lbryChannelName, *syncCount)
+		util.SendInfoToSlack("Syncing %s to LBRY! (iteration %d)", lbryChannelName, *syncCount)
 
 		s := sync.Sync{
 			YoutubeAPIKey:           ytAPIKey,
@@ -289,15 +294,17 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 		}
 
 		err = s.FullCycle()
-		util.SendToSlackInfo("Syncing " + lbryChannelName + " reached an end.")
+		util.SendInfoToSlack("Syncing " + lbryChannelName + " reached an end.")
 		if err != nil {
-			util.SendToSlackError(errors.FullTrace(err))
+			util.SendErrorToSlack(errors.FullTrace(err))
 			fatalErrors := []string{
 				"default_wallet already exists",
 				"WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR",
+				"NotEnoughFunds",
+				"no space left on device",
 			}
 			if util.InSliceContains(err.Error(), fatalErrors) {
-				return s.IsInterrupted(), errors.Prefix("@Nikooo777 this requires manual intervention! Exiting...", err)
+				return true, errors.Prefix("@Nikooo777 this requires manual intervention! Exiting...", err)
 			}
 			//mark video as failed
 			err := setChannelSyncStatus(channelID, StatusFailed)

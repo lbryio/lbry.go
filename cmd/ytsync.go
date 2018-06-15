@@ -31,23 +31,28 @@ func ytsync(cmd *cobra.Command, args []string) {
 	if slackToken == "" {
 		log.Error("A slack token was not present in env vars! Slack messages disabled!")
 	} else {
-		util.InitSlack(os.Getenv("SLACK_TOKEN"))
+		host, err := os.Hostname()
+		if err != nil {
+			log.Error("could not detect system hostname")
+			host = "ytsync-unknown"
+		}
+		util.InitSlack(os.Getenv("SLACK_TOKEN"), os.Getenv("SLACK_CHANNEL"), host)
 	}
 	usr, err := user.Current()
 	if err != nil {
-		util.SendToSlackError(err.Error())
+		util.SendErrorToSlack(err.Error())
 		return
 	}
 	usedPctile, err := util.GetUsedSpace(usr.HomeDir + "/.lbrynet/blobfiles/")
 	if err != nil {
-		util.SendToSlackError(err.Error())
+		util.SendErrorToSlack(err.Error())
 		return
 	}
 	if usedPctile > 0.9 && !skipSpaceCheck {
-		util.SendToSlackError("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
+		util.SendErrorToSlack("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100)
 		return
 	}
-	util.SendToSlackInfo("disk usage: %.1f%%", usedPctile*100)
+	util.SendInfoToSlack("disk usage: %.1f%%", usedPctile*100)
 
 	ytAPIKey := args[0]
 	lbryChannelName := args[1]
@@ -69,7 +74,7 @@ func ytsync(cmd *cobra.Command, args []string) {
 		log.Errorln("setting --max-tries less than 1 doesn't make sense")
 		return
 	}
-	util.SendToSlackInfo("Syncing " + lbryChannelName + " to LBRY!")
+	util.SendInfoToSlack("Syncing " + lbryChannelName + " to LBRY!")
 
 	s := sync.Sync{
 		YoutubeAPIKey:           ytAPIKey,
@@ -85,7 +90,7 @@ func ytsync(cmd *cobra.Command, args []string) {
 	err = s.FullCycle()
 
 	if err != nil {
-		util.SendToSlackError(errors.FullTrace(err))
+		util.SendErrorToSlack(errors.FullTrace(err))
 	}
-	util.SendToSlackInfo("Syncing " + lbryChannelName + " reached an end.")
+	util.SendInfoToSlack("Syncing " + lbryChannelName + " reached an end.")
 }
