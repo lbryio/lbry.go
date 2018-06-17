@@ -27,8 +27,8 @@ var APIToken string
 
 func init() {
 	var selfSyncCmd = &cobra.Command{
-		Use:   "selfsync <youtube_api_key>",
-		Args:  cobra.RangeArgs(1, 1),
+		Use:   "selfsync",
+		Args:  cobra.RangeArgs(0, 0),
 		Short: "Publish youtube channels into LBRY network automatically.",
 		Run:   selfSync,
 	}
@@ -165,7 +165,7 @@ func selfSync(cmd *cobra.Command, args []string) {
 		util.SendErrorToSlack(err.Error())
 		return
 	}
-	ytAPIKey := args[0]
+	ytAPIKey := os.Getenv("YOUTUBE_API_KEY")
 	//authToken := args[1]
 
 	if !util.InSlice(syncStatus, SyncStatuses) {
@@ -303,15 +303,17 @@ func syncChannels(channelsToSync []APIYoutubeChannel, ytAPIKey string, syncCount
 				"NotEnoughFunds",
 				"no space left on device",
 			}
+			//mark video as failed
+			err2 := setChannelSyncStatus(channelID, StatusFailed)
+			if err2 != nil {
+				msg := fmt.Sprintf("Failed setting failed state for channel %s.", lbryChannelName)
+				err2 = errors.Prefix(msg, err2)
+				util.SendErrorToSlack(err2.Error())
+			}
 			if util.InSliceContains(err.Error(), fatalErrors) {
 				return true, errors.Prefix("@Nikooo777 this requires manual intervention! Exiting...", err)
 			}
-			//mark video as failed
-			err := setChannelSyncStatus(channelID, StatusFailed)
-			if err != nil {
-				msg := fmt.Sprintf("Failed setting failed state for channel %s. \n@Nikooo777 this requires manual intervention! Exiting...", lbryChannelName)
-				return s.IsInterrupted(), errors.Prefix(msg, err)
-			}
+
 			continue
 		}
 		if s.IsInterrupted() {

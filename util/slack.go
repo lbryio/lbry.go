@@ -49,14 +49,20 @@ func SendToSlack(message string) error {
 
 // SendErrorToSlack Sends an error message to the default channel and to the process log.
 func SendErrorToSlack(format string, a ...interface{}) error {
-	message := fmt.Sprintf(format, a...)
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	log.Errorln(message)
 	return sendToSlack(defaultChannel, defaultUsername, ":sos: "+message)
 }
 
 // SendInfoToSlack Sends an info message to the default channel and to the process log.
 func SendInfoToSlack(format string, a ...interface{}) error {
-	message := fmt.Sprintf(format, a...)
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	log.Debugln(message)
 	return sendToSlack(defaultChannel, defaultUsername, ":information_source: "+message)
 }
