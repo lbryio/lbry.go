@@ -258,13 +258,17 @@ type routingTable struct {
 func newRoutingTable(id bits.Bitmap) *routingTable {
 	var rt routingTable
 	rt.id = id
+	rt.reset()
+	return &rt
+}
+
+func (rt *routingTable) reset() {
 	for i := range rt.buckets {
 		rt.buckets[i] = bucket{
 			peers: make([]peer, 0, bucketSize),
 			lock:  &sync.RWMutex{},
 		}
 	}
-	return &rt
 }
 
 func (rt *routingTable) BucketInfo() string {
@@ -415,6 +419,7 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return errors.Prefix("decoding ID", err)
 	}
+	rt.reset()
 
 	for _, s := range data.Contacts {
 		parts := strings.Split(s, rtContactSep)

@@ -195,6 +195,20 @@ func TestRoutingTable_Save(t *testing.T) {
 	goldie.Assert(t, t.Name(), data)
 }
 
-func TestRoutingTable_Load(t *testing.T) {
+func TestRoutingTable_Load_ID(t *testing.T) {
+	id := "1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41"
+	data := []byte(`{"id": "` + id + `","contacts": []}`)
+
+	rt := routingTable{}
+	err := json.Unmarshal(data, &rt)
+	if err != nil {
+		t.Error(err)
+	}
+	if rt.id.Hex() != id {
+		t.Error("id mismatch")
+	}
+}
+
+func TestRoutingTable_Load_Contacts(t *testing.T) {
 	t.Skip("TODO")
 }
