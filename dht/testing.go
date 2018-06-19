@@ -226,7 +226,7 @@ func verifyContacts(t *testing.T, contacts []interface{}, nodes []Contact) {
 				continue
 			}
 			for _, n := range nodes {
-				if n.ID.String() == id {
+				if n.ID.RawString() == id {
 					currNode = n
 					currNodeFound = true
 					foundNodes[id] = true

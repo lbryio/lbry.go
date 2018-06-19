@@ -276,7 +276,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		}
 
 		if contacts := n.store.Get(*request.Arg); len(contacts) > 0 {
-			res.FindValueKey = request.Arg.String()
+			res.FindValueKey = request.Arg.RawString()
 			res.Contacts = contacts
 		} else {
 			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize)
@@ -297,7 +297,7 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 
 // handleResponse handles responses received from udp.
 func (n *Node) handleResponse(addr *net.UDPAddr, response Response) {
-	tx := n.txFind(response.ID, addr)
+	tx := n.txFind(response.ID, Contact{ID: response.NodeID, IP: addr.IP, Port: addr.Port})
 	if tx != nil {
 		tx.res <- response
 	}
@@ -339,9 +339,10 @@ func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 
 // transaction represents a single query to the dht. it stores the queried contact, the request, and the response channel
 type transaction struct {
-	contact Contact
-	req     Request
-	res     chan Response
+	contact     Contact
+	req         Request
+	res         chan Response
+	skipIDCheck bool
 }
 
 // insert adds a transaction to the manager.
@@ -358,24 +359,27 @@ func (n *Node) txDelete(id messageID) {
 	delete(n.transactions, id)
 }
 
-// Find finds a transaction for the given id. it optionally ensures that addr matches contact from transaction
-func (n *Node) txFind(id messageID, addr *net.UDPAddr) *transaction {
+// Find finds a transaction for the given id and contact
+func (n *Node) txFind(id messageID, c Contact) *transaction {
 	n.txLock.RLock()
 	defer n.txLock.RUnlock()
 
-	// TODO: also check that the response's nodeid matches the id you thought you sent to?
-
 	t, ok := n.transactions[id]
-	if !ok || (addr != nil && t.contact.Addr().String() != addr.String()) {
+	if !ok || !t.contact.Equals(c, !t.skipIDCheck) {
 		return nil
 	}
 
 	return t
 }
 
+// SendOptions controls the behavior of send calls
+type SendOptions struct {
+	skipIDCheck bool
+}
+
 // SendAsync sends a transaction and returns a channel that will eventually contain the transaction response
 // The response channel is closed when the transaction is completed or times out.
-func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-chan *Response {
+func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, options ...SendOptions) <-chan *Response {
 	if contact.ID.Equals(n.id) {
 		log.Error("sending query to self")
 		return nil
@@ -392,6 +396,10 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 			contact: contact,
 			req:     req,
 			res:     make(chan Response),
+		}
+
+		if len(options) > 0 && options[0].skipIDCheck {
+			tx.skipIDCheck = true
 		}
 
 		n.txInsert(tx)
@@ -425,14 +433,14 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request) <-ch
 
 // Send sends a transaction and blocks until the response is available. It returns a response, or nil
 // if the transaction timed out.
-func (n *Node) Send(contact Contact, req Request) *Response {
-	return <-n.SendAsync(context.Background(), contact, req)
+func (n *Node) Send(contact Contact, req Request, options ...SendOptions) *Response {
+	return <-n.SendAsync(context.Background(), contact, req, options...)
 }
 
 // SendCancelable sends the transaction asynchronously and allows the transaction to be canceled
-func (n *Node) SendCancelable(contact Contact, req Request) (<-chan *Response, context.CancelFunc) {
+func (n *Node) SendCancelable(contact Contact, req Request, options ...SendOptions) (<-chan *Response, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
-	return n.SendAsync(ctx, contact, req), cancel
+	return n.SendAsync(ctx, contact, req, options...), cancel
 }
 
 // CountActiveTransactions returns the number of transactions in the manager

@@ -28,7 +28,7 @@ func TestPing(t *testing.T) {
 	data, err := bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      requestType,
 		headerMessageIDField: messageID,
-		headerNodeIDField:    testNodeID.String(),
+		headerNodeIDField:    testNodeID.RawString(),
 		headerPayloadField:   "ping",
 		headerArgsField:      []string{},
 	})
@@ -84,7 +84,7 @@ func TestPing(t *testing.T) {
 			rNodeID, ok := response[headerNodeIDField].(string)
 			if !ok {
 				t.Error("node ID is not a string")
-			} else if rNodeID != dhtNodeID.String() {
+			} else if rNodeID != dhtNodeID.RawString() {
 				t.Error("unexpected node ID")
 			}
 		}
@@ -171,7 +171,7 @@ func TestStore(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.String())
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
@@ -249,7 +249,7 @@ func TestFindNode(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.String())
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
@@ -320,7 +320,7 @@ func TestFindValueExisting(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.String())
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {
@@ -332,7 +332,7 @@ func TestFindValueExisting(t *testing.T) {
 		t.Fatal("payload is not a dictionary")
 	}
 
-	compactContacts, ok := payload[valueToFind.String()]
+	compactContacts, ok := payload[valueToFind.RawString()]
 	if !ok {
 		t.Fatal("payload is missing key for search value")
 	}
@@ -396,7 +396,7 @@ func TestFindValueFallbackToFindNode(t *testing.T) {
 		}
 	}
 
-	verifyResponse(t, response, messageID, dhtNodeID.String())
+	verifyResponse(t, response, messageID, dhtNodeID.RawString())
 
 	_, ok := response[headerPayloadField]
 	if !ok {

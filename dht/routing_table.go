@@ -32,8 +32,8 @@ type Contact struct {
 }
 
 // Equals returns T/F if two contacts are the same.
-func (c Contact) Equals(other Contact) bool {
-	return c.ID == other.ID
+func (c Contact) Equals(other Contact, checkID bool) bool {
+	return c.IP.Equal(other.IP) && c.Port == other.Port && (!checkID || c.ID == other.ID)
 }
 
 // Addr returns the UPD Address of the contact.
@@ -150,7 +150,7 @@ func (p *peer) Touch() {
 // ActiveSince returns whether a peer has responded in the last `d` duration
 // this is used to check if the peer is "good", meaning that we believe the peer will respond to our requests
 func (p *peer) ActiveInLast(d time.Duration) bool {
-	return time.Since(p.LastActivity) > d
+	return time.Since(p.LastActivity) < d
 }
 
 // IsBad returns whether a peer is "bad", meaning that it has failed to respond to multiple pings in a row
@@ -352,20 +352,14 @@ func (rt *routingTable) Count() int {
 	return count
 }
 
-// Range is a structure that holds a min and max bitmaps. The range is used in bucket sizing.
-type Range struct {
-	start bits.Bitmap
-	end   bits.Bitmap
-}
-
 // BucketRanges returns a slice of ranges, where the `start` of each range is the smallest id that can
 // go in that bucket, and the `end` is the largest id
-func (rt *routingTable) BucketRanges() []Range {
-	ranges := make([]Range, len(rt.buckets))
+func (rt *routingTable) BucketRanges() []bits.Range {
+	ranges := make([]bits.Range, len(rt.buckets))
 	for i := range rt.buckets {
-		ranges[i] = Range{
-			rt.id.Suffix(i, false).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
-			rt.id.Suffix(i, true).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
+		ranges[i] = bits.Range{
+			Start: rt.id.Suffix(i, false).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
+			End:   rt.id.Suffix(i, true).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
 		}
 	}
 	return ranges

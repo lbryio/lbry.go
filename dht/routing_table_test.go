@@ -147,14 +147,14 @@ func TestRoutingTable_MoveToBack(t *testing.T) {
 func TestRoutingTable_BucketRanges(t *testing.T) {
 	id := bits.FromHexP("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41")
 	ranges := newRoutingTable(id).BucketRanges()
-	if !ranges[0].start.Equals(ranges[0].end) {
+	if !ranges[0].Start.Equals(ranges[0].End) {
 		t.Error("first bucket should only fit exactly one id")
 	}
 	for i := 0; i < 1000; i++ {
 		randID := bits.Rand()
 		found := -1
 		for i, r := range ranges {
-			if r.start.LessOrEqual(randID) && r.end.GreaterOrEqual(randID) {
+			if r.Start.LessOrEqual(randID) && r.End.GreaterOrEqual(randID) {
 				if found >= 0 {
 					t.Errorf("%s appears in buckets %d and %d", randID.Hex(), found, i)
 				} else {
@@ -176,10 +176,10 @@ func TestRoutingTable_Save(t *testing.T) {
 
 	for i, r := range ranges {
 		for j := 0; j < bucketSize; j++ {
-			toAdd := r.start.Add(bits.FromShortHexP(strconv.Itoa(j)))
-			if toAdd.LessOrEqual(r.end) {
+			toAdd := r.Start.Add(bits.FromShortHexP(strconv.Itoa(j)))
+			if toAdd.LessOrEqual(r.End) {
 				rt.Update(Contact{
-					ID:   r.start.Add(bits.FromShortHexP(strconv.Itoa(j))),
+					ID:   r.Start.Add(bits.FromShortHexP(strconv.Itoa(j))),
 					IP:   net.ParseIP("1.2.3." + strconv.Itoa(j)),
 					Port: 1 + i*bucketSize + j,
 				})

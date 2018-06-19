@@ -200,7 +200,7 @@ func (dht *DHT) Ping(addr string) error {
 	}
 
 	tmpNode := Contact{ID: bits.Rand(), IP: raddr.IP, Port: raddr.Port}
-	res := dht.node.Send(tmpNode, Request{Method: pingMethod})
+	res := dht.node.Send(tmpNode, Request{Method: pingMethod}, SendOptions{skipIDCheck: true})
 	if res == nil {
 		return errors.Err("no response from node %s", addr)
 	}
@@ -222,15 +222,23 @@ func (dht *DHT) Get(hash bits.Bitmap) ([]Contact, error) {
 }
 
 // Add adds the hash to the list of hashes this node has
-func (dht *DHT) Add(hash bits.Bitmap) error {
+func (dht *DHT) Add(hash bits.Bitmap) {
 	// TODO: calling Add several times quickly could cause it to be announced multiple times before dht.announced[hash] is set to true
 	dht.lock.RLock()
 	exists := dht.announced[hash]
 	dht.lock.RUnlock()
 	if exists {
-		return nil
+		return
 	}
-	return dht.announce(hash)
+
+	dht.stop.Add(1)
+	go func() {
+		defer dht.stop.Done()
+		err := dht.announce(hash)
+		if err != nil {
+			log.Error(errors.Prefix("error announcing bitmap", err))
+		}
+	}()
 }
 
 // Announce announces to the DHT that this node has the blob for the given hash
@@ -241,7 +249,10 @@ func (dht *DHT) announce(hash bits.Bitmap) error {
 	}
 
 	// if we found less than K contacts, or current node is closer than farthest contact
-	if len(contacts) < bucketSize || dht.node.id.Xor(hash).Less(contacts[bucketSize-1].ID.Xor(hash)) {
+	if len(contacts) < bucketSize {
+		// append self to contacts, and self-store
+		contacts = append(contacts, dht.contact)
+	} else if dht.node.id.Xor(hash).Less(contacts[bucketSize-1].ID.Xor(hash)) {
 		// pop last contact, and self-store instead
 		contacts[bucketSize-1] = dht.contact
 	}
@@ -289,7 +300,7 @@ func (dht *DHT) startReannouncer() {
 
 func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 	// self-store
-	if dht.contact.Equals(c) {
+	if dht.contact.ID == c.ID {
 		dht.node.Store(hash, c)
 		return
 	}

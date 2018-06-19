@@ -21,9 +21,9 @@ type BootstrapNode struct {
 	initialPingInterval time.Duration
 	checkInterval       time.Duration
 
-	nlock    *sync.RWMutex
-	nodes    []peer
-	nodeKeys map[bits.Bitmap]int
+	nlock   *sync.RWMutex
+	nodes   map[bits.Bitmap]*peer
+	nodeIDs []bits.Bitmap // necessary for efficient random ID selection
 }
 
 // NewBootstrapNode returns a BootstrapNode pointer.
@@ -34,9 +34,9 @@ func NewBootstrapNode(id bits.Bitmap, initialPingInterval, rePingInterval time.D
 		initialPingInterval: initialPingInterval,
 		checkInterval:       rePingInterval,
 
-		nlock:    &sync.RWMutex{},
-		nodes:    make([]peer, 0),
-		nodeKeys: make(map[bits.Bitmap]int),
+		nlock:   &sync.RWMutex{},
+		nodes:   make(map[bits.Bitmap]*peer),
+		nodeIDs: make([]bits.Bitmap, 0),
 	}
 
 	b.requestHandler = b.handleRequest
@@ -78,15 +78,15 @@ func (b *BootstrapNode) upsert(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
 
-	if i, exists := b.nodeKeys[c.ID]; exists {
-		log.Debugf("[%s] bootstrap: touching contact %s", b.id.HexShort(), b.nodes[i].Contact.ID.HexShort())
-		b.nodes[i].Touch()
+	if node, exists := b.nodes[c.ID]; exists {
+		log.Debugf("[%s] bootstrap: touching contact %s", b.id.HexShort(), node.Contact.ID.HexShort())
+		node.Touch()
 		return
 	}
 
 	log.Debugf("[%s] bootstrap: adding new contact %s", b.id.HexShort(), c.ID.HexShort())
-	b.nodeKeys[c.ID] = len(b.nodes)
-	b.nodes = append(b.nodes, peer{c, time.Now(), 0})
+	b.nodes[c.ID] = &peer{c, time.Now(), 0}
+	b.nodeIDs = append(b.nodeIDs, c.ID)
 }
 
 // remove removes the contact from the list
@@ -94,14 +94,19 @@ func (b *BootstrapNode) remove(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
 
-	i, exists := b.nodeKeys[c.ID]
+	_, exists := b.nodes[c.ID]
 	if !exists {
 		return
 	}
 
 	log.Debugf("[%s] bootstrap: removing contact %s", b.id.HexShort(), c.ID.HexShort())
-	b.nodes = append(b.nodes[:i], b.nodes[i+1:]...)
-	delete(b.nodeKeys, c.ID)
+	delete(b.nodes, c.ID)
+	for i := range b.nodeIDs {
+		if b.nodeIDs[i].Equals(c.ID) {
+			b.nodeIDs = append(b.nodeIDs[:i], b.nodeIDs[i+1:]...)
+			break
+		}
+	}
 }
 
 // get returns up to `limit` random contacts from the list
@@ -114,8 +119,8 @@ func (b *BootstrapNode) get(limit int) []Contact {
 	}
 
 	ret := make([]Contact, limit)
-	for i, k := range randKeys(len(b.nodes))[:limit] {
-		ret[i] = b.nodes[k].Contact
+	for i, k := range randKeys(len(b.nodeIDs))[:limit] {
+		ret[i] = b.nodes[b.nodeIDs[k]].Contact
 	}
 
 	return ret
@@ -123,6 +128,7 @@ func (b *BootstrapNode) get(limit int) []Contact {
 
 // ping pings a node. if the node responds, it is added to the list. otherwise, it is removed
 func (b *BootstrapNode) ping(c Contact) {
+	log.Debugf("[%s] bootstrap: pinging %s", b.id.HexShort(), c.ID.HexShort())
 	b.stop.Add(1)
 	defer b.stop.Done()
 
@@ -180,9 +186,19 @@ func (b *BootstrapNode) handleRequest(addr *net.UDPAddr, request Request) {
 	}
 
 	go func() {
-		log.Debugf("[%s] bootstrap: queuing %s to ping", b.id.HexShort(), request.NodeID.HexShort())
-		<-time.After(b.initialPingInterval)
-		b.ping(Contact{ID: request.NodeID, IP: addr.IP, Port: addr.Port})
+		b.nlock.RLock()
+		_, exists := b.nodes[request.NodeID]
+		b.nlock.RUnlock()
+		if !exists {
+			log.Debugf("[%s] bootstrap: queuing %s to ping", b.id.HexShort(), request.NodeID.HexShort())
+			<-time.After(b.initialPingInterval)
+			b.nlock.RLock()
+			_, exists = b.nodes[request.NodeID]
+			b.nlock.RUnlock()
+			if !exists {
+				b.ping(Contact{ID: request.NodeID, IP: addr.IP, Port: addr.Port})
+			}
+		}
 	}()
 }
 

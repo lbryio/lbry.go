@@ -23,14 +23,12 @@ const (
 // package as a way to handle the unique identifiers of a DHT node.
 type Bitmap [NumBytes]byte
 
-func (b Bitmap) String() string {
+func (b Bitmap) RawString() string {
 	return string(b[:])
 }
 
-func (b Bitmap) Big() *big.Int {
-	i := new(big.Int)
-	i.SetString(b.Hex(), 16)
-	return i
+func (b Bitmap) String() string {
+	return b.Hex()
 }
 
 // BString returns the bitmap as a string of 0s and 1s
@@ -59,6 +57,12 @@ func (b Bitmap) HexSimplified() string {
 		simple = "0"
 	}
 	return simple
+}
+
+func (b Bitmap) Big() *big.Int {
+	i := new(big.Int)
+	i.SetString(b.Hex(), 16)
+	return i
 }
 
 // Equals returns T/F if every byte in bitmap are equal.
@@ -356,7 +360,7 @@ func FromBigP(b *big.Int) Bitmap {
 
 // Max returns a bitmap with all bits set to 1
 func MaxP() Bitmap {
-	return FromHexP(strings.Repeat("1", NumBytes*2))
+	return FromHexP(strings.Repeat("f", NumBytes*2))
 }
 
 // Rand generates a cryptographically random bitmap with the confines of the parameters specified.

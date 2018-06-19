@@ -48,9 +48,17 @@ func FindContacts(node *Node, target bits.Bitmap, findValue bool, upstreamStop s
 		stop:                stopOnce.New(),
 		outstandingRequestsMutex: &sync.RWMutex{},
 	}
+
 	if upstreamStop != nil {
-		cf.stop.Link(upstreamStop)
+		go func() {
+			select {
+			case <-upstreamStop:
+				cf.Stop()
+			case <-cf.stop.Ch():
+			}
+		}()
 	}
+
 	return cf.Find()
 }
 
