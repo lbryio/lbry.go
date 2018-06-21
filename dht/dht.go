@@ -3,16 +3,19 @@ package dht
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/lbryio/reflector.go/dht/bits"
+	peerproto "github.com/lbryio/reflector.go/peer"
+
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stopOnce"
-	"github.com/lbryio/reflector.go/dht/bits"
-	"github.com/spf13/cast"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cast"
 )
 
 func init() {
@@ -21,7 +24,8 @@ func init() {
 }
 
 const (
-	Network = "udp4"
+	Network     = "udp4"
+	DefaultPort = 4444
 
 	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
 	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
@@ -57,17 +61,20 @@ type Config struct {
 	NodeID string
 	// print the state of the dht every X time
 	PrintState time.Duration
+	// the port that clients can use to download blobs using the LBRY peer protocol
+	PeerProtocolPort int
 }
 
 // NewStandardConfig returns a Config pointer with default values.
 func NewStandardConfig() *Config {
 	return &Config{
-		Address: "0.0.0.0:4444",
+		Address: "0.0.0.0:" + strconv.Itoa(DefaultPort),
 		SeedNodes: []string{
 			"lbrynet1.lbry.io:4444",
 			"lbrynet2.lbry.io:4444",
 			"lbrynet3.lbry.io:4444",
 		},
+		PeerProtocolPort: peerproto.DefaultPort,
 	}
 }
 
@@ -330,7 +337,7 @@ func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 			Value: storeArgsValue{
 				Token:  res.Token,
 				LbryID: dht.contact.ID,
-				Port:   dht.contact.Port,
+				Port:   dht.conf.PeerProtocolPort,
 			},
 		},
 	})

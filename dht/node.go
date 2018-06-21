@@ -299,7 +299,11 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 func (n *Node) handleResponse(addr *net.UDPAddr, response Response) {
 	tx := n.txFind(response.ID, Contact{ID: response.NodeID, IP: addr.IP, Port: addr.Port})
 	if tx != nil {
-		tx.res <- response
+		select {
+		case tx.res <- response:
+		default:
+			log.Errorf("[%s] query %s: response received but tx has no listener", n.id.HexShort(), response.ID.HexShort())
+		}
 	}
 
 	n.rt.Update(Contact{ID: response.NodeID, IP: addr.IP, Port: addr.Port})
