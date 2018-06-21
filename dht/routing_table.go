@@ -351,7 +351,7 @@ func appendContacts(contacts []sortedContact, b bucket, target bits.Bitmap) []so
 func (rt *routingTable) Count() int {
 	count := 0
 	for _, bucket := range rt.buckets {
-		count = bucket.Len()
+		count += bucket.Len()
 	}
 	return count
 }

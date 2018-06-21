@@ -37,7 +37,8 @@ const (
 
 	udpRetry            = 3
 	udpTimeout          = 5 * time.Second
-	udpMaxMessageLength = 1024 // bytes. I think our longest message is ~676 bytes, so I rounded up
+	udpMaxMessageLength = 4096 // bytes. I think our longest message is ~676 bytes, so I rounded up to 1024
+	//                            scratch that. a findValue could return more than K results if a lot of nodes are storing that value, so we need more buffer
 
 	maxPeerFails = 3 // after this many failures, a peer is considered bad and will be removed from the routing table
 	//tExpire     = 60 * time.Minute // the time after which a key/value pair expires; this is a time-to-live (TTL) from the original publication date

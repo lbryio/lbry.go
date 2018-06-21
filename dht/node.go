@@ -384,12 +384,13 @@ type SendOptions struct {
 // SendAsync sends a transaction and returns a channel that will eventually contain the transaction response
 // The response channel is closed when the transaction is completed or times out.
 func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, options ...SendOptions) <-chan *Response {
+	ch := make(chan *Response, 1)
+
 	if contact.ID.Equals(n.id) {
 		log.Error("sending query to self")
-		return nil
+		close(ch)
+		return ch
 	}
-
-	ch := make(chan *Response, 1)
 
 	go func() {
 		defer close(ch)
