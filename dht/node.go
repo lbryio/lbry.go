@@ -422,6 +422,9 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, opti
 			case res := <-tx.res:
 				ch <- &res
 				return
+			//TODO: does this belong here?
+			//case <-n.stop.Ch():
+			//	return
 			case <-ctx.Done():
 				return
 			case <-time.After(udpTimeout):
