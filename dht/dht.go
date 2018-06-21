@@ -94,6 +94,8 @@ type DHT struct {
 	lock *sync.RWMutex
 	// list of bitmaps that need to be reannounced periodically
 	announced map[bits.Bitmap]bool
+	// cache for store tokens
+	tokenCache *tokenCache
 }
 
 // New returns a DHT pointer. If config is nil, then config will be set to the default config.
@@ -120,6 +122,7 @@ func (dht *DHT) connect(conn UDPConn) error {
 
 	dht.contact = contact
 	dht.node = NewNode(contact.ID)
+	dht.tokenCache = newTokenCache(dht.node, tokenSecretRotationInterval)
 
 	err = dht.node.Connect(conn)
 	if err != nil {
@@ -142,7 +145,7 @@ func (dht *DHT) Start() error {
 	}
 
 	dht.join()
-	log.Debugf("[%s] DHT ready on %s (%d nodes found during join)",
+	log.Infof("[%s] DHT ready on %s (%d nodes found during join)",
 		dht.node.id.HexShort(), dht.contact.Addr().String(), dht.node.rt.Count())
 
 	go dht.startReannouncer()
@@ -154,7 +157,7 @@ func (dht *DHT) Start() error {
 func (dht *DHT) join() {
 	defer close(dht.joined) // if anyone's waiting for join to finish, they'll know its done
 
-	log.Debugf("[%s] joining network", dht.node.id.HexShort())
+	log.Infof("[%s] joining DHT network", dht.node.id.HexShort())
 
 	// ping nodes, which gets their real node IDs and adds them to the routing table
 	atLeastOneNodeResponded := false
@@ -312,30 +315,14 @@ func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 		return
 	}
 
+	token := dht.tokenCache.Get(c, hash, dht.stop.Ch())
+
 	resCh, cancel := dht.node.SendCancelable(c, Request{
-		Method: findValueMethod,
-		Arg:    &hash,
-	})
-
-	var res *Response
-
-	select {
-	case res = <-resCh:
-	case <-dht.stop.Ch():
-		cancel()
-		return
-	}
-
-	if res == nil {
-		return // request timed out
-	}
-
-	resCh, cancel = dht.node.SendCancelable(c, Request{
 		Method: storeMethod,
 		StoreArgs: &storeArgs{
 			BlobHash: hash,
 			Value: storeArgsValue{
-				Token:  res.Token,
+				Token:  token,
 				LbryID: dht.contact.ID,
 				Port:   dht.conf.PeerProtocolPort,
 			},
