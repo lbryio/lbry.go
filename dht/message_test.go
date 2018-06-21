@@ -167,6 +167,40 @@ func TestDecodeFindNodeResponseWithNoNodes(t *testing.T) {
 	}
 }
 
+func TestDecodeRequestWithProtocolVersion(t *testing.T) {
+	raw, err := hex.DecodeString("6469306569306569316532303a65e1b9afce87c44abc40b4bb466890d2797f0dd269326534383a1baf3dbba8746c7a739f35465e268ace823622c5e8ec1dd7d5d27af5795cfbc54f22a32fbd05d420f241266b3dd16831693365343a70696e676934656c6431353a70726f746f636f6c56657273696f6e693165656565")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := Request{}
+	err = bencode.DecodeBytes(raw, &req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if req.ProtocolVersion != 1 {
+		t.Error("protocol version was not detected correctly")
+	}
+}
+
+func TestDecodeResponseWithProtocolVersion(t *testing.T) {
+	raw, err := hex.DecodeString("6469306569316569316532303a2b96f5de8be1e86dc2332a50eb313c97848064db69326534383a8b8eb692658ea3d7e7828e80a3133d524c6f82aaff370efa759d5b87821035a32de06724cb099f01a819695f829dff7f6933656431353a70726f746f636f6c56657273696f6e693165353a746f6b656e34383af2368fe4fd06ede6631ad8b153f3b5d8db724f8d520f4291e992e206dd02a216fb7dfd9b81686f11b626e3840df65fb434383a89c5c3f9794b0b24a03406e3b74361edb9ae70828e4c133512fc75db0a2d312673cdd4e30eed37892a46692d2fe439f36c35343a12dd65af0d058cd7d10d122fbe2eb5ae31062b7480011be588f20cfe6807b1939c42eea639059fa6365bfccb56ef8c9e574f49ba035c656565")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := Response{}
+	err = bencode.DecodeBytes(raw, &res)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.ProtocolVersion != 1 {
+		t.Error("protocol version was not detected correctly")
+	}
+}
+
 func compareResponses(t *testing.T, res, res2 Response) {
 	if res.ID != res2.ID {
 		t.Errorf("expected ID %s, got %s", res.ID, res2.ID)

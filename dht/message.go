@@ -41,6 +41,7 @@ const (
 	headerArgsField      = "4"
 	contactsField        = "contacts"
 	tokenField           = "token"
+	protocolVersionField = "protocolVersion"
 )
 
 // Message is an extension of the bencode marshalling interface for serialized message passing.
@@ -83,11 +84,12 @@ func newMessageID() messageID {
 
 // Request represents the structured request from one node to another.
 type Request struct {
-	ID        messageID
-	NodeID    bits.Bitmap
-	Method    string
-	Arg       *bits.Bitmap
-	StoreArgs *storeArgs
+	ID              messageID
+	NodeID          bits.Bitmap
+	Method          string
+	Arg             *bits.Bitmap
+	StoreArgs       *storeArgs
+	ProtocolVersion int
 }
 
 // MarshalBencode returns the serialized byte slice representation of the request
@@ -133,15 +135,45 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 			return errors.Prefix("request unmarshal", err)
 		}
 	} else if len(raw.Args) > 2 { // 2 because an empty list is `le`
-		tmp := []bits.Bitmap{}
-		err = bencode.DecodeBytes(raw.Args, &tmp)
+		r.Arg, r.ProtocolVersion, err = processArgsAndProtoVersion(raw.Args)
 		if err != nil {
 			return errors.Prefix("request unmarshal", err)
 		}
-		r.Arg = &tmp[0]
 	}
 
 	return nil
+}
+
+func processArgsAndProtoVersion(raw bencode.RawMessage) (arg *bits.Bitmap, version int, err error) {
+	var args []bencode.RawMessage
+	err = bencode.DecodeBytes(raw, &args)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if len(args) == 0 {
+		return nil, 0, nil
+	}
+
+	var extras map[string]int
+	err = bencode.DecodeBytes(args[len(args)-1], &extras)
+	if err == nil {
+		if v, exists := extras[protocolVersionField]; exists {
+			version = v
+			args = args[:len(args)-1]
+		}
+	}
+
+	if len(args) > 0 {
+		var b bits.Bitmap
+		err = bencode.DecodeBytes(args[0], &b)
+		if err != nil {
+			return nil, 0, err
+		}
+		arg = &b
+	}
+
+	return arg, version, nil
 }
 
 func (r Request) argsDebug() string {
@@ -231,12 +263,13 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 
 // Response represents the structured response one node returns to another.
 type Response struct {
-	ID           messageID
-	NodeID       bits.Bitmap
-	Data         string
-	Contacts     []Contact
-	FindValueKey string
-	Token        string
+	ID              messageID
+	NodeID          bits.Bitmap
+	Data            string
+	Contacts        []Contact
+	FindValueKey    string
+	Token           string
+	ProtocolVersion int
 }
 
 func (r Response) argsDebug() string {
@@ -251,7 +284,7 @@ func (r Response) argsDebug() string {
 
 	str += "|"
 	for _, c := range r.Contacts {
-		str += c.Addr().String() + ":" + c.ID.HexShort() + ","
+		str += c.String() + ","
 	}
 	str = strings.TrimRight(str, ",") + "|"
 
@@ -344,7 +377,15 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 		if err != nil {
 			return err
 		}
-		delete(rawData, tokenField) // it doesnt mess up findValue key finding below
+		delete(rawData, tokenField) // so it doesnt mess up findValue key finding below
+	}
+
+	if protocolVersion, ok := rawData[protocolVersionField]; ok {
+		err = bencode.DecodeBytes(protocolVersion, &r.ProtocolVersion)
+		if err != nil {
+			return err
+		}
+		delete(rawData, protocolVersionField) // so it doesnt mess up findValue key finding below
 	}
 
 	if contacts, ok := rawData[contactsField]; ok {
