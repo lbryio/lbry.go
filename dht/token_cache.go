@@ -9,6 +9,8 @@ import (
 	"github.com/lbryio/lbry.go/stopOnce"
 )
 
+// TODO: this should be moved out of dht and into node, and it should be completely hidden inside node. dht should not need to know about tokens
+
 type tokenCacheEntry struct {
 	token      string
 	receivedAt time.Time

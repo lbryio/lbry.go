@@ -69,9 +69,9 @@ func (cf *contactFinder) Stop() {
 
 func (cf *contactFinder) Find() ([]Contact, bool, error) {
 	if cf.findValue {
-		log.Debugf("[%s] find %s: starting iterativeFindValue", cf.node.id.HexShort(), cf.target.HexShort())
+		cf.debug("starting iterativeFindValue")
 	} else {
-		log.Debugf("[%s] find %s: starting iterativeFindNode", cf.node.id.HexShort(), cf.target.HexShort())
+		cf.debug("starting iterativeFindNode")
 	}
 	cf.appendNewToShortlist(cf.node.rt.GetClosest(cf.target, alpha))
 	if len(cf.shortlist) == 0 {
@@ -108,9 +108,9 @@ func (cf *contactFinder) Find() ([]Contact, bool, error) {
 }
 
 func (cf *contactFinder) iterationWorker(num int) {
-	log.Debugf("[%s] find %s: starting worker %d", cf.node.id.HexShort(), cf.target.HexShort(), num)
+	cf.debug("starting worker %d", num)
 	defer func() {
-		log.Debugf("[%s] find %s: stopping worker %d", cf.node.id.HexShort(), cf.target.HexShort(), num)
+		cf.debug("stopping worker %d", num)
 	}()
 
 	for {
@@ -133,7 +133,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 				req.Method = findNodeMethod
 			}
 
-			log.Debugf("[%s] find %s: worker %d: contacting %s", cf.node.id.HexShort(), cf.target.HexShort(), num, contact.ID.HexShort())
+			cf.debug("worker %d: contacting %s", num, contact.ID.HexShort())
 
 			cf.incrementOutstanding()
 
@@ -142,23 +142,23 @@ func (cf *contactFinder) iterationWorker(num int) {
 			select {
 			case res = <-resCh:
 			case <-cf.stop.Ch():
-				log.Debugf("[%s] find %s: worker %d: canceled", cf.node.id.HexShort(), cf.target.HexShort(), num)
+				cf.debug("worker %d: canceled", num)
 				cancel()
 				return
 			}
 
 			if res == nil {
 				// nothing to do, response timed out
-				log.Debugf("[%s] find %s: worker %d: search canceled or timed out waiting for %s", cf.node.id.HexShort(), cf.target.HexShort(), num, contact.ID.HexShort())
+				cf.debug("worker %d: search canceled or timed out waiting for %s", num, contact.ID.HexShort())
 			} else if cf.findValue && res.FindValueKey != "" {
-				log.Debugf("[%s] find %s: worker %d: got value", cf.node.id.HexShort(), cf.target.HexShort(), num)
+				cf.debug("worker %d: got value", num)
 				cf.findValueMutex.Lock()
 				cf.findValueResult = res.Contacts
 				cf.findValueMutex.Unlock()
 				cf.stop.Stop()
 				return
 			} else {
-				log.Debugf("[%s] find %s: worker %d: got contacts", cf.node.id.HexShort(), cf.target.HexShort(), num)
+				cf.debug("worker %d: got contacts", num)
 				cf.insertIntoActiveList(contact)
 				cf.appendNewToShortlist(res.Contacts)
 			}
@@ -167,7 +167,7 @@ func (cf *contactFinder) iterationWorker(num int) {
 		}
 
 		if cf.isSearchFinished() {
-			log.Debugf("[%s] find %s: worker %d: search is finished", cf.node.id.HexShort(), cf.target.HexShort(), num)
+			cf.debug("worker %d: search is finished", num)
 			cf.stop.Stop()
 			return
 		}
@@ -268,6 +268,11 @@ func (cf *contactFinder) areRequestsOutstanding() bool {
 	cf.outstandingRequestsMutex.RLock()
 	defer cf.outstandingRequestsMutex.RUnlock()
 	return cf.outstandingRequests > 0
+}
+
+func (cf *contactFinder) debug(format string, args ...interface{}) {
+	args = append([]interface{}{cf.node.id.HexShort()}, append([]interface{}{cf.target.Hex()}, args...)...)
+	log.Debugf("[%s] find %s: "+format, args...)
 }
 
 func sortInPlace(contacts []Contact, target bits.Bitmap) {
