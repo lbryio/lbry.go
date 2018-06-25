@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
 )
 
@@ -17,14 +17,14 @@ type tokenManager struct {
 	secret     []byte
 	prevSecret []byte
 	lock       *sync.RWMutex
-	stop       *stopOnce.Stopper
+	stop       *stop.Group
 }
 
 func (tm *tokenManager) Start(interval time.Duration) {
 	tm.secret = make([]byte, 64)
 	tm.prevSecret = make([]byte, 64)
 	tm.lock = &sync.RWMutex{}
-	tm.stop = stopOnce.New()
+	tm.stop = stop.New()
 
 	tm.rotateSecret()
 

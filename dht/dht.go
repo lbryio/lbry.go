@@ -12,13 +12,20 @@ import (
 	peerproto "github.com/lbryio/reflector.go/peer"
 
 	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/lbry.go/stop"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 )
 
+var log *logrus.Logger
+
+func UseLogger(l *logrus.Logger) {
+	log = l
+}
+
 func init() {
+	log = logrus.StandardLogger()
 	//log.SetFormatter(&log.TextFormatter{ForceColors: true})
 	//log.SetLevel(log.DebugLevel)
 }
@@ -87,8 +94,8 @@ type DHT struct {
 	contact Contact
 	// node
 	node *Node
-	// stopper to shut down DHT
-	stop *stopOnce.Stopper
+	// stopGroup to shut down DHT
+	grp *stop.Group
 	// channel is closed when DHT joins network
 	joined chan struct{}
 	// lock for announced list
@@ -107,7 +114,7 @@ func New(config *Config) *DHT {
 
 	d := &DHT{
 		conf:      config,
-		stop:      stopOnce.New(),
+		grp:       stop.New(),
 		joined:    make(chan struct{}),
 		lock:      &sync.RWMutex{},
 		announced: make(map[bits.Bitmap]bool),
@@ -177,7 +184,7 @@ func (dht *DHT) join() {
 	}
 
 	// now call iterativeFind on yourself
-	_, _, err := FindContacts(dht.node, dht.node.id, false, dht.stop.Ch())
+	_, _, err := FindContacts(dht.node, dht.node.id, false, dht.grp.Child())
 	if err != nil {
 		log.Errorf("[%s] join: %s", dht.node.id.HexShort(), err.Error())
 	}
@@ -197,7 +204,7 @@ func (dht *DHT) WaitUntilJoined() {
 // Shutdown shuts down the dht
 func (dht *DHT) Shutdown() {
 	log.Debugf("[%s] DHT shutting down", dht.node.id.HexShort())
-	dht.stop.StopAndWait()
+	dht.grp.StopAndWait()
 	dht.node.Shutdown()
 	log.Debugf("[%s] DHT stopped", dht.node.id.HexShort())
 }
@@ -221,7 +228,7 @@ func (dht *DHT) Ping(addr string) error {
 
 // Get returns the list of nodes that have the blob for the given hash
 func (dht *DHT) Get(hash bits.Bitmap) ([]Contact, error) {
-	contacts, found, err := FindContacts(dht.node, hash, true, dht.stop.Ch())
+	contacts, found, err := FindContacts(dht.node, hash, true, dht.grp.Child())
 	if err != nil {
 		return nil, err
 	}
@@ -242,9 +249,9 @@ func (dht *DHT) Add(hash bits.Bitmap) {
 		return
 	}
 
-	dht.stop.Add(1)
+	dht.grp.Add(1)
 	go func() {
-		defer dht.stop.Done()
+		defer dht.grp.Done()
 		err := dht.announce(hash)
 		if err != nil {
 			log.Error(errors.Prefix("error announcing bitmap", err))
@@ -254,7 +261,7 @@ func (dht *DHT) Add(hash bits.Bitmap) {
 
 // Announce announces to the DHT that this node has the blob for the given hash
 func (dht *DHT) announce(hash bits.Bitmap) error {
-	contacts, _, err := FindContacts(dht.node, hash, false, dht.stop.Ch())
+	contacts, _, err := FindContacts(dht.node, hash, false, dht.grp.Child())
 	if err != nil {
 		return err
 	}
@@ -290,14 +297,14 @@ func (dht *DHT) startReannouncer() {
 	tick := time.NewTicker(tReannounce)
 	for {
 		select {
-		case <-dht.stop.Ch():
+		case <-dht.grp.Ch():
 			return
 		case <-tick.C:
 			dht.lock.RLock()
 			for h := range dht.announced {
-				dht.stop.Add(1)
+				dht.grp.Add(1)
 				go func(bm bits.Bitmap) {
-					defer dht.stop.Done()
+					defer dht.grp.Done()
 					err := dht.announce(bm)
 					if err != nil {
 						log.Error("error re-announcing bitmap - ", err)
@@ -316,7 +323,7 @@ func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 		return
 	}
 
-	token := dht.tokenCache.Get(c, hash, dht.stop.Ch())
+	token := dht.tokenCache.Get(c, hash, dht.grp.Ch())
 
 	resCh := dht.node.SendAsync(c, Request{
 		Method: storeMethod,
@@ -333,7 +340,7 @@ func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 	go func() {
 		select {
 		case <-resCh:
-		case <-dht.stop.Ch():
+		case <-dht.grp.Ch():
 		}
 	}()
 }

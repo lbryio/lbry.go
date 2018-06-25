@@ -64,7 +64,7 @@ func (b *BootstrapNode) Connect(conn UDPConn) error {
 			select {
 			case <-t.C:
 				b.check()
-			case <-b.stop.Ch():
+			case <-b.grp.Ch():
 				return
 			}
 		}
@@ -129,8 +129,8 @@ func (b *BootstrapNode) get(limit int) []Contact {
 // ping pings a node. if the node responds, it is added to the list. otherwise, it is removed
 func (b *BootstrapNode) ping(c Contact) {
 	log.Debugf("[%s] bootstrap: pinging %s", b.id.HexShort(), c.ID.HexShort())
-	b.stop.Add(1)
-	defer b.stop.Done()
+	b.grp.Add(1)
+	defer b.grp.Done()
 
 	resCh := b.SendAsync(c, Request{Method: pingMethod})
 
@@ -138,7 +138,7 @@ func (b *BootstrapNode) ping(c Contact) {
 
 	select {
 	case res = <-resCh:
-	case <-b.stop.Ch():
+	case <-b.grp.Ch():
 		return
 	}
 

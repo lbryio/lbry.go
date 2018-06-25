@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/internal-apis/app/crypto"
+	"github.com/lbryio/lbry.go/crypto"
 	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
 
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,7 @@ func init() {
 	cfLog = logrus.StandardLogger()
 }
 
-func NodeFinderUserLogger(l *logrus.Logger) {
+func NodeFinderUseLogger(l *logrus.Logger) {
 	cfLog = l
 }
 
@@ -32,7 +32,7 @@ type contactFinder struct {
 	target    bits.Bitmap
 	node      *Node
 
-	stop *stopOnce.Stopper
+	grp *stop.Group
 
 	findValueMutex  *sync.Mutex
 	findValueResult []Contact
@@ -49,7 +49,7 @@ type contactFinder struct {
 	notGettingCloser    *atomic.Bool
 }
 
-func FindContacts(node *Node, target bits.Bitmap, findValue bool, upstreamStop stopOnce.Chan) ([]Contact, bool, error) {
+func FindContacts(node *Node, target bits.Bitmap, findValue bool, parentGrp *stop.Group) ([]Contact, bool, error) {
 	cf := &contactFinder{
 		node:                node,
 		target:              target,
@@ -58,27 +58,16 @@ func FindContacts(node *Node, target bits.Bitmap, findValue bool, upstreamStop s
 		activeContactsMutex: &sync.Mutex{},
 		shortlistMutex:      &sync.Mutex{},
 		shortlistAdded:      make(map[bits.Bitmap]bool),
-		stop:                stopOnce.New(),
+		grp:                 stop.New(parentGrp),
 		closestContactMutex: &sync.RWMutex{},
 		notGettingCloser:    atomic.NewBool(false),
-	}
-
-	if upstreamStop != nil {
-		go func() {
-			select {
-			case <-upstreamStop:
-				cf.Stop()
-			case <-cf.stop.Ch():
-			}
-		}()
 	}
 
 	return cf.Find()
 }
 
 func (cf *contactFinder) Stop() {
-	cf.stop.Stop()
-	cf.stop.Wait()
+	cf.grp.StopAndWait()
 }
 
 func (cf *contactFinder) Find() ([]Contact, bool, error) {
@@ -100,7 +89,7 @@ CycleLoop:
 		select {
 		case <-time.After(timeout):
 			go cf.cycle(false)
-		case <-cf.stop.Ch():
+		case <-cf.grp.Ch():
 			break CycleLoop
 		}
 	}
@@ -176,7 +165,7 @@ func (cf *contactFinder) cycle(bigCycle bool) {
 	}
 
 	if cf.isSearchFinished() {
-		cf.stop.Stop()
+		cf.grp.Stop()
 		return
 	}
 
@@ -225,7 +214,7 @@ func (cf *contactFinder) probe(cycleID string) *Contact {
 	resCh := cf.node.SendAsync(c, req)
 	select {
 	case res = <-resCh:
-	case <-cf.stop.Ch():
+	case <-cf.grp.Ch():
 		cf.debug("|%s| probe %s: canceled", cycleID, c.ID.HexShort())
 		return nil
 	}
@@ -240,7 +229,7 @@ func (cf *contactFinder) probe(cycleID string) *Contact {
 		cf.findValueMutex.Lock()
 		cf.findValueResult = res.Contacts
 		cf.findValueMutex.Unlock()
-		cf.stop.Stop()
+		cf.grp.Stop()
 		return nil
 	}
 
@@ -321,7 +310,7 @@ func (cf *contactFinder) isSearchFinished() bool {
 	}
 
 	select {
-	case <-cf.stop.Ch():
+	case <-cf.grp.Ch():
 		return true
 	default:
 	}

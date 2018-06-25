@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
 
 	log "github.com/sirupsen/logrus"
@@ -336,14 +336,14 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 }
 
 // RoutingTableRefresh refreshes any buckets that need to be refreshed
-func RoutingTableRefresh(n *Node, refreshInterval time.Duration, upstreamStop stopOnce.Chan) {
-	done := stopOnce.New()
+func RoutingTableRefresh(n *Node, refreshInterval time.Duration, parentGrp *stop.Group) {
+	done := stop.New()
 
 	for _, id := range n.rt.GetIDsForRefresh(refreshInterval) {
 		done.Add(1)
 		go func(id bits.Bitmap) {
 			defer done.Done()
-			_, _, err := FindContacts(n, id, false, upstreamStop)
+			_, _, err := FindContacts(n, id, false, parentGrp)
 			if err != nil {
 				log.Error("error finding contact during routing table refresh - ", err)
 			}

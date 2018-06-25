@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/lbryio/errors.go"
-	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/lbry.go/util"
 	"github.com/lbryio/reflector.go/dht/bits"
 
@@ -60,7 +60,7 @@ type Node struct {
 	requestHandler RequestHandlerFunc
 
 	// stop the node neatly and clean up after itself
-	stop *stopOnce.Stopper
+	grp *stop.Group
 }
 
 // NewNode returns an initialized Node's pointer.
@@ -73,7 +73,7 @@ func NewNode(id bits.Bitmap) *Node {
 		txLock:       &sync.RWMutex{},
 		transactions: make(map[messageID]*transaction),
 
-		stop:   stopOnce.New(),
+		grp:    stop.New(),
 		tokens: &tokenManager{},
 	}
 }
@@ -86,7 +86,7 @@ func (n *Node) Connect(conn UDPConn) error {
 
 	go func() {
 		// stop tokens and close the connection when we're shutting down
-		<-n.stop.Ch()
+		<-n.grp.Ch()
 		n.tokens.Stop()
 		n.connClosed = true
 		err := n.conn.Close()
@@ -97,9 +97,9 @@ func (n *Node) Connect(conn UDPConn) error {
 
 	packets := make(chan packet)
 
-	n.stop.Add(1)
+	n.grp.Add(1)
 	go func() {
-		defer n.stop.Done()
+		defer n.grp.Done()
 
 		buf := make([]byte, udpMaxMessageLength)
 
@@ -121,15 +121,15 @@ func (n *Node) Connect(conn UDPConn) error {
 
 			select { // needs select here because packet consumer can quit and the packets channel gets filled up and blocks
 			case packets <- packet{data: data, raddr: raddr}:
-			case <-n.stop.Ch():
+			case <-n.grp.Ch():
 				return
 			}
 		}
 	}()
 
-	n.stop.Add(1)
+	n.grp.Add(1)
 	go func() {
-		defer n.stop.Done()
+		defer n.grp.Done()
 
 		var pkt packet
 
@@ -137,7 +137,7 @@ func (n *Node) Connect(conn UDPConn) error {
 			select {
 			case pkt = <-packets:
 				n.handlePacket(pkt)
-			case <-n.stop.Ch():
+			case <-n.grp.Ch():
 				return
 			}
 		}
@@ -156,7 +156,7 @@ func (n *Node) Connect(conn UDPConn) error {
 // Shutdown shuts down the node
 func (n *Node) Shutdown() {
 	log.Debugf("[%s] node shutting down", n.id.HexShort())
-	n.stop.StopAndWait()
+	n.grp.StopAndWait()
 	log.Debugf("[%s] node stopped", n.id.HexShort())
 }
 
@@ -426,7 +426,7 @@ func (n *Node) SendAsync(contact Contact, req Request, options ...SendOptions) <
 			case res := <-tx.res:
 				ch <- &res
 				return
-			case <-n.stop.Ch():
+			case <-n.grp.Ch():
 				return
 			case <-time.After(udpTimeout):
 			}
@@ -457,8 +457,8 @@ func (n *Node) startRoutingTableGrooming() {
 	for {
 		select {
 		case <-refreshTicker.C:
-			RoutingTableRefresh(n, tRefresh, n.stop.Ch())
-		case <-n.stop.Ch():
+			RoutingTableRefresh(n, tRefresh, n.grp.Child())
+		case <-n.grp.Ch():
 			return
 		}
 	}

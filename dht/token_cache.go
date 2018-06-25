@@ -6,7 +6,7 @@ import (
 
 	"github.com/lbryio/reflector.go/dht/bits"
 
-	"github.com/lbryio/lbry.go/stopOnce"
+	"github.com/lbryio/lbry.go/stop"
 )
 
 // TODO: this should be moved out of dht and into node, and it should be completely hidden inside node. dht should not need to know about tokens
@@ -32,7 +32,7 @@ func newTokenCache(node *Node, expiration time.Duration) *tokenCache {
 	return tc
 }
 
-func (tc *tokenCache) Get(c Contact, hash bits.Bitmap, cancelCh stopOnce.Chan) string {
+func (tc *tokenCache) Get(c Contact, hash bits.Bitmap, cancelCh stop.Chan) string {
 	tc.lock.RLock()
 	token, exists := tc.tokens[c.String()]
 	tc.lock.RUnlock()
