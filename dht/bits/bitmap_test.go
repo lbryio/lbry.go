@@ -42,8 +42,12 @@ func TestBitmap(t *testing.T) {
 		t.Error(c.PrefixLen())
 	}
 
-	if b.Less(a) {
-		t.Error("bitmap fails lessThan test")
+	if b.Cmp(a) < 0 {
+		t.Error("bitmap fails Cmp test")
+	}
+
+	if a.Closer(c, b) || !a.Closer(b, c) || c.Closer(a, b) || c.Closer(b, c) {
+		t.Error("bitmap fails Closer test")
 	}
 
 	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

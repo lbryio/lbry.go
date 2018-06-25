@@ -35,7 +35,7 @@ const (
 	nodeIDBits      = bits.NumBits  // number of bits in node ID
 	messageIDLength = 20            // bytes.
 
-	udpRetry            = 3
+	udpRetry            = 1
 	udpTimeout          = 5 * time.Second
 	udpMaxMessageLength = 4096 // bytes. I think our longest message is ~676 bytes, so I rounded up to 1024
 	//                            scratch that. a findValue could return more than K results if a lot of nodes are storing that value, so we need more buffer
@@ -263,7 +263,7 @@ func (dht *DHT) announce(hash bits.Bitmap) error {
 	if len(contacts) < bucketSize {
 		// append self to contacts, and self-store
 		contacts = append(contacts, dht.contact)
-	} else if dht.node.id.Xor(hash).Less(contacts[bucketSize-1].ID.Xor(hash)) {
+	} else if hash.Closer(dht.node.id, contacts[bucketSize-1].ID) {
 		// pop last contact, and self-store instead
 		contacts[bucketSize-1] = dht.contact
 	}

@@ -144,11 +144,12 @@ func (n *Node) Connect(conn UDPConn) error {
 		}
 	}()
 
-	n.stop.Add(1)
-	go func() {
-		defer n.stop.Done()
-		n.startRoutingTableGrooming()
-	}()
+	// TODO: turn this back on when you're sure it works right
+	//n.stop.Add(1)
+	//go func() {
+	//	defer n.stop.Done()
+	//	n.startRoutingTableGrooming()
+	//}()
 
 	return nil
 }
@@ -302,7 +303,7 @@ func (n *Node) handleResponse(addr *net.UDPAddr, response Response) {
 		select {
 		case tx.res <- response:
 		default:
-			log.Errorf("[%s] query %s: response received but tx has no listener", n.id.HexShort(), response.ID.HexShort())
+			//log.Errorf("[%s] query %s: response received, but tx has no listener or multiple responses to the same tx", n.id.HexShort(), response.ID.HexShort())
 		}
 	}
 
@@ -334,6 +335,9 @@ func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 
 	err = n.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	if err != nil {
+		if n.connClosed {
+			return nil
+		}
 		log.Error("error setting write deadline - ", err)
 	}
 
@@ -423,10 +427,10 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, opti
 			case res := <-tx.res:
 				ch <- &res
 				return
-			//TODO: does this belong here?
-			//case <-n.stop.Ch():
-			//	return
+			case <-n.stop.Ch():
+				return
 			case <-ctx.Done():
+				// TODO: canceling these requests doesn't do much. we can probably stop supporting this feature and just use async
 				return
 			case <-time.After(udpTimeout):
 			}

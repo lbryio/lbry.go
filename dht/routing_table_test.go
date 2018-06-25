@@ -131,7 +131,7 @@ func TestRoutingTable_BucketRanges(t *testing.T) {
 		randID := bits.Rand()
 		found := -1
 		for i, r := range ranges {
-			if r.Start.LessOrEqual(randID) && r.End.GreaterOrEqual(randID) {
+			if r.Start.Cmp(randID) <= 0 && r.End.Cmp(randID) >= 0 {
 				if found >= 0 {
 					t.Errorf("%s appears in buckets %d and %d", randID.Hex(), found, i)
 				} else {
@@ -154,7 +154,7 @@ func TestRoutingTable_Save(t *testing.T) {
 	for i, r := range ranges {
 		for j := 0; j < bucketSize; j++ {
 			toAdd := r.Start.Add(bits.FromShortHexP(strconv.Itoa(j)))
-			if toAdd.LessOrEqual(r.End) {
+			if toAdd.Cmp(r.End) <= 0 {
 				rt.Update(Contact{
 					ID:   r.Start.Add(bits.FromShortHexP(strconv.Itoa(j))),
 					IP:   net.ParseIP("1.2.3." + strconv.Itoa(j)),

@@ -65,50 +65,31 @@ func (b Bitmap) Big() *big.Int {
 	return i
 }
 
-// Equals returns T/F if every byte in bitmap are equal.
+// Cmp compares b and other and returns:
+//
+//   -1 if b < other
+//    0 if b == other
+//   +1 if b > other
+//
+func (b Bitmap) Cmp(other Bitmap) int {
+	for k := range b {
+		if b[k] < other[k] {
+			return -1
+		} else if b[k] > other[k] {
+			return 1
+		}
+	}
+	return 0
+}
+
+// Closer returns true if dist(b,x) < dist(b,y)
+func (b Bitmap) Closer(x, y Bitmap) bool {
+	return x.Xor(b).Cmp(y.Xor(b)) < 0
+}
+
+// Equals returns true if every byte in bitmap are equal, false otherwise
 func (b Bitmap) Equals(other Bitmap) bool {
-	for k := range b {
-		if b[k] != other[k] {
-			return false
-		}
-	}
-	return true
-}
-
-// Less returns T/F if there exists a byte pair that is not equal AND this bitmap is less than the other.
-func (b Bitmap) Less(other interface{}) bool {
-	for k := range b {
-		if b[k] != other.(Bitmap)[k] {
-			return b[k] < other.(Bitmap)[k]
-		}
-	}
-	return false
-}
-
-// LessOrEqual returns true if the bitmaps are equal, otherwise it checks if this bitmap is less than the other.
-func (b Bitmap) LessOrEqual(other interface{}) bool {
-	if bm, ok := other.(Bitmap); ok && b.Equals(bm) {
-		return true
-	}
-	return b.Less(other)
-}
-
-// Greater returns T/F if there exists a byte pair that is not equal AND this bitmap byte is greater than the other.
-func (b Bitmap) Greater(other interface{}) bool {
-	for k := range b {
-		if b[k] != other.(Bitmap)[k] {
-			return b[k] > other.(Bitmap)[k]
-		}
-	}
-	return false
-}
-
-// GreaterOrEqual returns true if the bitmaps are equal, otherwise it checks if this bitmap is greater than the other.
-func (b Bitmap) GreaterOrEqual(other interface{}) bool {
-	if bm, ok := other.(Bitmap); ok && b.Equals(bm) {
-		return true
-	}
-	return b.Greater(other)
+	return b.Cmp(other) == 0
 }
 
 // Copy returns a duplicate value for the bitmap.
@@ -180,7 +161,7 @@ func (b Bitmap) Add(other Bitmap) Bitmap {
 // Sub returns a bitmap that treats both bitmaps as numbers and subtracts then via the inverse of the other and adding
 // then together a + (-b). Negative bitmaps are not supported so other must be greater than this.
 func (b Bitmap) Sub(other Bitmap) Bitmap {
-	if b.Less(other) {
+	if b.Cmp(other) < 0 {
 		// ToDo: Why is this not supported? Should it say not implemented? BitMap might have a generic use case outside of dht.
 		panic("negative bitmaps not supported")
 	}
@@ -378,7 +359,7 @@ func Rand() Bitmap {
 func RandInRangeP(low, high Bitmap) Bitmap {
 	diff := high.Sub(low)
 	r := Rand()
-	for r.Greater(diff) {
+	for r.Cmp(diff) > 0 {
 		r = r.Sub(diff)
 	}
 	//ToDo - Adding the low at this point doesn't gurantee it will be within the range. Consider bitmaps as numbers and
@@ -400,4 +381,19 @@ func setBit(b []byte, n int, one bool) {
 	} else {
 		b[i] &= ^(1 << uint(7-j))
 	}
+}
+
+// CLosest returns the closest bitmap to target. if no bitmaps are provided, target itself is returned
+func Closest(target Bitmap, bitmaps ...Bitmap) Bitmap {
+	if len(bitmaps) == 0 {
+		return target
+	}
+
+	var closest *Bitmap
+	for _, b := range bitmaps {
+		if closest == nil || target.Closer(b, *closest) {
+			closest = &b
+		}
+	}
+	return *closest
 }
