@@ -318,7 +318,7 @@ func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 
 	token := dht.tokenCache.Get(c, hash, dht.stop.Ch())
 
-	resCh, cancel := dht.node.SendCancelable(c, Request{
+	resCh := dht.node.SendAsync(c, Request{
 		Method: storeMethod,
 		StoreArgs: &storeArgs{
 			BlobHash: hash,
@@ -334,7 +334,6 @@ func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 		select {
 		case <-resCh:
 		case <-dht.stop.Ch():
-			cancel()
 		}
 	}()
 }

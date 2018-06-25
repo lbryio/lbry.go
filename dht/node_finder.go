@@ -1,7 +1,6 @@
 package dht
 
 import (
-	"context"
 	"sort"
 	"sync"
 	"time"
@@ -223,7 +222,7 @@ func (cf *contactFinder) probe(cycleID string) *Contact {
 	}
 
 	var res *Response
-	resCh := cf.node.SendAsync(context.Background(), c, req)
+	resCh := cf.node.SendAsync(c, req)
 	select {
 	case res = <-resCh:
 	case <-cf.stop.Ch():

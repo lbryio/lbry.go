@@ -41,7 +41,7 @@ func (tc *tokenCache) Get(c Contact, hash bits.Bitmap, cancelCh stopOnce.Chan) s
 		return token.token
 	}
 
-	resCh, cancel := tc.node.SendCancelable(c, Request{
+	resCh := tc.node.SendAsync(c, Request{
 		Method: findValueMethod,
 		Arg:    &hash,
 	})
@@ -51,7 +51,6 @@ func (tc *tokenCache) Get(c Contact, hash bits.Bitmap, cancelCh stopOnce.Chan) s
 	select {
 	case res = <-resCh:
 	case <-cancelCh:
-		cancel()
 		return ""
 	}
 

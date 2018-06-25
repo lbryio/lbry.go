@@ -1,7 +1,6 @@
 package dht
 
 import (
-	"context"
 	"encoding/hex"
 	"net"
 	"strings"
@@ -387,7 +386,7 @@ type SendOptions struct {
 
 // SendAsync sends a transaction and returns a channel that will eventually contain the transaction response
 // The response channel is closed when the transaction is completed or times out.
-func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, options ...SendOptions) <-chan *Response {
+func (n *Node) SendAsync(contact Contact, req Request, options ...SendOptions) <-chan *Response {
 	ch := make(chan *Response, 1)
 
 	if contact.ID.Equals(n.id) {
@@ -429,9 +428,6 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, opti
 				return
 			case <-n.stop.Ch():
 				return
-			case <-ctx.Done():
-				// TODO: canceling these requests doesn't do much. we can probably stop supporting this feature and just use async
-				return
 			case <-time.After(udpTimeout):
 			}
 		}
@@ -446,13 +442,7 @@ func (n *Node) SendAsync(ctx context.Context, contact Contact, req Request, opti
 // Send sends a transaction and blocks until the response is available. It returns a response, or nil
 // if the transaction timed out.
 func (n *Node) Send(contact Contact, req Request, options ...SendOptions) *Response {
-	return <-n.SendAsync(context.Background(), contact, req, options...)
-}
-
-// SendCancelable sends the transaction asynchronously and allows the transaction to be canceled
-func (n *Node) SendCancelable(contact Contact, req Request, options ...SendOptions) (<-chan *Response, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
-	return n.SendAsync(ctx, contact, req, options...), cancel
+	return <-n.SendAsync(contact, req, options...)
 }
 
 // CountActiveTransactions returns the number of transactions in the manager

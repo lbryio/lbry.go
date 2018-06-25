@@ -132,14 +132,13 @@ func (b *BootstrapNode) ping(c Contact) {
 	b.stop.Add(1)
 	defer b.stop.Done()
 
-	resCh, cancel := b.SendCancelable(c, Request{Method: pingMethod})
+	resCh := b.SendAsync(c, Request{Method: pingMethod})
 
 	var res *Response
 
 	select {
 	case res = <-resCh:
 	case <-b.stop.Ch():
-		cancel()
 		return
 	}
 
