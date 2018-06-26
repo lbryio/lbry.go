@@ -13,6 +13,7 @@ import (
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
+	"math/big"
 )
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap
@@ -52,9 +53,10 @@ func (p *peer) Fail() {
 }
 
 type bucket struct {
-	lock       *sync.RWMutex
-	peers      []peer
-	lastUpdate time.Time
+	lock        *sync.RWMutex
+	peers       []peer
+	lastUpdate  time.Time
+	bucketRange *bits.Range
 }
 
 // Len returns the number of peers in the bucket
@@ -79,6 +81,8 @@ func (b bucket) Contacts() []Contact {
 func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
+
+	// TODO: verify the peer is in the bucket key range
 
 	peerIndex := find(c.ID, b.peers)
 	if peerIndex >= 0 {
@@ -140,7 +144,7 @@ func (b *bucket) NeedsRefresh(refreshInterval time.Duration) bool {
 
 type routingTable struct {
 	id      bits.Bitmap
-	buckets [nodeIDBits]bucket
+	buckets []bucket
 }
 
 func newRoutingTable(id bits.Bitmap) *routingTable {
@@ -151,12 +155,19 @@ func newRoutingTable(id bits.Bitmap) *routingTable {
 }
 
 func (rt *routingTable) reset() {
-	for i := range rt.buckets {
-		rt.buckets[i] = bucket{
-			peers: make([]peer, 0, bucketSize),
-			lock:  &sync.RWMutex{},
-		}
-	}
+	start := big.NewInt(0)
+	end := big.NewInt(1)
+	end.Lsh(end, bits.NumBits)
+	end.Sub(end, big.NewInt(1))
+	rt.buckets = []bucket{}
+	rt.buckets = append(rt.buckets, bucket{
+		peers: make([]peer, 0, bucketSize),
+		lock:  &sync.RWMutex{},
+		bucketRange: &bits.Range{
+			Start: bits.FromBigP(start),
+			End: bits.FromBigP(end),
+		},
+	})
 }
 
 func (rt *routingTable) BucketInfo() string {
@@ -179,7 +190,7 @@ func (rt *routingTable) BucketInfo() string {
 
 // Update inserts or refreshes a contact
 func (rt *routingTable) Update(c Contact) {
-	rt.bucketFor(c.ID).UpdateContact(c, true)
+	rt.insertContact(c)
 }
 
 // Fresh refreshes a contact if its already in the routing table
@@ -195,36 +206,18 @@ func (rt *routingTable) Fail(c Contact) {
 // GetClosest returns the closest `limit` contacts from the routing table
 // It marks each bucket it accesses as having been accessed
 func (rt *routingTable) GetClosest(target bits.Bitmap, limit int) []Contact {
-	var toSort []sortedContact
-	var bucketNum int
-
-	if rt.id.Equals(target) {
-		bucketNum = 0
-	} else {
-		bucketNum = rt.bucketNumFor(target)
+	toSort := []sortedContact{}
+	for _, b := range rt.buckets {
+		toSort = appendContacts(toSort, b, target)
 	}
-
-	toSort = appendContacts(toSort, rt.buckets[bucketNum], target)
-
-	for i := 1; (bucketNum-i >= 0 || bucketNum+i < nodeIDBits) && len(toSort) < limit; i++ {
-		if bucketNum-i >= 0 {
-			toSort = appendContacts(toSort, rt.buckets[bucketNum-i], target)
-		}
-		if bucketNum+i < nodeIDBits {
-			toSort = appendContacts(toSort, rt.buckets[bucketNum+i], target)
-		}
-	}
-
 	sort.Sort(byXorDistance(toSort))
-
-	var contacts []Contact
+	contacts := []Contact{}
 	for _, sorted := range toSort {
 		contacts = append(contacts, sorted.contact)
 		if len(contacts) >= limit {
 			break
 		}
 	}
-
 	return contacts
 }
 
@@ -248,11 +241,8 @@ func (rt *routingTable) Count() int {
 // go in that bucket, and the `end` is the largest id
 func (rt *routingTable) BucketRanges() []bits.Range {
 	ranges := make([]bits.Range, len(rt.buckets))
-	for i := range rt.buckets {
-		ranges[i] = bits.Range{
-			Start: rt.id.Suffix(i, false).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
-			End:   rt.id.Suffix(i, true).Set(nodeIDBits-1-i, !rt.id.Get(nodeIDBits-1-i)),
-		}
+	for i, b := range rt.buckets {
+		ranges[i] = *b.bucketRange
 	}
 	return ranges
 }
@@ -261,12 +251,88 @@ func (rt *routingTable) bucketNumFor(target bits.Bitmap) int {
 	if rt.id.Equals(target) {
 		panic("routing table does not have a bucket for its own id")
 	}
-	return nodeIDBits - 1 - target.Xor(rt.id).PrefixLen()
+	distance := target.Xor(rt.id)
+	for i, b := range rt.buckets {
+		if b.bucketRange.Start.Cmp(distance) <= 0 && b.bucketRange.End.Cmp(distance) >= 0 {
+			return i
+		}
+	}
+	panic("target value overflows the key space")
 }
 
 func (rt *routingTable) bucketFor(target bits.Bitmap) *bucket {
 	return &rt.buckets[rt.bucketNumFor(target)]
 }
+
+func (rt *routingTable) shouldSplit(target bits.Bitmap) bool {
+	bucketIndex := rt.bucketNumFor(target)
+	if len(rt.buckets[bucketIndex].peers) >= bucketSize {
+		if bucketIndex == 0 { // this is the bucket covering our node id
+			return true
+		}
+		kClosest := rt.GetClosest(rt.id, bucketSize)
+		kthClosest := kClosest[len(kClosest) - 1]
+		if target.Xor(rt.id).Cmp(kthClosest.ID.Xor(rt.id)) < 0 {
+			return true // the kth closest contact is further than this one
+		}
+	}
+	return false
+}
+
+func (rt *routingTable) insertContact(c Contact) {
+	if len(rt.buckets[rt.bucketNumFor(c.ID)].peers) < bucketSize {
+		rt.buckets[rt.bucketNumFor(c.ID)].UpdateContact(c, true)
+	} else if rt.shouldSplit(c.ID) {
+		rt.recursiveInsertContact(c)
+	}
+}
+
+func (rt *routingTable) recursiveInsertContact(c Contact) {
+	bucketIndex := rt.bucketNumFor(c.ID)
+	b := rt.buckets[bucketIndex]
+	min := b.bucketRange.Start.Big()
+	max := b.bucketRange.End.Big()
+
+	midpoint := max.Sub(max, min)
+	midpoint.Div(midpoint, big.NewInt(2))
+
+	// re-size the bucket to be split
+	b.bucketRange.Start = bits.FromBigP(min)
+	b.bucketRange.End = bits.FromBigP(midpoint.Sub(midpoint, big.NewInt(1)))
+
+	movedPeers := []peer{}
+	resizedPeers := []peer{}
+
+	// set the re-sized bucket to only have peers still in range
+	for _, p := range b.peers {
+		if rt.bucketNumFor(p.Contact.ID) != bucketIndex {
+			movedPeers = append(movedPeers, p)
+		} else {
+			resizedPeers = append(resizedPeers, p)
+		}
+	}
+	b.peers = resizedPeers
+
+	// add the new bucket
+	insert := bucket{
+		peers: make([]peer, 0, bucketSize),
+		lock:  &sync.RWMutex{},
+		bucketRange: &bits.Range{
+			Start: bits.FromBigP(midpoint),
+			End:   bits.FromBigP(max),
+		},
+	}
+	rt.buckets = append(rt.buckets[:bucketIndex], append([]bucket{insert}, rt.buckets[bucketIndex:]...)...)
+
+	// re-insert the contacts that where out of range of the split bucket
+	for _, p := range movedPeers {
+		rt.insertContact(p.Contact)
+	}
+
+	// insert the new contact
+	rt.insertContact(c)
+}
+
 
 func (rt *routingTable) GetIDsForRefresh(refreshInterval time.Duration) []bits.Bitmap {
 	var bitmaps []bits.Bitmap

@@ -36,6 +36,31 @@ func TestRoutingTable_bucketFor(t *testing.T) {
 	}
 }
 
+func TestRoutingTableFillBuckets(t *testing.T) {
+	n1 := bits.FromHexP("FFFFFFFF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n2 := bits.FromHexP("FFFFFFF00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n3 := bits.FromHexP("111111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n4 := bits.FromHexP("111111120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n5 := bits.FromHexP("111111130000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n6 := bits.FromHexP("111111140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n7 := bits.FromHexP("111111150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n8 := bits.FromHexP("111111160000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	n9 := bits.FromHexP("111111070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+	rt := newRoutingTable(n1)
+	rt.Update(Contact{n2, net.ParseIP("127.0.0.1"), 8001})
+	rt.Update(Contact{n3, net.ParseIP("127.0.0.1"), 8002})
+	rt.Update(Contact{n4, net.ParseIP("127.0.0.1"), 8003})
+	rt.Update(Contact{n5, net.ParseIP("127.0.0.1"), 8004})
+	rt.Update(Contact{n6, net.ParseIP("127.0.0.1"), 8005})
+	rt.Update(Contact{n7, net.ParseIP("127.0.0.1"), 8006})
+	rt.Update(Contact{n7, net.ParseIP("127.0.0.1"), 8007})
+	rt.Update(Contact{n8, net.ParseIP("127.0.0.1"), 8008})
+	rt.Update(Contact{n9, net.ParseIP("127.0.0.1"), 8009})
+
+	log.Printf(rt.BucketInfo())
+}
+
 func TestRoutingTable_GetClosest(t *testing.T) {
 	n1 := bits.FromHexP("FFFFFFFF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 	n2 := bits.FromHexP("FFFFFFF00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
@@ -121,27 +146,28 @@ func TestRoutingTable_MoveToBack(t *testing.T) {
 	}
 }
 
-func TestRoutingTable_BucketRanges(t *testing.T) {
+func TestRoutingTable_InitialBucketRange(t *testing.T) {
 	id := bits.FromHexP("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41")
 	ranges := newRoutingTable(id).BucketRanges()
-	if !ranges[0].Start.Equals(ranges[0].End) {
-		t.Error("first bucket should only fit exactly one id")
+	bucketRange := ranges[0]
+	if len(ranges) != 1 {
+		t.Error("there should only be one bucket")
 	}
+	if !ranges[0].Start.Equals(bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")) {
+		t.Error("bucket does not cover the lower keyspace")
+	}
+	if !ranges[0].End.Equals(bits.FromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")) {
+		t.Error("bucket does not cover the upper keyspace")
+	}
+	found := 0
 	for i := 0; i < 1000; i++ {
 		randID := bits.Rand()
-		found := -1
-		for i, r := range ranges {
-			if r.Start.Cmp(randID) <= 0 && r.End.Cmp(randID) >= 0 {
-				if found >= 0 {
-					t.Errorf("%s appears in buckets %d and %d", randID.Hex(), found, i)
-				} else {
-					found = i
-				}
-			}
+		if bucketRange.Start.Cmp(randID) <= 0 && bucketRange.End.Cmp(randID) >= 0 {
+			found += 1
 		}
-		if found < 0 {
-			t.Errorf("%s did not appear in any bucket", randID.Hex())
-		}
+	}
+	if found != 1000 {
+			t.Errorf("%d did not appear in any bucket", found)
 	}
 }
 
