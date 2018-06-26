@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/lbryio/reflector.go/dht/bits"
-	log "github.com/sirupsen/logrus"
 )
 
 const (

@@ -13,8 +13,6 @@ import (
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap

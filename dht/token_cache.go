@@ -32,6 +32,8 @@ func newTokenCache(node *Node, expiration time.Duration) *tokenCache {
 	return tc
 }
 
+// TODO: if store fails, get new token. can happen if a node restarts but we have the token cached
+
 func (tc *tokenCache) Get(c Contact, hash bits.Bitmap, cancelCh stop.Chan) string {
 	tc.lock.RLock()
 	token, exists := tc.tokens[c.String()]

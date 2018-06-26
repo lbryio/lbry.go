@@ -14,7 +14,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lyoshenka/bencode"
-	log "github.com/sirupsen/logrus"
 )
 
 // packet represents the information receive from udp.
