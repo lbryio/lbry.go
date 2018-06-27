@@ -16,11 +16,20 @@ import (
 
 const DefaultPort = 9245
 
+var GenesisHash = chainhash.Hash([chainhash.HashSize]byte{ // Make go vet happy.
+	0x9c, 0x89, 0x28, 0x3b, 0xa0, 0xf3, 0x22, 0x7f,
+	0x6c, 0x03, 0xb7, 0x02, 0x16, 0xb9, 0xf6, 0x65,
+	0xf0, 0x11, 0x8d, 0x5e, 0x0f, 0xa7, 0x29, 0xce,
+	0xdf, 0x4f, 0xb3, 0x4d, 0x6a, 0x34, 0xf4, 0x63,
+})
+
 // MainNetParams define the lbrycrd network. See https://github.com/lbryio/lbrycrd/blob/master/src/chainparams.cpp
 var MainNetParams = chaincfg.Params{
 	PubKeyHashAddrID: 0x55,
 	ScriptHashAddrID: 0x7a,
 	PrivateKeyID:     0x1c,
+	Bech32HRPSegwit:  "not-used", // we don't have this (yet)
+	GenesisHash:      &GenesisHash,
 }
 
 func init() {
@@ -85,7 +94,7 @@ var errInsufficientFunds = errors.Base("insufficient funds")
 
 // SimpleSend is a convenience function to send credits to an address (0 min confirmations)
 func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, error) {
-	decodedAddress, err := btcutil.DecodeAddress(toAddress, &MainNetParams)
+	decodedAddress, err := DecodeAddress(toAddress, &MainNetParams)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
@@ -106,7 +115,7 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 }
 
 //func (c *Client) SendWithSplit(toAddress string, amount float64, numUTXOs int) (*chainhash.Hash, error) {
-//	decodedAddress, err := btcutil.DecodeAddress(toAddress, &MainNetParams)
+//	decodedAddress, err := DecodeAddress(toAddress, &MainNetParams)
 //	if err != nil {
 //		return nil, errors.Wrap(err, 0)
 //	}
