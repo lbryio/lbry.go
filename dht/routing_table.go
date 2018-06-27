@@ -3,17 +3,16 @@ package dht
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
-	"math/big"
 )
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap
@@ -25,7 +24,12 @@ import (
 type peer struct {
 	Contact      Contact
 	LastActivity time.Time
+	// LastReplied time.Time
+	// LastRequested time.Time
+	// LastFailure time.Time
+	// SecondLastFailure time.Time
 	NumFailures  int
+
 	//<lastPublished>,
 	//<originallyPublished>
 	//	<originalPublisherID>
@@ -56,7 +60,7 @@ type bucket struct {
 	lock        *sync.RWMutex
 	peers       []peer
 	lastUpdate  time.Time
-	bucketRange *bits.Range
+	bucketRange bits.Range
 }
 
 // Len returns the number of peers in the bucket
@@ -163,7 +167,7 @@ func (rt *routingTable) reset() {
 	rt.buckets = append(rt.buckets, bucket{
 		peers: make([]peer, 0, bucketSize),
 		lock:  &sync.RWMutex{},
-		bucketRange: &bits.Range{
+		bucketRange: bits.Range{
 			Start: bits.FromBigP(start),
 			End: bits.FromBigP(end),
 		},
@@ -179,7 +183,7 @@ func (rt *routingTable) BucketInfo() string {
 			for j, c := range contacts {
 				s[j] = c.ID.HexShort()
 			}
-			bucketInfo = append(bucketInfo, fmt.Sprintf("Bucket %d: (%d) %s", i, len(contacts), strings.Join(s, ", ")))
+			bucketInfo = append(bucketInfo, fmt.Sprintf("bucket %d: (%d) %s", i, len(contacts), strings.Join(s, ", ")))
 		}
 	}
 	if len(bucketInfo) == 0 {
@@ -242,7 +246,7 @@ func (rt *routingTable) Count() int {
 func (rt *routingTable) BucketRanges() []bits.Range {
 	ranges := make([]bits.Range, len(rt.buckets))
 	for i, b := range rt.buckets {
-		ranges[i] = *b.bucketRange
+		ranges[i] = b.bucketRange
 	}
 	return ranges
 }
@@ -280,59 +284,122 @@ func (rt *routingTable) shouldSplit(target bits.Bitmap) bool {
 }
 
 func (rt *routingTable) insertContact(c Contact) {
-	if len(rt.buckets[rt.bucketNumFor(c.ID)].peers) < bucketSize {
+	bucketIndex := rt.bucketNumFor(c.ID)
+	peersInBucket := int(len(rt.buckets[bucketIndex].peers))
+	if peersInBucket < bucketSize {
 		rt.buckets[rt.bucketNumFor(c.ID)].UpdateContact(c, true)
-	} else if rt.shouldSplit(c.ID) {
-		rt.recursiveInsertContact(c)
+	} else if peersInBucket >= bucketSize && rt.shouldSplit(c.ID) {
+		rt.splitBucket(bucketIndex)
+		rt.insertContact(c)
 	}
+	rt.popEmptyBuckets()
 }
 
-func (rt *routingTable) recursiveInsertContact(c Contact) {
-	bucketIndex := rt.bucketNumFor(c.ID)
+func (rt *routingTable) splitBucket(bucketIndex int) {
+
 	b := rt.buckets[bucketIndex]
+
 	min := b.bucketRange.Start.Big()
 	max := b.bucketRange.End.Big()
-
-	midpoint := max.Sub(max, min)
+	midpoint := &big.Int{}
+	midpoint.Sub(max, min)
 	midpoint.Div(midpoint, big.NewInt(2))
+	midpoint.Add(midpoint, min)
+	midpointPlusOne := &big.Int{}
+	midpointPlusOne.Add(midpointPlusOne, min)
+	midpointPlusOne.Add(midpoint, big.NewInt(1))
 
-	// re-size the bucket to be split
-	b.bucketRange.Start = bits.FromBigP(min)
-	b.bucketRange.End = bits.FromBigP(midpoint.Sub(midpoint, big.NewInt(1)))
+	first_half := rt.buckets[:bucketIndex+1]
 
-	movedPeers := []peer{}
-	resizedPeers := []peer{}
-
-	// set the re-sized bucket to only have peers still in range
-	for _, p := range b.peers {
-		if rt.bucketNumFor(p.Contact.ID) != bucketIndex {
-			movedPeers = append(movedPeers, p)
-		} else {
-			resizedPeers = append(resizedPeers, p)
-		}
+	second_half := []bucket{}
+	for i := bucketIndex + 1; i < len(rt.buckets); i++ {
+		second_half = append(second_half, rt.buckets[i])
 	}
-	b.peers = resizedPeers
 
-	// add the new bucket
-	insert := bucket{
+	copiedPeers := []peer{}
+	copy(copiedPeers, b.peers)
+	b.peers = []peer{}
+
+	rt.buckets = []bucket{}
+	for _, i := range first_half {
+		rt.buckets = append(rt.buckets, i)
+	}
+	newBucket := bucket{
 		peers: make([]peer, 0, bucketSize),
 		lock:  &sync.RWMutex{},
-		bucketRange: &bits.Range{
-			Start: bits.FromBigP(midpoint),
+		bucketRange: bits.Range{
+			Start: bits.FromBigP(midpointPlusOne),
 			End:   bits.FromBigP(max),
 		},
 	}
-	rt.buckets = append(rt.buckets[:bucketIndex], append([]bucket{insert}, rt.buckets[bucketIndex:]...)...)
+	rt.buckets = append(rt.buckets, newBucket)
+	for _, i := range second_half {
+		rt.buckets = append(rt.buckets, i)
+	}
+	// re-size the bucket to be split
+	rt.buckets[bucketIndex].bucketRange.Start = bits.FromBigP(min)
+	rt.buckets[bucketIndex].bucketRange.End = bits.FromBigP(midpoint)
 
-	// re-insert the contacts that where out of range of the split bucket
-	for _, p := range movedPeers {
+	// re-insert the contacts that were in the re-sized bucket
+	for _, p := range copiedPeers {
 		rt.insertContact(p.Contact)
 	}
-
-	// insert the new contact
-	rt.insertContact(c)
 }
 
+func (rt *routingTable) printBucketInfo() {
+	for i, b := range rt.buckets {
+		fmt.Printf("bucket %d, %d contacts\n", i + 1, len(b.peers))
+		fmt.Printf("    start : %s\n", b.bucketRange.Start.String())
+		fmt.Printf("    stop  : %s\n", b.bucketRange.End.String())
+		fmt.Println("")
+	}
+}
+
+func (rt *routingTable) popBucket(bucketIndex int) {
+	canGoLower := bucketIndex >= 1
+	canGoHigher := len(rt.buckets) - 1 > bucketIndex
+
+	if canGoLower && !canGoHigher {
+		// raise the end of bucket[bucketIndex-1]
+		rt.buckets[bucketIndex-1].bucketRange.End = bits.FromBigP(rt.buckets[bucketIndex].bucketRange.End.Big())
+	} else if !canGoLower && canGoHigher {
+		// lower the start of bucket[bucketIndex+1]
+		rt.buckets[bucketIndex+1].bucketRange.Start = bits.FromBigP(rt.buckets[bucketIndex].bucketRange.Start.Big())
+	} else if canGoLower && canGoHigher {
+		// raise the end of bucket[bucketIndex-1] and lower the start of bucket[bucketIndex+1] to the
+		// midpoint of the range covered by bucket[bucketIndex]
+		midpoint := &big.Int{}
+		midpoint.Sub(rt.buckets[bucketIndex].bucketRange.End.Big(), rt.buckets[bucketIndex].bucketRange.Start.Big())
+		midpoint.Div(midpoint, big.NewInt(2))
+		midpointPlusOne := &big.Int{}
+		midpointPlusOne.Add(midpoint, big.NewInt(1))
+		rt.buckets[bucketIndex-1].bucketRange.End = bits.FromBigP(midpoint)
+		rt.buckets[bucketIndex+1].bucketRange.Start = bits.FromBigP(midpointPlusOne)
+	} else {
+		return
+	}
+	// pop the bucket
+	rt.buckets = rt.buckets[:bucketIndex+copy(rt.buckets[bucketIndex:], rt.buckets[bucketIndex+1:])]
+}
+
+func (rt *routingTable) popNextEmptyBucket() bool {
+	for bucketIndex := 0; bucketIndex < len(rt.buckets); bucketIndex += 1 {
+		if len(rt.buckets[bucketIndex].peers) == 0 {
+			rt.popBucket(bucketIndex)
+			return true
+		}
+	}
+	return false
+}
+
+func (rt *routingTable) popEmptyBuckets() {
+	if len(rt.buckets) > 1 {
+		popBuckets := rt.popNextEmptyBucket()
+		for popBuckets == true {
+			popBuckets = rt.popNextEmptyBucket()
+		}
+	}
+}
 
 func (rt *routingTable) GetIDsForRefresh(refreshInterval time.Duration) []bits.Bitmap {
 	var bitmaps []bits.Bitmap
