@@ -344,6 +344,11 @@ func MaxP() Bitmap {
 	return FromHexP(strings.Repeat("f", NumBytes*2))
 }
 
+// Min returns a bitmap with all bits set to 0
+func MinP() Bitmap {
+	return FromHexP(strings.Repeat("0", NumBytes*2))
+}
+
 // Rand generates a cryptographically random bitmap with the confines of the parameters specified.
 func Rand() Bitmap {
 	var id Bitmap

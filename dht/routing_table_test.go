@@ -11,30 +11,6 @@ import (
 	"github.com/sebdah/goldie"
 )
 
-func TestRoutingTable_bucketFor(t *testing.T) {
-	rt := newRoutingTable(bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"))
-	var tests = []struct {
-		id       bits.Bitmap
-		expected int
-	}{
-		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"), 0},
-		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"), 1},
-		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003"), 1},
-		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"), 2},
-		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005"), 2},
-		{bits.FromHexP("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f"), 3},
-		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010"), 4},
-		{bits.FromHexP("F00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"), 383},
-		{bits.FromHexP("F0000000000000000000000000000000F0000000000000000000000000F0000000000000000000000000000000000000"), 383},
-	}
-
-	for _, tt := range tests {
-		bucket := rt.bucketNumFor(tt.id)
-		if bucket != tt.expected {
-			t.Errorf("bucketFor(%s, %s) => %d, want %d", tt.id.Hex(), rt.id.Hex(), bucket, tt.expected)
-		}
-	}
-}
 
 func checkBucketCount(rt *routingTable, t *testing.T, correctSize, correctCount, testCaseIndex int) {
 	if len(rt.buckets) != correctSize {
@@ -121,6 +97,26 @@ func TestSplitBuckets(t *testing.T) {
 		checkBucketCount(rt, t, testCase.expectedBucketCount, testCase.expectedTotalContacts, i)
 		checkRangeContinuity(rt, t)
 	}
+
+	var testRanges = []struct {
+		id       bits.Bitmap
+		expected int
+	}{
+		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"), 0},
+		{bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005"), 0},
+		{bits.FromHexP("200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010"), 1},
+		{bits.FromHexP("380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"), 2},
+		{bits.FromHexP("F00000000000000000000000000000000000000000000000000F00000000000000000000000000000000000000000000"), 3},
+		{bits.FromHexP("F0000000000000000000000000000000F0000000000000000000000000F0000000000000000000000000000000000000"), 3},
+	}
+
+	for _, tt := range testRanges {
+		bucket := rt.bucketNumFor(tt.id)
+		if bucket != tt.expected {
+			t.Errorf("bucketFor(%s, %s) => %d, want %d", tt.id.Hex(), rt.id.Hex(), bucket, tt.expected)
+		}
+	}
+
 	rt.printBucketInfo()
 }
 
@@ -208,32 +204,6 @@ func TestRoutingTable_MoveToBack(t *testing.T) {
 	}
 }
 
-func TestRoutingTable_InitialBucketRange(t *testing.T) {
-	id := bits.FromHexP("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41")
-	rt := newRoutingTable(id)
-	ranges := rt.BucketRanges()
-	bucketRange := ranges[0]
-	if len(ranges) != 1 {
-		t.Error("there should only be one bucket")
-	}
-	if !ranges[0].Start.Equals(bits.FromHexP("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")) {
-		t.Error("bucket does not cover the lower keyspace")
-	}
-	if !ranges[0].End.Equals(bits.FromHexP("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")) {
-		t.Error("bucket does not cover the upper keyspace")
-	}
-	found := 0
-	for i := 0; i < 1000; i++ {
-		randID := bits.Rand()
-		if bucketRange.Start.Cmp(randID) <= 0 && bucketRange.End.Cmp(randID) >= 0 {
-			found += 1
-		}
-	}
-	if found != 1000 {
-			t.Errorf("%d did not appear in any bucket", found)
-	}
-	log.Println(rt.Count())
-}
 
 func TestRoutingTable_Save(t *testing.T) {
 	id := bits.FromHexP("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41")
