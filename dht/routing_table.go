@@ -367,6 +367,7 @@ func (rt *routingTable) shouldSplit(c Contact) bool {
 }
 
 func (rt *routingTable) printBucketInfo() {
+	fmt.Printf("there are %d contacts in %d buckets\n", rt.Count(), rt.Len())
 	for i, b := range rt.buckets {
 		fmt.Printf("bucket %d, %d contacts\n", i+1, len(b.peers))
 		fmt.Printf("    start : %s\n", b.Range.Start.String())

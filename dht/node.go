@@ -143,11 +143,11 @@ func (n *Node) Connect(conn UDPConn) error {
 	}()
 
 	// TODO: turn this back on when you're sure it works right
-	//n.stop.Add(1)
-	//go func() {
-	//	defer n.stop.Done()
-	//	n.startRoutingTableGrooming()
-	//}()
+	n.grp.Add(1)
+	go func() {
+		defer n.grp.Done()
+		n.startRoutingTableGrooming()
+	}()
 
 	return nil
 }

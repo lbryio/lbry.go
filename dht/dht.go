@@ -39,7 +39,6 @@ const (
 	alpha           = 3             // this is the constant alpha in the spec
 	bucketSize      = 8             // this is the constant k in the spec
 	nodeIDLength    = bits.NumBytes // bytes. this is the constant B in the spec
-	nodeIDBits      = bits.NumBits  // number of bits in node ID
 	messageIDLength = 20            // bytes.
 
 	udpRetry            = 1
