@@ -2,38 +2,39 @@ package dht
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
+
 	"github.com/lbryio/reflector.go/dht/bits"
 	"github.com/sebdah/goldie"
 )
 
-
-func checkBucketCount(rt *routingTable, t *testing.T, correctSize, correctCount, testCaseIndex int) {
+func checkBucketCount(t *testing.T, rt *routingTable, correctSize, correctCount, testCaseIndex int) {
 	if len(rt.buckets) != correctSize {
-		t.Errorf("failed test case %d. there should be %d buckets, got %d", testCaseIndex + 1, correctSize, len(rt.buckets))
+		t.Errorf("failed test case %d. there should be %d buckets, got %d", testCaseIndex+1, correctSize, len(rt.buckets))
 	}
 	if rt.Count() != correctCount {
-		t.Errorf("failed test case %d. there should be %d contacts, got %d", testCaseIndex + 1, correctCount, rt.Count())
+		t.Errorf("failed test case %d. there should be %d contacts, got %d", testCaseIndex+1, correctCount, rt.Count())
 	}
 
 }
 
-func checkRangeContinuity(rt *routingTable, t *testing.T) {
+func checkRangeContinuity(t *testing.T, rt *routingTable) {
 	position := big.NewInt(0)
 	for i, bucket := range rt.buckets {
-		bucketStart := bucket.bucketRange.Start.Big()
+		bucketStart := bucket.Range.Start.Big()
 		if bucketStart.Cmp(position) != 0 {
 			t.Errorf("invalid start of bucket range: %s vs %s", position.String(), bucketStart.String())
 		}
-		if bucketStart.Cmp(bucket.bucketRange.End.Big()) != -1 {
+		if bucketStart.Cmp(bucket.Range.End.Big()) != -1 {
 			t.Error("range start is not less than bucket end")
 		}
-		position = bucket.bucketRange.End.Big()
-		if i != len(rt.buckets) - 1 {
+		position = bucket.Range.End.Big()
+		if i != len(rt.buckets)-1 {
 			position.Add(position, big.NewInt(1))
 		}
 	}
@@ -52,8 +53,8 @@ func TestSplitBuckets(t *testing.T) {
 	}
 
 	var tests = []struct {
-		id       bits.Bitmap
-		expectedBucketCount int
+		id                    bits.Bitmap
+		expectedBucketCount   int
 		expectedTotalContacts int
 	}{
 		//fill first bucket
@@ -92,10 +93,13 @@ func TestSplitBuckets(t *testing.T) {
 		{bits.FromHexP("A00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"), 4, 26},
 		{bits.FromHexP("B00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"), 4, 27},
 	}
+
 	for i, testCase := range tests {
+		fmt.Printf("\n\n\ncase %d\n", i)
 		rt.Update(Contact{testCase.id, net.ParseIP("127.0.0.1"), 8000 + i})
-		checkBucketCount(rt, t, testCase.expectedBucketCount, testCase.expectedTotalContacts, i)
-		checkRangeContinuity(rt, t)
+		//spew.Dump(rt.buckets)
+		checkBucketCount(t, rt, testCase.expectedBucketCount, testCase.expectedTotalContacts, i)
+		checkRangeContinuity(t, rt)
 	}
 
 	var testRanges = []struct {
@@ -203,7 +207,6 @@ func TestRoutingTable_MoveToBack(t *testing.T) {
 		}
 	}
 }
-
 
 func TestRoutingTable_Save(t *testing.T) {
 	id := bits.FromHexP("1c8aff71b99462464d9eeac639595ab99664be3482cb91a29d87467515c7d9158fe72aa1f1582dab07d8f8b5db277f41")

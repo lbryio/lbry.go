@@ -61,3 +61,7 @@ func (r Range) intervalStart(n, num int) *big.Int {
 func (r Range) IntervalSize() *big.Int {
 	return (&big.Int{}).Sub(r.End.Big(), r.Start.Big())
 }
+
+func (r Range) Contains(b Bitmap) bool {
+	return r.Start.Cmp(b) <= 0 && r.End.Cmp(b) >= 0
+}
