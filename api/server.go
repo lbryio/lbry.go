@@ -15,20 +15,8 @@ import (
 	"github.com/spf13/cast"
 )
 
-const authTokenParam = "auth_token"
-
-// Server HTTP Header Settings. Set on header if exists
-// ie. "Content-Type" - "application/json; charset=utf-8"
-// ie. "X-Content-Type-Options" - "nosniff"
-// ie. "X-Frame-Options" - "deny"
-// ie."Content-Security-Policy" - "default-src 'none'"
-// ie. "X-XSS-Protection" - "1; mode=block"
-// ie. "Server" - "lbry.io"
-// ie. "Referrer-Policy" - "same-origin"
-// ie. "Strict-Transport-Security" - "max-age=31536000; preload"
-// ie. "Access-Control-Allow-Origin" -"<header.Origin>"
-// ie. "Access-Control-Allow-Methods" - "GET, POST, OPTIONS"
-var HeaderSettings map[string]string
+// ResponseHeaders are returned with each response
+var ResponseHeaders map[string]string
 
 // LogError Allows specific error logging for the server at specific points.
 var LogError = func(*http.Request, *Response, error) {}
@@ -81,9 +69,9 @@ func (h Handler) callHandlerSafely(r *http.Request) (rsp Response) {
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Set header settings
-	if HeaderSettings != nil {
+	if ResponseHeaders != nil {
 		//Multiple readers, no writers is okay
-		for key, value := range HeaderSettings {
+		for key, value := range ResponseHeaders {
 			w.Header().Set(key, value)
 		}
 	}
@@ -171,6 +159,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(rsp.Status)
 	w.Write(jsonResponse)
 }
+
+// IgnoredFormFields are ignored by FormValues() when checking for extraneous fields
+var IgnoredFormFields []string
 
 func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldRules) error {
 	ref := reflect.ValueOf(params)
@@ -271,7 +262,7 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 
 	var extraParams []string
 	for k := range r.Form {
-		if _, ok := fields[k]; !ok && k != authTokenParam { //TODO: fix this AUTH_PARAM hack
+		if _, ok := fields[k]; !ok && !util.InSlice(k, IgnoredFormFields) {
 			extraParams = append(extraParams, k)
 		}
 	}
