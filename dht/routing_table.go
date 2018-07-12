@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/reflector.go/dht/bits"
@@ -21,9 +20,10 @@ import (
 // TODO: use a tree with bucket splitting instead of a fixed bucket list. include jack's optimization (see link in commit mesg)
 // https://github.com/lbryio/lbry/pull/1211/commits/341b27b6d21ac027671d42458826d02735aaae41
 
-// peer is a contact with extra freshness information
+// peer is a contact with extra information
 type peer struct {
 	Contact      Contact
+	Distance     bits.Bitmap
 	LastActivity time.Time
 	// LastReplied time.Time
 	// LastRequested time.Time
@@ -79,7 +79,7 @@ func (b bucket) Len() int {
 	return len(b.peers)
 }
 
-func (b bucket) Contains(c Contact) bool {
+func (b bucket) Has(c Contact) bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	for _, p := range b.peers {
@@ -101,30 +101,27 @@ func (b bucket) Contacts() []Contact {
 	return contacts
 }
 
-// UpdateContact marks a contact as having been successfully contacted. if insertIfNew and the contact is does not exist yet, it is inserted
-func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
+// UpdatePeer marks a contact as having been successfully contacted. if insertIfNew and the contact is does not exist yet, it is inserted
+func (b *bucket) UpdatePeer(p peer, insertIfNew bool) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	fmt.Printf("updating contact %s\n", c.ID)
 
-	// TODO: verify the peer is in the bucket key range
+	if !b.Range.Contains(p.Distance) {
+		return errors.Err("this bucket range does not cover this peer")
+	}
 
-	peerIndex := find(c.ID, b.peers)
+	peerIndex := find(p.Contact.ID, b.peers)
 	if peerIndex >= 0 {
-		fmt.Println("exists, moving to back")
 		b.lastUpdate = time.Now()
 		b.peers[peerIndex].Touch()
 		moveToBack(b.peers, peerIndex)
 	} else if insertIfNew {
-		fmt.Println("inserting new")
 		hasRoom := true
 
 		if len(b.peers) >= bucketSize {
-			fmt.Println("no room")
 			hasRoom = false
 			for i := range b.peers {
 				if b.peers[i].IsBad(maxPeerFails) {
-					fmt.Println("dropping bad peer to make room")
 					// TODO: Ping contact first. Only remove if it does not respond
 					b.peers = append(b.peers[:i], b.peers[i+1:]...)
 					hasRoom = true
@@ -134,15 +131,13 @@ func (b *bucket) UpdateContact(c Contact, insertIfNew bool) {
 		}
 
 		if hasRoom {
-			fmt.Println("actually adding")
 			b.lastUpdate = time.Now()
-			peer := peer{Contact: c}
-			peer.Touch()
-			b.peers = append(b.peers, peer)
-		} else {
-			fmt.Println("no room, dropping")
+			p.Touch()
+			b.peers = append(b.peers, p)
 		}
 	}
+
+	return nil
 }
 
 // FailContact marks a contact as having failed, and removes it if it failed too many times
@@ -183,19 +178,21 @@ func (b *bucket) Split() (*bucket, *bucket) {
 	right.lastUpdate = b.lastUpdate
 
 	for _, p := range b.peers {
-		if left.Range.Contains(p.Contact.ID) {
+		if left.Range.Contains(p.Distance) {
 			left.peers = append(left.peers, p)
 		} else {
 			right.peers = append(right.peers, p)
 		}
 	}
 
-	if len(left.peers) == 0 {
-		left, right = right.Split()
-		left.Range.Start = b.Range.Start
-	} else if len(right.peers) == 0 {
-		left, right = left.Split()
-		right.Range.End = b.Range.End
+	if len(b.peers) > 1 {
+		if len(left.peers) == 0 {
+			left, right = right.Split()
+			left.Range.Start = b.Range.Start
+		} else if len(right.peers) == 0 {
+			left, right = left.Split()
+			right.Range.End = b.Range.End
+		}
 	}
 
 	return left, right
@@ -248,22 +245,33 @@ func (rt *routingTable) Update(c Contact) {
 	rt.mu.Lock() // write lock, because updates may cause bucket splits
 	defer rt.mu.Unlock()
 
-	if rt.shouldSplit(c) {
-		spew.Dump("splitting")
-		i := rt.bucketNumFor(c.ID)
-		left, right := rt.buckets[i].Split()
-		rt.buckets = append(rt.buckets[:i], append([]*bucket{left, right}, rt.buckets[i+1:]...)...)
-	} else {
-		spew.Dump("no split")
+	b := rt.bucketFor(c.ID)
+
+	if rt.shouldSplit(b, c) {
+		left, right := b.Split()
+
+		for i := range rt.buckets {
+			if rt.buckets[i].Range.Start.Equals(left.Range.Start) {
+				rt.buckets = append(rt.buckets[:i], append([]*bucket{left, right}, rt.buckets[i+1:]...)...)
+				break
+			}
+		}
+
+		if left.Range.Contains(c.ID) {
+			b = left
+		} else {
+			b = right
+		}
 	}
-	rt.buckets[rt.bucketNumFor(c.ID)].UpdateContact(c, true)
+
+	b.UpdatePeer(peer{Contact: c, Distance: rt.id.Xor(c.ID)}, true)
 }
 
 // Fresh refreshes a contact if its already in the routing table
 func (rt *routingTable) Fresh(c Contact) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	rt.bucketFor(c.ID).UpdateContact(c, false)
+	rt.bucketFor(c.ID).UpdatePeer(peer{Contact: c, Distance: rt.id.Xor(c.ID)}, false)
 }
 
 // FailContact marks a contact as having failed, and removes it if it failed too many times
@@ -319,38 +327,21 @@ func (rt *routingTable) Len() int {
 	return len(rt.buckets)
 }
 
-// BucketRanges returns a slice of ranges, where the `start` of each range is the smallest id that can
-// go in that bucket, and the `end` is the largest id
-func (rt *routingTable) BucketRanges() []bits.Range {
-	rt.mu.RLock()
-	defer rt.mu.RUnlock()
-	ranges := make([]bits.Range, len(rt.buckets))
-	for i, b := range rt.buckets {
-		ranges[i] = b.Range
-	}
-	return ranges
-}
-
-func (rt *routingTable) bucketNumFor(target bits.Bitmap) int {
+func (rt *routingTable) bucketFor(target bits.Bitmap) *bucket {
 	if rt.id.Equals(target) {
 		panic("routing table does not have a bucket for its own id")
 	}
 	distance := target.Xor(rt.id)
-	for i, b := range rt.buckets {
+	for _, b := range rt.buckets {
 		if b.Range.Contains(distance) {
-			return i
+			return b
 		}
 	}
-	panic("target value overflows the key space")
+	panic("target is not contained in any buckets")
 }
 
-func (rt *routingTable) bucketFor(target bits.Bitmap) *bucket {
-	return rt.buckets[rt.bucketNumFor(target)]
-}
-
-func (rt *routingTable) shouldSplit(c Contact) bool {
-	b := rt.bucketFor(c.ID)
-	if b.Contains(c) {
+func (rt *routingTable) shouldSplit(b *bucket, c Contact) bool {
+	if b.Has(c) {
 		return false
 	}
 	if b.Len() >= bucketSize {

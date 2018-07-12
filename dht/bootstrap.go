@@ -21,7 +21,7 @@ type BootstrapNode struct {
 	checkInterval       time.Duration
 
 	nlock   *sync.RWMutex
-	nodes   map[bits.Bitmap]*peer
+	peers   map[bits.Bitmap]*peer
 	nodeIDs []bits.Bitmap // necessary for efficient random ID selection
 }
 
@@ -34,7 +34,7 @@ func NewBootstrapNode(id bits.Bitmap, initialPingInterval, rePingInterval time.D
 		checkInterval:       rePingInterval,
 
 		nlock:   &sync.RWMutex{},
-		nodes:   make(map[bits.Bitmap]*peer),
+		peers:   make(map[bits.Bitmap]*peer),
 		nodeIDs: make([]bits.Bitmap, 0),
 	}
 
@@ -77,14 +77,14 @@ func (b *BootstrapNode) upsert(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
 
-	if node, exists := b.nodes[c.ID]; exists {
-		log.Debugf("[%s] bootstrap: touching contact %s", b.id.HexShort(), node.Contact.ID.HexShort())
-		node.Touch()
+	if peer, exists := b.peers[c.ID]; exists {
+		log.Debugf("[%s] bootstrap: touching contact %s", b.id.HexShort(), peer.Contact.ID.HexShort())
+		peer.Touch()
 		return
 	}
 
 	log.Debugf("[%s] bootstrap: adding new contact %s", b.id.HexShort(), c.ID.HexShort())
-	b.nodes[c.ID] = &peer{c, time.Now(), 0}
+	b.peers[c.ID] = &peer{c, b.id.Xor(c.ID), time.Now(), 0}
 	b.nodeIDs = append(b.nodeIDs, c.ID)
 }
 
@@ -93,13 +93,13 @@ func (b *BootstrapNode) remove(c Contact) {
 	b.nlock.Lock()
 	defer b.nlock.Unlock()
 
-	_, exists := b.nodes[c.ID]
+	_, exists := b.peers[c.ID]
 	if !exists {
 		return
 	}
 
 	log.Debugf("[%s] bootstrap: removing contact %s", b.id.HexShort(), c.ID.HexShort())
-	delete(b.nodes, c.ID)
+	delete(b.peers, c.ID)
 	for i := range b.nodeIDs {
 		if b.nodeIDs[i].Equals(c.ID) {
 			b.nodeIDs = append(b.nodeIDs[:i], b.nodeIDs[i+1:]...)
@@ -113,13 +113,13 @@ func (b *BootstrapNode) get(limit int) []Contact {
 	b.nlock.RLock()
 	defer b.nlock.RUnlock()
 
-	if len(b.nodes) < limit {
-		limit = len(b.nodes)
+	if len(b.peers) < limit {
+		limit = len(b.peers)
 	}
 
 	ret := make([]Contact, limit)
 	for i, k := range randKeys(len(b.nodeIDs))[:limit] {
-		ret[i] = b.nodes[b.nodeIDs[k]].Contact
+		ret[i] = b.peers[b.nodeIDs[k]].Contact
 	}
 
 	return ret
@@ -152,9 +152,9 @@ func (b *BootstrapNode) check() {
 	b.nlock.RLock()
 	defer b.nlock.RUnlock()
 
-	for i := range b.nodes {
-		if !b.nodes[i].ActiveInLast(b.checkInterval) {
-			go b.ping(b.nodes[i].Contact)
+	for i := range b.peers {
+		if !b.peers[i].ActiveInLast(b.checkInterval) {
+			go b.ping(b.peers[i].Contact)
 		}
 	}
 }
@@ -185,13 +185,13 @@ func (b *BootstrapNode) handleRequest(addr *net.UDPAddr, request Request) {
 
 	go func() {
 		b.nlock.RLock()
-		_, exists := b.nodes[request.NodeID]
+		_, exists := b.peers[request.NodeID]
 		b.nlock.RUnlock()
 		if !exists {
 			log.Debugf("[%s] bootstrap: queuing %s to ping", b.id.HexShort(), request.NodeID.HexShort())
 			<-time.After(b.initialPingInterval)
 			b.nlock.RLock()
-			_, exists = b.nodes[request.NodeID]
+			_, exists = b.peers[request.NodeID]
 			b.nlock.RUnlock()
 			if !exists {
 				b.ping(Contact{ID: request.NodeID, IP: addr.IP, Port: addr.Port})
