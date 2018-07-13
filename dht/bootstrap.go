@@ -48,6 +48,10 @@ func (b *BootstrapNode) Add(c Contact) {
 	b.upsert(c)
 }
 
+func (b *BootstrapNode) AddKnownNode(c Contact) {
+	b.Node.rt.Update(c)
+}
+
 // Connect connects to the given connection and starts any background threads necessary
 func (b *BootstrapNode) Connect(conn UDPConn) error {
 	err := b.Node.Connect(conn)
