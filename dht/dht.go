@@ -318,7 +318,7 @@ func (dht *DHT) startReannouncer() {
 func (dht *DHT) storeOnNode(hash bits.Bitmap, c Contact) {
 	// self-store
 	if dht.contact.ID == c.ID {
-		dht.node.Store(hash, c)
+		dht.node.Store(hash, c, dht.conf.PeerProtocolPort)
 		return
 	}
 

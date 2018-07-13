@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/lbryio/reflector.go/dht/bits"
+	"net"
 )
 
 // TODO: expire stored data after tExpire time
@@ -11,6 +12,8 @@ import (
 type contactStore struct {
 	// map of blob hashes to (map of node IDs to bools)
 	hashes map[bits.Bitmap]map[bits.Bitmap]bool
+	// map of blob hashes to (map of node ids to tcp ports)
+	ports map[bits.Bitmap]map[bits.Bitmap]int
 	// stores the peers themselves, so they can be updated in one place
 	contacts map[bits.Bitmap]Contact
 	lock     sync.RWMutex
@@ -19,18 +22,23 @@ type contactStore struct {
 func newStore() *contactStore {
 	return &contactStore{
 		hashes:   make(map[bits.Bitmap]map[bits.Bitmap]bool),
+		ports:    make(map[bits.Bitmap]map[bits.Bitmap]int),
 		contacts: make(map[bits.Bitmap]Contact),
 	}
 }
 
-func (s *contactStore) Upsert(blobHash bits.Bitmap, contact Contact) {
+func (s *contactStore) Upsert(blobHash bits.Bitmap, contact Contact, tcpPort int) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if _, ok := s.hashes[blobHash]; !ok {
 		s.hashes[blobHash] = make(map[bits.Bitmap]bool)
 	}
+	if _, ok := s.ports[blobHash]; !ok {
+		s.ports[blobHash] = make(map[bits.Bitmap]int)
+	}
 	s.hashes[blobHash][contact.ID] = true
+	s.ports[blobHash][contact.ID] = tcpPort
 	s.contacts[contact.ID] = contact
 }
 
@@ -45,7 +53,11 @@ func (s *contactStore) Get(blobHash bits.Bitmap) []Contact {
 			if !ok {
 				panic("node id in IDs list, but not in nodeInfo")
 			}
-			contacts = append(contacts, contact)
+			peerPort, ok := s.ports[blobHash][id]
+			if !ok {
+				panic("node id in IDs list, but missing peer port")
+			}
+			contacts = append(contacts, Contact{ID: contact.ID, IP: contact.IP, Port: peerPort})
 		}
 	}
 	return contacts
