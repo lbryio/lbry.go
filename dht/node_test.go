@@ -289,7 +289,7 @@ func TestFindValueExisting(t *testing.T) {
 	messageID := newMessageID()
 	valueToFind := bits.Rand()
 
-	nodeToFind := Contact{ID: bits.Rand(), IP: net.ParseIP("1.2.3.4"), Port: 1286}
+	nodeToFind := Contact{ID: bits.Rand(), IP: net.ParseIP("1.2.3.4"), PeerPort: 1286}
 	dht.node.store.Upsert(valueToFind, nodeToFind)
 	dht.node.store.Upsert(valueToFind, nodeToFind)
 	dht.node.store.Upsert(valueToFind, nodeToFind)

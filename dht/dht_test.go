@@ -10,6 +10,10 @@ import (
 )
 
 func TestNodeFinder_FindNodes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow nodeFinder test")
+	}
+
 	bs, dhts := TestingCreateDHT(t, 3, true, false)
 	defer func() {
 		for i := range dhts {
@@ -73,6 +77,10 @@ func TestNodeFinder_FindNodes_NoBootstrap(t *testing.T) {
 }
 
 func TestNodeFinder_FindValue(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow nodeFinder test")
+	}
+
 	bs, dhts := TestingCreateDHT(t, 3, true, false)
 	defer func() {
 		for i := range dhts {
@@ -104,6 +112,10 @@ func TestNodeFinder_FindValue(t *testing.T) {
 }
 
 func TestDHT_LargeDHT(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large DHT test")
+	}
+
 	nodes := 100
 	bs, dhts := TestingCreateDHT(t, nodes, true, true)
 	defer func() {

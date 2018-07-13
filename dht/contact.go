@@ -3,6 +3,7 @@ package dht
 import (
 	"bytes"
 	"net"
+	"strconv"
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/reflector.go/dht/bits"
@@ -12,44 +13,47 @@ import (
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap
 
-// TODO: use a tree with bucket splitting instead of a fixed bucket list. include jack's optimization (see link in commit mesg)
-// https://github.com/lbryio/lbry/pull/1211/commits/341b27b6d21ac027671d42458826d02735aaae41
-
-// Contact is a type representation of another node that a specific node is in communication with.
+// Contact contains information for contacting another node on the network
 type Contact struct {
-	ID   bits.Bitmap
-	IP   net.IP
-	Port int
+	ID       bits.Bitmap
+	IP       net.IP
+	Port     int
+	PeerPort int
 }
 
-// Equals returns T/F if two contacts are the same.
+// Equals returns true if two contacts are the same.
 func (c Contact) Equals(other Contact, checkID bool) bool {
 	return c.IP.Equal(other.IP) && c.Port == other.Port && (!checkID || c.ID == other.ID)
 }
 
-// Addr returns the UPD Address of the contact.
+// Addr returns the address of the contact.
 func (c Contact) Addr() *net.UDPAddr {
 	return &net.UDPAddr{IP: c.IP, Port: c.Port}
 }
 
-// String returns the concatenated short hex encoded string of its ID + @ + string represention of its UPD Address.
+// String returns a short string representation of the contact
 func (c Contact) String() string {
-	return c.ID.HexShort() + "@" + c.Addr().String()
+	str := c.ID.HexShort() + "@" + c.Addr().String()
+	if c.PeerPort != 0 {
+		str += "(" + strconv.Itoa(c.PeerPort) + ")"
+	}
+	return str
 }
 
-// MarshalCompact returns the compact byte slice representation of a contact.
+// MarshalCompact returns a compact byteslice representation of the contact
+// NOTE: The compact representation always uses the tcp PeerPort, not the udp Port. This is dumb, but that's how the python daemon does it
 func (c Contact) MarshalCompact() ([]byte, error) {
 	if c.IP.To4() == nil {
 		return nil, errors.Err("ip not set")
 	}
-	if c.Port < 0 || c.Port > 65535 {
+	if c.PeerPort < 0 || c.PeerPort > 65535 {
 		return nil, errors.Err("invalid port")
 	}
 
 	var buf bytes.Buffer
 	buf.Write(c.IP.To4())
-	buf.WriteByte(byte(c.Port >> 8))
-	buf.WriteByte(byte(c.Port))
+	buf.WriteByte(byte(c.PeerPort >> 8))
+	buf.WriteByte(byte(c.PeerPort))
 	buf.Write(c.ID[:])
 
 	if buf.Len() != compactNodeInfoLength {
@@ -59,13 +63,14 @@ func (c Contact) MarshalCompact() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// UnmarshalCompact unmarshals the compact byte slice representation of a contact.
+// UnmarshalCompact unmarshals the compact byteslice representation of a contact.
+// NOTE: The compact representation always uses the tcp PeerPort, not the udp Port. This is dumb, but that's how the python daemon does it
 func (c *Contact) UnmarshalCompact(b []byte) error {
 	if len(b) != compactNodeInfoLength {
 		return errors.Err("invalid compact length")
 	}
 	c.IP = net.IPv4(b[0], b[1], b[2], b[3]).To4()
-	c.Port = int(uint16(b[5]) | uint16(b[4])<<8)
+	c.PeerPort = int(uint16(b[5]) | uint16(b[4])<<8)
 	c.ID = bits.FromBytesP(b[6:])
 	return nil
 }

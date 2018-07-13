@@ -44,7 +44,7 @@ const (
 	protocolVersionField = "protocolVersion"
 )
 
-// Message is an extension of the bencode marshalling interface for serialized message passing.
+// Message is a DHT message
 type Message interface {
 	bencode.Marshaler
 }
@@ -82,7 +82,7 @@ func newMessageID() messageID {
 	return m
 }
 
-// Request represents the structured request from one node to another.
+// Request represents a DHT request message
 type Request struct {
 	ID              messageID
 	NodeID          bits.Bitmap
@@ -261,7 +261,7 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-// Response represents the structured response one node returns to another.
+// Response represents a DHT response message
 type Response struct {
 	ID              messageID
 	NodeID          bits.Bitmap
@@ -416,7 +416,7 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-// Error represents an error message that is returned from one node to another in communication.
+// Error represents a DHT error response
 type Error struct {
 	ID            messageID
 	NodeID        bits.Bitmap

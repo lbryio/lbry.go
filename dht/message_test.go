@@ -103,9 +103,9 @@ func TestBencodeFindValueResponse(t *testing.T) {
 		ID:           newMessageID(),
 		NodeID:       bits.Rand(),
 		FindValueKey: bits.Rand().RawString(),
-		Token:        "arst",
+		Token:        "arstarstarst",
 		Contacts: []Contact{
-			{ID: bits.Rand(), IP: net.IPv4(1, 2, 3, 4).To4(), Port: 5678},
+			{ID: bits.Rand(), IP: net.IPv4(1, 2, 3, 4).To4(), PeerPort: 8765},
 		},
 	}
 
