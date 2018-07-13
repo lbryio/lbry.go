@@ -236,11 +236,8 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 		// TODO: we should be sending the IP in the request, not just using the sender's IP
 		// TODO: should we be using StoreArgs.NodeID or StoreArgs.Value.LbryID ???
 		if n.tokens.Verify(request.StoreArgs.Value.Token, request.NodeID, addr) {
-			n.Store(
-				request.StoreArgs.BlobHash,
-				Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: addr.Port},
-			    request.StoreArgs.Value.Port,
-			)
+			n.Store(request.StoreArgs.BlobHash, Contact{ID: request.StoreArgs.NodeID, IP: addr.IP, Port: request.StoreArgs.Value.Port})
+
 			err := n.sendMessage(addr, Response{ID: request.ID, NodeID: n.id, Data: storeSuccessResponse})
 			if err != nil {
 				log.Error("error sending 'storemethod' response message - ", err)
@@ -279,9 +276,9 @@ func (n *Node) handleRequest(addr *net.UDPAddr, request Request) {
 
 		if contacts := n.store.Get(*request.Arg); len(contacts) > 0 {
 			res.FindValueKey = request.Arg.RawString()
-			res.Contacts = contacts  // we are returning stored contacts with tcp ports for file transfer
+			res.Contacts = contacts
 		} else {
-			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize) // these are normal dht contacts with udp ports
+			res.Contacts = n.rt.GetClosest(*request.Arg, bucketSize)
 		}
 
 		err := n.sendMessage(addr, res)
@@ -467,6 +464,6 @@ func (n *Node) startRoutingTableGrooming() {
 }
 
 // Store stores a node contact in the node's contact store.
-func (n *Node) Store(hash bits.Bitmap, c Contact, tcpPort int) {
-	n.store.Upsert(hash, c, tcpPort)
+func (n *Node) Store(hash bits.Bitmap, c Contact) {
+	n.store.Upsert(hash, c)
 }
