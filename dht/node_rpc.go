@@ -121,6 +121,33 @@ func (n *NodeRPC) FindValue(r *http.Request, args *FindArgs, result *FindValueRe
 	return errors.New("not sure what happened")
 }
 
+type IterativeFindValueArgs struct {
+	Key string
+}
+
+type IterativeFindValueResult struct {
+	Contacts []ContactResponse
+	FoundValue bool
+}
+
+func (n *NodeRPC) IterativeFindValue(r *http.Request, args *IterativeFindValueArgs, result *IterativeFindValueResult) error {
+	if rpcServer == nil {
+		return errors.New("no node set up")
+	}
+	key, err := bits.FromHex(args.Key)
+	if err != nil {
+		return err
+	}
+	foundContacts, found, err := FindContacts(&rpcServer.Node.Node, key, false, nil)
+	contacts := []ContactResponse{}
+	result.FoundValue = found
+	for _, foundContact := range foundContacts {
+		contacts = append(contacts, ContactResponse{foundContact.ID.Hex(), foundContact.IP.String(), foundContact.Port})
+	}
+	result.Contacts = contacts
+	return nil
+}
+
 type BucketResponse struct {
 	Start string
 	End string
@@ -129,6 +156,7 @@ type BucketResponse struct {
 }
 
 type RoutingTableResponse struct {
+	NodeID string
 	Count int
 	Buckets []BucketResponse
 }
@@ -139,6 +167,7 @@ func (n *NodeRPC) GetRoutingTable(r *http.Request, args *GetRoutingTableArgs, re
 	if rpcServer == nil {
 		return errors.New("no node set up")
 	}
+	result.NodeID = rpcServer.Node.id.String()
 	result.Count = len(rpcServer.Node.rt.buckets)
 	for _, b := range rpcServer.Node.rt.buckets {
 		bucketInfo := []ContactResponse{}
@@ -150,32 +179,6 @@ func (n *NodeRPC) GetRoutingTable(r *http.Request, args *GetRoutingTableArgs, re
 			Count: b.Len(),
 		})
 	}
-	return nil
-}
-
-type GetNodeIDArgs struct {}
-
-type GetNodeIDResult string
-
-func (n *NodeRPC) GetNodeID(r *http.Request, args *GetNodeIDArgs, result *GetNodeIDResult) error {
-	if rpcServer == nil {
-		return errors.New("no node set up")
-	}
-	log.Println("get node id")
-	*result = GetNodeIDResult(rpcServer.Node.id.String())
-	return nil
-}
-
-type PrintBucketInfoArgs struct {}
-
-type PrintBucketInfoResult string
-
-func (n *NodeRPC) PrintBucketInfo(r *http.Request, args *PrintBucketInfoArgs, result *PrintBucketInfoResult) error {
-	if rpcServer == nil {
-		return errors.New("no node set up")
-	}
-	rpcServer.Node.rt.printBucketInfo()
-	*result = PrintBucketInfoResult("printed")
 	return nil
 }
 
