@@ -17,8 +17,8 @@ import (
 type Contact struct {
 	ID       bits.Bitmap
 	IP       net.IP
-	Port     int
-	PeerPort int
+	Port     int // the udp port used for the dht
+	PeerPort int // the tcp port a peer can be contacted on for blob requests
 }
 
 // Equals returns true if two contacts are the same.

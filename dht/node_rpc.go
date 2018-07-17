@@ -1,10 +1,11 @@
 package dht
 
 import (
+	"errors"
 	"net"
 	"net/http"
-	"errors"
 	"sync"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc"
 	"github.com/gorilla/rpc/json"
@@ -12,7 +13,7 @@ import (
 )
 
 type NodeRPCServer struct {
-	Wg sync.WaitGroup
+	Wg   sync.WaitGroup
 	Node *BootstrapNode
 }
 
@@ -23,12 +24,11 @@ type NodeRPC int
 
 type PingArgs struct {
 	NodeID string
-	IP string
-	Port int
+	IP     string
+	Port   int
 }
 
 type PingResult string
-
 
 func (n *NodeRPC) Ping(r *http.Request, args *PingArgs, result *PingResult) error {
 	if rpcServer == nil {
@@ -48,16 +48,16 @@ func (n *NodeRPC) Ping(r *http.Request, args *PingArgs, result *PingResult) erro
 }
 
 type FindArgs struct {
-	Key string
+	Key    string
 	NodeID string
-	IP string
-	Port int
+	IP     string
+	Port   int
 }
 
 type ContactResponse struct {
 	NodeID string
-	IP string
-	Port int
+	IP     string
+	Port   int
 }
 
 type FindNodeResult []ContactResponse
@@ -75,7 +75,7 @@ func (n *NodeRPC) FindNode(r *http.Request, args *FindArgs, result *FindNodeResu
 		return err
 	}
 	c := Contact{ID: toQuery, IP: net.ParseIP(args.IP), Port: args.Port}
-	req := Request{ Arg: &key, Method: "findNode"}
+	req := Request{Arg: &key, Method: "findNode"}
 	nodeResponse := rpcServer.Node.Send(c, req)
 	contacts := []ContactResponse{}
 	if nodeResponse != nil && nodeResponse.Contacts != nil {
@@ -89,7 +89,7 @@ func (n *NodeRPC) FindNode(r *http.Request, args *FindArgs, result *FindNodeResu
 
 type FindValueResult struct {
 	Contacts []ContactResponse
-	Value string
+	Value    string
 }
 
 func (n *NodeRPC) FindValue(r *http.Request, args *FindArgs, result *FindValueResult) error {
@@ -105,7 +105,7 @@ func (n *NodeRPC) FindValue(r *http.Request, args *FindArgs, result *FindValueRe
 		return err
 	}
 	c := Contact{ID: toQuery, IP: net.ParseIP(args.IP), Port: args.Port}
-	req := Request{ Arg: &key, Method: "findValue"}
+	req := Request{Arg: &key, Method: "findValue"}
 	nodeResponse := rpcServer.Node.Send(c, req)
 	contacts := []ContactResponse{}
 	if nodeResponse != nil && nodeResponse.FindValueKey != "" {
@@ -126,7 +126,7 @@ type IterativeFindValueArgs struct {
 }
 
 type IterativeFindValueResult struct {
-	Contacts []ContactResponse
+	Contacts   []ContactResponse
 	FoundValue bool
 }
 
@@ -149,19 +149,19 @@ func (n *NodeRPC) IterativeFindValue(r *http.Request, args *IterativeFindValueAr
 }
 
 type BucketResponse struct {
-	Start string
-	End string
-	Count int
+	Start    string
+	End      string
+	Count    int
 	Contacts []ContactResponse
 }
 
 type RoutingTableResponse struct {
-	NodeID string
-	Count int
+	NodeID  string
+	Count   int
 	Buckets []BucketResponse
 }
 
-type GetRoutingTableArgs struct {}
+type GetRoutingTableArgs struct{}
 
 func (n *NodeRPC) GetRoutingTable(r *http.Request, args *GetRoutingTableArgs, result *RoutingTableResponse) error {
 	if rpcServer == nil {
@@ -182,14 +182,27 @@ func (n *NodeRPC) GetRoutingTable(r *http.Request, args *GetRoutingTableArgs, re
 	return nil
 }
 
+type AddKnownNodeResponse struct{}
+
+func (n *NodeRPC) AddKnownNode(r *http.Request, args *ContactResponse, result *AddKnownNodeResponse) error {
+	if rpcServer == nil {
+		return errors.New("no node set up")
+	}
+	rpcServer.Node.AddKnownNode(
+		Contact{
+			bits.FromHexP(args.NodeID),
+			net.ParseIP(args.IP), args.Port, 0,
+		})
+	return nil
+}
+
 func RunRPCServer(address, rpcPath string, node *BootstrapNode) NodeRPCServer {
 	mut.Lock()
 	defer mut.Unlock()
 	rpcServer = &NodeRPCServer{
-		Wg: sync.WaitGroup{},
+		Wg:   sync.WaitGroup{},
 		Node: node,
 	}
-	c := make(chan *http.Server)
 	rpcServer.Wg.Add(1)
 	go func() {
 		s := rpc.NewServer()
@@ -202,15 +215,7 @@ func RunRPCServer(address, rpcPath string, node *BootstrapNode) NodeRPCServer {
 		server := &http.Server{Addr: address, Handler: r}
 		log.Println("rpc listening on " + address)
 		server.ListenAndServe()
-		c <- server
 	}()
-	go func() {
-		rpcServer.Wg.Wait()
-		close(c)
-		log.Println("stopped rpc listening on " + address)
-		for server := range c {
-			server.Close()
-		}
-	}()
+
 	return *rpcServer
 }
