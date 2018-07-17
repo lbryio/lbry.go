@@ -49,8 +49,8 @@
     "service/s3/s3manager",
     "service/sts"
   ]
-  revision = "fefacb6d45b233a9e20097a176c1c46e85a782d3"
-  version = "v1.14.25"
+  revision = "d2d4fca90395039f60821c231da759cab8f318c7"
+  version = "v1.14.4"
 
 [[projects]]
   branch = "master"
@@ -63,7 +63,7 @@
     "rpcclient",
     "wire"
   ]
-  revision = "fdfc19097e7ac6b57035062056f5b7b4638b8898"
+  revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
 
 [[projects]]
   branch = "master"
@@ -79,7 +79,7 @@
     "base58",
     "bech32"
   ]
-  revision = "ab6388e0c60ae4834a1f57511e20c17b5f78be4b"
+  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
   branch = "master"
@@ -117,8 +117,8 @@
 [[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
-  revision = "af26abd521cd7697481572fdbc4a53cbea3dde1b"
-  version = "v1.38.0"
+  revision = "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5"
+  version = "v1.37.0"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -180,16 +180,16 @@
   version = "v0.2.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/shopspring/decimal"
   packages = ["."]
-  revision = "cd690d0c9e2447b1ef2a129a6b7b49077da89b8e"
-  version = "1.1.0"
+  revision = "19e3cb6c29303990525b56f51acf77c5630dd88a"
 
 [[projects]]
   branch = "master"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "e54a77765aca7bbdd8e56c1c54f60579968b2dc9"
+  revision = "ea8897e79973357ba785ac2533559a6297e83c44"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -201,7 +201,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "a114f312e075f65bf30d6d9a1430113f857e543b"
+  revision = "1e58aa3361fd650121dceeedc399e7189c05674a"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -229,7 +229,7 @@
     "sha3",
     "ssh/terminal"
   ]
-  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
 
 [[projects]]
   branch = "master"
@@ -240,7 +240,7 @@
     "html",
     "html/atom"
   ]
-  revision = "cffdcf672aee934982473246bc7e9a8ba446aa9b"
+  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
 
 [[projects]]
   branch = "master"
@@ -249,7 +249,7 @@
     "unix",
     "windows"
   ]
-  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
+  revision = "bff228c7b664c5fce602223a05fb708fd8654986"
 
 [[projects]]
   branch = "master"
@@ -261,7 +261,7 @@
     "googleapi/transport",
     "youtube/v3"
   ]
-  revision = "1d2d9cc0ae74226e8076e2a87e211c8fea38a160"
+  revision = "ef86ce4234efee96020bde00391d6a9cfae66561"
 
 [[projects]]
   name = "gopkg.in/nullbio/null.v6"
@@ -272,6 +272,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "16b411a37ad7df581529665691944d63a8ff23573acfdd37c3a3391ea4bde746"
+  inputs-digest = "adebfeec40e94ad17cba1f18d8f47da60af4106a50386ebce51650d036e3d4ac"
   solver-name = "gps-cdcl"
   solver-version = 1

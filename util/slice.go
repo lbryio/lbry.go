@@ -11,7 +11,8 @@ func InSlice(str string, values []string) bool {
 	return false
 }
 
-func InSliceContains(fullString string, candidates []string) bool {
+// ContainedInSlice returns true if fullstring is contained within any element of the candidates slice. False otherwise
+func ContainedInSlice(fullString string, candidates []string) bool {
 	for _, v := range candidates {
 		if strings.Contains(fullString, v) {
 			return true
