@@ -29,28 +29,28 @@ var (
 )
 
 func init() {
-	var selfSyncCmd = &cobra.Command{
-		Use:   "selfsync",
+	var ytSyncCmd = &cobra.Command{
+		Use:   "ytsync",
 		Args:  cobra.RangeArgs(0, 0),
 		Short: "Publish youtube channels into LBRY network automatically.",
-		Run:   selfSync,
+		Run:   ytSync,
 	}
-	selfSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
-	selfSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
-	selfSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
-	selfSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
-	selfSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
-	selfSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
-	selfSyncCmd.Flags().StringVar(&syncStatus, "status", sync.StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
-	selfSyncCmd.Flags().StringVar(&channelID, "channelID", "", "If specified, only this channel will be synced.")
-	selfSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
-	selfSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
-	selfSyncCmd.Flags().IntVar(&concurrentJobs, "concurrent-jobs", 1, "how many jobs to process concurrently (Default: 1)")
+	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
+	ytSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
+	ytSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
+	ytSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
+	ytSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
+	ytSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
+	ytSyncCmd.Flags().StringVar(&syncStatus, "status", sync.StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
+	ytSyncCmd.Flags().StringVar(&channelID, "channelID", "", "If specified, only this channel will be synced.")
+	ytSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
+	ytSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
+	ytSyncCmd.Flags().IntVar(&concurrentJobs, "concurrent-jobs", 1, "how many jobs to process concurrently (Default: 1)")
 
-	RootCmd.AddCommand(selfSyncCmd)
+	RootCmd.AddCommand(ytSyncCmd)
 }
 
-func selfSync(cmd *cobra.Command, args []string) {
+func ytSync(cmd *cobra.Command, args []string) {
 	var hostname string
 	slackToken := os.Getenv("SLACK_TOKEN")
 	if slackToken == "" {
