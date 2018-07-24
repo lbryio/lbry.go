@@ -22,7 +22,11 @@ func InitSlack(token string, channel string, username string) {
 }
 
 // SendToSlackUser Sends message to a specific user.
-func SendToSlackUser(user, username, message string) error {
+func SendToSlackUser(user, username, format string, a ...interface{}) error {
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	if !strings.HasPrefix(user, "@") {
 		user = "@" + user
 	}
@@ -30,7 +34,11 @@ func SendToSlackUser(user, username, message string) error {
 }
 
 // SendToSlackChannel Sends message to a specific channel.
-func SendToSlackChannel(channel, username, message string) error {
+func SendToSlackChannel(channel, username, format string, a ...interface{}) error {
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	if !strings.HasPrefix(channel, "#") {
 		channel = "#" + channel
 	}
@@ -38,33 +46,16 @@ func SendToSlackChannel(channel, username, message string) error {
 }
 
 // SendToSlack Sends message to the default channel.
-func SendToSlack(message string) error {
-
+func SendToSlack(format string, a ...interface{}) error {
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
 	if defaultChannel == "" {
 		return errors.Err("no default slack channel set")
 	}
 
 	return sendToSlack(defaultChannel, defaultUsername, message)
-}
-
-// SendErrorToSlack Sends an error message to the default channel and to the process log.
-func SendErrorToSlack(format string, a ...interface{}) error {
-	message := format
-	if len(a) > 0 {
-		message = fmt.Sprintf(format, a...)
-	}
-	log.Errorln(message)
-	return sendToSlack(defaultChannel, defaultUsername, ":sos: "+message)
-}
-
-// SendInfoToSlack Sends an info message to the default channel and to the process log.
-func SendInfoToSlack(format string, a ...interface{}) error {
-	message := format
-	if len(a) > 0 {
-		message = fmt.Sprintf(format, a...)
-	}
-	log.Debugln(message)
-	return sendToSlack(defaultChannel, defaultUsername, ":information_source: "+message)
 }
 
 func sendToSlack(channel, username, message string) error {

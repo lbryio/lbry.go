@@ -5,6 +5,8 @@ import (
 
 	"time"
 
+	"os/user"
+
 	"github.com/lbryio/lbry.go/util"
 	sync "github.com/lbryio/lbry.go/ytsync"
 	log "github.com/sirupsen/logrus"
@@ -83,6 +85,32 @@ func ytSync(cmd *cobra.Command, args []string) {
 		log.Errorln("setting --limit less than 0 (unlimited) doesn't make sense")
 		return
 	}
+
+	apiURL := os.Getenv("LBRY_API")
+	apiToken := os.Getenv("LBRY_API_TOKEN")
+	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")
+	blobsDir := os.Getenv("BLOBS_DIRECTORY")
+	if apiURL == "" {
+		log.Errorln("An API URL was not defined. Please set the environment variable LBRY_API")
+		return
+	}
+	if apiToken == "" {
+		log.Errorln("An API Token was not defined. Please set the environment variable LBRY_API_TOKEN")
+		return
+	}
+	if youtubeAPIKey == "" {
+		log.Errorln("A Youtube API key was not defined. Please set the environment variable YOUTUBE_API_KEY")
+		return
+	}
+	if blobsDir == "" {
+		usr, err := user.Current()
+		if err != nil {
+			log.Errorln(err.Error())
+			return
+		}
+		blobsDir = usr.HomeDir + "/.lbrynet/blobfiles/"
+	}
+
 	sm := sync.SyncManager{
 		StopOnError:             stopOnError,
 		MaxTries:                maxTries,
@@ -98,11 +126,15 @@ func ytSync(cmd *cobra.Command, args []string) {
 		ConcurrentVideos:        concurrentJobs,
 		HostName:                hostname,
 		YoutubeChannelID:        channelID,
+		YoutubeAPIKey:           youtubeAPIKey,
+		ApiURL:                  apiURL,
+		ApiToken:                apiToken,
+		BlobsDir:                blobsDir,
 	}
 
 	err := sm.Start()
 	if err != nil {
-		util.SendErrorToSlack(err.Error())
+		sync.SendErrorToSlack(err.Error())
 	}
-	util.SendInfoToSlack("Syncing process terminated!")
+	sync.SendInfoToSlack("Syncing process terminated!")
 }
