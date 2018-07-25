@@ -13,6 +13,9 @@ import (
 )
 
 func (s *Sync) walletSetup() error {
+	//prevent unnecessary concurrent execution
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	err := s.ensureChannelOwnership()
 	if err != nil {
 		return err
@@ -37,6 +40,9 @@ func (s *Sync) walletSetup() error {
 		}
 	}
 	log.Debugf("Source channel has %d videos", numOnSource)
+	if numOnSource == 0 {
+		return nil
+	}
 
 	numPublished, err := s.daemon.NumClaimsInChannel(s.LbryChannelName)
 	if err != nil {
@@ -44,9 +50,15 @@ func (s *Sync) walletSetup() error {
 	}
 	log.Debugf("We already published %d videos", numPublished)
 
-	minBalance := (float64(numOnSource)-float64(numPublished))*publishAmount + channelClaimAmount
+	if float64(numOnSource)-float64(numPublished) > maximumVideosToPublish {
+		numOnSource = maximumVideosToPublish
+	}
+	minBalance := (float64(numOnSource)-float64(numPublished))*(publishAmount+0.1) + channelClaimAmount
+	if numPublished > numOnSource {
+		SendErrorToSlack("something is going on as we published more videos than those available on source: %d/%d", numPublished, numOnSource)
+		minBalance = 1 //since we ended up in this function it means some juice is still needed
+	}
 	amountToAdd, _ := decimal.NewFromFloat(minBalance).Sub(balance).Float64()
-	amountToAdd *= 1.5 // add 50% margin for fees, future publishes, etc
 
 	if s.Refill > 0 {
 		if amountToAdd < 0 {
@@ -83,6 +95,7 @@ func (s *Sync) walletSetup() error {
 }
 
 func (s *Sync) ensureEnoughUTXOs() error {
+
 	utxolist, err := s.daemon.UTXOList()
 	if err != nil {
 		return err
@@ -92,10 +105,13 @@ func (s *Sync) ensureEnoughUTXOs() error {
 
 	if !allUTXOsConfirmed(utxolist) {
 		log.Println("Waiting for previous txns to confirm") // happens if you restarted the daemon soon after a previous publish run
-		s.waitUntilUTXOsConfirmed()
+		err := s.waitUntilUTXOsConfirmed()
+		if err != nil {
+			return err
+		}
 	}
 
-	target := 60
+	target := 40
 	count := 0
 
 	for _, utxo := range *utxolist {
@@ -140,6 +156,7 @@ func (s *Sync) ensureEnoughUTXOs() error {
 }
 
 func (s *Sync) waitUntilUTXOsConfirmed() error {
+	origin := time.Now()
 	for {
 		r, err := s.daemon.UTXOList()
 		if err != nil {
@@ -151,7 +168,11 @@ func (s *Sync) waitUntilUTXOsConfirmed() error {
 		if allUTXOsConfirmed(r) {
 			return nil
 		}
-
+		if time.Now().After(origin.Add(15 * time.Minute)) {
+			//lbryum is messing with us or something. restart the daemon
+			//this could also be a very long block
+			SendErrorToSlack("We've been waiting UTXOs confirmation for %s... and this isn't normal", time.Now().Sub(origin).String())
+		}
 		wait := 30 * time.Second
 		log.Println("Waiting " + wait.String() + "...")
 		time.Sleep(wait)
@@ -266,6 +287,7 @@ func (s *Sync) addCredits(amountToAdd float64) error {
 	log.Println("Waiting " + wait.String() + " for lbryum to let us know we have the new transaction")
 	time.Sleep(wait)
 
-	log.Println("Waiting for transaction to be confirmed")
-	return s.waitUntilUTXOsConfirmed()
+	return nil
+	//log.Println("Waiting for transaction to be confirmed")
+	//return s.waitUntilUTXOsConfirmed()
 }

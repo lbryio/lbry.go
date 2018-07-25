@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,9 +20,9 @@ import (
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/jsonrpc"
 	"github.com/lbryio/lbry.go/stop"
+	"github.com/lbryio/lbry.go/util"
 	"github.com/lbryio/lbry.go/ytsync/redisdb"
 	"github.com/lbryio/lbry.go/ytsync/sources"
-
 	"github.com/mitchellh/go-ps"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/googleapi/transport"
@@ -29,8 +30,9 @@ import (
 )
 
 const (
-	channelClaimAmount = 0.01
-	publishAmount      = 0.01
+	channelClaimAmount     = 0.01
+	publishAmount          = 0.01
+	maximumVideosToPublish = 1000
 )
 
 type video interface {
@@ -38,7 +40,7 @@ type video interface {
 	IDAndNum() string
 	PlaylistPosition() int
 	PublishedAt() time.Time
-	Sync(*jsonrpc.Client, string, float64, string) error
+	Sync(*jsonrpc.Client, string, float64, string) (*sources.SyncSummary, error)
 }
 
 // sorting videos
@@ -58,6 +60,7 @@ type Sync struct {
 	ConcurrentVideos        int
 	TakeOverExistingChannel bool
 	Refill                  int
+	Manager                 *SyncManager
 
 	daemon         *jsonrpc.Client
 	claimAddress   string
@@ -66,25 +69,79 @@ type Sync struct {
 
 	grp *stop.Group
 
+	mux   sync.Mutex
 	wg    sync.WaitGroup
 	queue chan video
 }
 
-func (s *Sync) FullCycle() error {
-	var err error
+// SendErrorToSlack Sends an error message to the default channel and to the process log.
+func SendErrorToSlack(format string, a ...interface{}) error {
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
+	log.Errorln(message)
+	return util.SendToSlack(":sos: " + message)
+}
+
+// SendInfoToSlack Sends an info message to the default channel and to the process log.
+func SendInfoToSlack(format string, a ...interface{}) error {
+	message := format
+	if len(a) > 0 {
+		message = fmt.Sprintf(format, a...)
+	}
+	log.Infoln(message)
+	return util.SendToSlack(":information_source: " + message)
+}
+
+// IsInterrupted can be queried to discover if the sync process was interrupted manually
+func (s *Sync) IsInterrupted() bool {
+	select {
+	case <-s.grp.Ch():
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Sync) FullCycle() (e error) {
 	if os.Getenv("HOME") == "" {
 		return errors.Err("no $HOME env var found")
 	}
-
 	if s.YoutubeChannelID == "" {
-		channelID, err := getChannelIDFromFile(s.LbryChannelName)
-		if err != nil {
-			return err
-		}
-		s.YoutubeChannelID = channelID
+		return errors.Err("channel ID not provided")
 	}
+	err := s.Manager.setChannelSyncStatus(s.YoutubeChannelID, StatusSyncing)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if e != nil {
+			//conditions for which a channel shouldn't be marked as failed
+			noFailConditions := []string{
+				"this youtube channel is being managed by another server",
+			}
+			if util.SubstringInSlice(e.Error(), noFailConditions) {
+				return
+			}
+			err := s.Manager.setChannelSyncStatus(s.YoutubeChannelID, StatusFailed)
+			if err != nil {
+				msg := fmt.Sprintf("Failed setting failed state for channel %s.", s.LbryChannelName)
+				err = errors.Prefix(msg, err)
+				e = errors.Prefix(err.Error(), e)
+			}
+		} else if !s.IsInterrupted() {
+			err := s.Manager.setChannelSyncStatus(s.YoutubeChannelID, StatusSynced)
+			if err != nil {
+				e = err
+			}
+		}
+	}()
 
 	defaultWalletDir := os.Getenv("HOME") + "/.lbryum/wallets/default_wallet"
+	if os.Getenv("REGTEST") == "true" {
+		defaultWalletDir = os.Getenv("HOME") + "/.lbryum_regtest/wallets/default_wallet"
+	}
 	walletBackupDir := os.Getenv("HOME") + "/wallets/" + strings.Replace(s.LbryChannelName, "@", "", 1)
 
 	if _, err := os.Stat(defaultWalletDir); !os.IsNotExist(err) {
@@ -103,16 +160,14 @@ func (s *Sync) FullCycle() error {
 		log.Printf("Stopping daemon")
 		shutdownErr := stopDaemonViaSystemd()
 		if shutdownErr != nil {
-			log.Errorf("error shutting down daemon: %v", shutdownErr)
-			log.Errorf("WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR")
+			logShutdownError(shutdownErr)
 		} else {
 			// the cli will return long before the daemon effectively stops. we must observe the processes running
 			// before moving the wallet
-			var waitTimeout time.Duration = 60 * 6
+			var waitTimeout time.Duration = 60 * 8
 			processDeathError := waitForDaemonProcess(waitTimeout)
 			if processDeathError != nil {
-				log.Errorf("error shutdown down daemon: %v", processDeathError)
-				log.Errorf("WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR")
+				logShutdownError(processDeathError)
 			} else {
 				walletErr := os.Rename(defaultWalletDir, walletBackupDir)
 				if walletErr != nil {
@@ -147,7 +202,7 @@ func (s *Sync) FullCycle() error {
 
 	log.Infoln("Waiting for daemon to finish starting...")
 	s.daemon = jsonrpc.NewClient("")
-	s.daemon.SetRPCTimeout(5 * time.Minute)
+	s.daemon.SetRPCTimeout(40 * time.Minute)
 
 WaitForDaemonStart:
 	for {
@@ -175,13 +230,17 @@ WaitForDaemonStart:
 
 	return nil
 }
+func logShutdownError(shutdownErr error) {
+	SendErrorToSlack("error shutting down daemon: %v", shutdownErr)
+	SendErrorToSlack("WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR")
+}
 
 func (s *Sync) doSync() error {
 	var err error
 
 	err = s.walletSetup()
 	if err != nil {
-		return err
+		return errors.Prefix("Initial wallet setup failed! Manual Intervention is required.", err)
 	}
 
 	if s.StopOnError {
@@ -235,30 +294,53 @@ func (s *Sync) startWorker(workerNum int) {
 			err := s.processVideo(v)
 
 			if err != nil {
-				log.Errorln("error processing video: " + err.Error())
-				if s.StopOnError {
+				logMsg := fmt.Sprintf("error processing video: " + err.Error())
+				log.Errorln(logMsg)
+				fatalErrors := []string{
+					":5279: read: connection reset by peer",
+					"no space left on device",
+					"NotEnoughFunds",
+					"Cannot publish using channel",
+				}
+				if util.SubstringInSlice(err.Error(), fatalErrors) || s.StopOnError {
 					s.grp.Stop()
 				} else if s.MaxTries > 1 {
-					if strings.Contains(err.Error(), "non 200 status code received") ||
-						strings.Contains(err.Error(), " reason: 'This video contains content from") ||
-						strings.Contains(err.Error(), "dont know which claim to update") ||
-						strings.Contains(err.Error(), "uploader has not made this video available in your country") ||
-						strings.Contains(err.Error(), "download error: AccessDenied: Access Denied") ||
-						strings.Contains(err.Error(), "Playback on other websites has been disabled by the video owner") {
+					errorsNoRetry := []string{
+						"non 200 status code received",
+						" reason: 'This video contains content from",
+						"dont know which claim to update",
+						"uploader has not made this video available in your country",
+						"download error: AccessDenied: Access Denied",
+						"Playback on other websites has been disabled by the video owner",
+						"Error in daemon: Cannot publish empty file",
+						"Error extracting sts from embedded url response",
+						"Client.Timeout exceeded while awaiting headers)",
+						"video is bigger than 2GB, skipping for now",
+					}
+					if util.SubstringInSlice(err.Error(), errorsNoRetry) {
 						log.Println("This error should not be retried at all")
 					} else if tryCount < s.MaxTries {
-						if strings.Contains(err.Error(), "The transaction was rejected by network rules.(258: txn-mempool-conflict)") {
+						if strings.Contains(err.Error(), "txn-mempool-conflict") ||
+							strings.Contains(err.Error(), "failed: Not enough funds") ||
+							strings.Contains(err.Error(), "Error in daemon: Insufficient funds, please deposit additional LBC") ||
+							strings.Contains(err.Error(), "too-long-mempool-chain") {
 							log.Println("waiting for a block and refilling addresses before retrying")
-							err = s.ensureEnoughUTXOs()
+							err = s.walletSetup()
 							if err != nil {
-								log.Println(err.Error())
+								s.grp.Stop()
+								SendErrorToSlack("Failed to setup the wallet for a refill: %v", err)
+								break
 							}
 						}
 						log.Println("Retrying")
 						continue
 					}
-					log.Printf("Video failed after %d retries, skipping", s.MaxTries)
+					SendErrorToSlack("Video failed after %d retries, skipping. Stack: %s", tryCount, logMsg)
 				}
+				/*err = s.Manager.MarkVideoStatus(s.YoutubeChannelID, v.ID(), VideoSStatusFailed, "", "", err.Error())
+				if err != nil {
+					SendErrorToSlack("Failed to mark video on the database: %s", err.Error())
+				}*/
 			}
 			break
 		}
@@ -312,8 +394,6 @@ func (s *Sync) enqueueYoutubeVideos() error {
 		}
 
 		for _, item := range playlistResponse.Items {
-			// todo: there's thumbnail info here. why did we need lambda???
-
 			// normally we'd send the video into the channel here, but youtube api doesn't have sorting
 			// so we have to get ALL the videos, then sort them, then send them in
 			videos = append(videos, sources.NewYoutubeVideo(s.videoDirectory, item.Snippet))
@@ -424,15 +504,18 @@ func (s *Sync) processVideo(v video) (err error) {
 		return nil
 	}
 
-	if v.PlaylistPosition() > 3000 {
+	if v.PlaylistPosition() > maximumVideosToPublish {
 		log.Println(v.ID() + " is old: skipping")
 		return nil
 	}
-	err = v.Sync(s.daemon, s.claimAddress, publishAmount, s.LbryChannelName)
+	_, err = v.Sync(s.daemon, s.claimAddress, publishAmount, s.LbryChannelName)
 	if err != nil {
 		return err
 	}
-
+	/*err = s.Manager.MarkVideoStatus(s.YoutubeChannelID, v.ID(), VideoStatusPublished, summary.ClaimID, summary.ClaimName, "")
+	if err != nil {
+		SendErrorToSlack("Failed to mark video on the database: %s", err.Error())
+	}*/
 	err = s.db.SetPublished(v.ID())
 	if err != nil {
 		return err
@@ -455,26 +538,6 @@ func stopDaemonViaSystemd() error {
 		return errors.Err(err)
 	}
 	return nil
-}
-
-func getChannelIDFromFile(channelName string) (string, error) {
-	channelsJSON, err := ioutil.ReadFile("./channels")
-	if err != nil {
-		return "", errors.Wrap(err, 0)
-	}
-
-	var channels map[string]string
-	err = json.Unmarshal(channelsJSON, &channels)
-	if err != nil {
-		return "", errors.Wrap(err, 0)
-	}
-
-	channelID, ok := channels[channelName]
-	if !ok {
-		return "", errors.Err("channel not in list")
-	}
-
-	return channelID, nil
 }
 
 // waitForDaemonProcess observes the running processes and returns when the process is no longer running or when the timeout is up

@@ -1,26 +1,17 @@
 package cmd
 
 import (
-	"github.com/lbryio/lbry.go/errors"
-	sync "github.com/lbryio/lbry.go/ytsync"
+	"os"
 
+	"time"
+
+	"os/user"
+
+	"github.com/lbryio/lbry.go/util"
+	sync "github.com/lbryio/lbry.go/ytsync"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-func init() {
-	var ytSyncCmd = &cobra.Command{
-		Use:   "ytsync <youtube_api_key> <lbry_channel_name> [<youtube_channel_id>]",
-		Args:  cobra.RangeArgs(2, 3),
-		Short: "Publish youtube channel into LBRY network.",
-		Run:   ytsync,
-	}
-	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
-	ytSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
-	ytSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
-	ytSyncCmd.Flags().IntVar(&refill, "refill", 0, "Also add this many credits to the wallet")
-	RootCmd.AddCommand(ytSyncCmd)
-}
 
 const defaultMaxTries = 3
 
@@ -29,19 +20,56 @@ var (
 	maxTries                int
 	takeOverExistingChannel bool
 	refill                  int
+	limit                   int
+	skipSpaceCheck          bool
+	syncUpdate              bool
+	syncStatus              string
+	channelID               string
+	syncFrom                int64
+	syncUntil               int64
+	concurrentJobs          int
 )
 
-func ytsync(cmd *cobra.Command, args []string) {
-	ytAPIKey := args[0]
-	lbryChannelName := args[1]
-	if string(lbryChannelName[0]) != "@" {
-		log.Errorln("LBRY channel name must start with an @")
-		return
+func init() {
+	var ytSyncCmd = &cobra.Command{
+		Use:   "ytsync",
+		Args:  cobra.RangeArgs(0, 0),
+		Short: "Publish youtube channels into LBRY network automatically.",
+		Run:   ytSync,
+	}
+	ytSyncCmd.Flags().BoolVar(&stopOnError, "stop-on-error", false, "If a publish fails, stop all publishing and exit")
+	ytSyncCmd.Flags().IntVar(&maxTries, "max-tries", defaultMaxTries, "Number of times to try a publish that fails")
+	ytSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
+	ytSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
+	ytSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
+	ytSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
+	ytSyncCmd.Flags().StringVar(&syncStatus, "status", sync.StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
+	ytSyncCmd.Flags().StringVar(&channelID, "channelID", "", "If specified, only this channel will be synced.")
+	ytSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
+	ytSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
+	ytSyncCmd.Flags().IntVar(&concurrentJobs, "concurrent-jobs", 1, "how many jobs to process concurrently (Default: 1)")
+
+	RootCmd.AddCommand(ytSyncCmd)
+}
+
+func ytSync(cmd *cobra.Command, args []string) {
+	var hostname string
+	slackToken := os.Getenv("SLACK_TOKEN")
+	if slackToken == "" {
+		log.Error("A slack token was not present in env vars! Slack messages disabled!")
+	} else {
+		var err error
+		hostname, err = os.Hostname()
+		if err != nil {
+			log.Error("could not detect system hostname")
+			hostname = "ytsync-unknown"
+		}
+		util.InitSlack(os.Getenv("SLACK_TOKEN"), os.Getenv("SLACK_CHANNEL"), hostname)
 	}
 
-	channelID := ""
-	if len(args) > 2 {
-		channelID = args[2]
+	if !util.InSlice(syncStatus, sync.SyncStatuses) {
+		log.Errorf("status must be one of the following: %v\n", sync.SyncStatuses)
+		return
 	}
 
 	if stopOnError && maxTries != defaultMaxTries {
@@ -53,20 +81,60 @@ func ytsync(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	s := sync.Sync{
-		YoutubeAPIKey:           ytAPIKey,
-		YoutubeChannelID:        channelID,
-		LbryChannelName:         lbryChannelName,
+	if limit < 0 {
+		log.Errorln("setting --limit less than 0 (unlimited) doesn't make sense")
+		return
+	}
+
+	apiURL := os.Getenv("LBRY_API")
+	apiToken := os.Getenv("LBRY_API_TOKEN")
+	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")
+	blobsDir := os.Getenv("BLOBS_DIRECTORY")
+	if apiURL == "" {
+		log.Errorln("An API URL was not defined. Please set the environment variable LBRY_API")
+		return
+	}
+	if apiToken == "" {
+		log.Errorln("An API Token was not defined. Please set the environment variable LBRY_API_TOKEN")
+		return
+	}
+	if youtubeAPIKey == "" {
+		log.Errorln("A Youtube API key was not defined. Please set the environment variable YOUTUBE_API_KEY")
+		return
+	}
+	if blobsDir == "" {
+		usr, err := user.Current()
+		if err != nil {
+			log.Errorln(err.Error())
+			return
+		}
+		blobsDir = usr.HomeDir + "/.lbrynet/blobfiles/"
+	}
+
+	sm := sync.SyncManager{
 		StopOnError:             stopOnError,
 		MaxTries:                maxTries,
-		ConcurrentVideos:        1,
 		TakeOverExistingChannel: takeOverExistingChannel,
 		Refill:                  refill,
+		Limit:                   limit,
+		SkipSpaceCheck:          skipSpaceCheck,
+		SyncUpdate:              syncUpdate,
+		SyncStatus:              syncStatus,
+		SyncFrom:                syncFrom,
+		SyncUntil:               syncUntil,
+		ConcurrentJobs:          concurrentJobs,
+		ConcurrentVideos:        concurrentJobs,
+		HostName:                hostname,
+		YoutubeChannelID:        channelID,
+		YoutubeAPIKey:           youtubeAPIKey,
+		ApiURL:                  apiURL,
+		ApiToken:                apiToken,
+		BlobsDir:                blobsDir,
 	}
 
-	err := s.FullCycle()
-
+	err := sm.Start()
 	if err != nil {
-		log.Error(errors.FullTrace(err))
+		sync.SendErrorToSlack(err.Error())
 	}
+	sync.SendInfoToSlack("Syncing process terminated!")
 }

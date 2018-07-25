@@ -1,16 +1,25 @@
 package sources
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+
+	"crypto/md5"
+	"encoding/hex"
 
 	"github.com/lbryio/lbry.go/jsonrpc"
 	log "github.com/sirupsen/logrus"
 )
 
 var titleRegexp = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+
+type SyncSummary struct {
+	ClaimID   string
+	ClaimName string
+}
 
 func getClaimNameFromTitle(title string, attempt int) string {
 	suffix := ""
@@ -43,7 +52,7 @@ func getClaimNameFromTitle(title string, attempt int) string {
 var publishedNamesMutex sync.RWMutex
 var publishedNames = map[string]bool{}
 
-func publishAndRetryExistingNames(daemon *jsonrpc.Client, title, filename string, amount float64, options jsonrpc.PublishOptions) error {
+func publishAndRetryExistingNames(daemon *jsonrpc.Client, title, filename string, amount float64, options jsonrpc.PublishOptions) (*SyncSummary, error) {
 	attempt := 0
 	for {
 		attempt++
@@ -56,20 +65,26 @@ func publishAndRetryExistingNames(daemon *jsonrpc.Client, title, filename string
 			log.Printf("name exists, retrying (%d attempts so far)\n", attempt)
 			continue
 		}
+		//if for some reasons the title can't be converted in a valid claim name (too short or not latin) then we use a hash
+		if len(name) < 2 {
+			hasher := md5.New()
+			hasher.Write([]byte(title))
+			name = fmt.Sprintf("%s-%d", hex.EncodeToString(hasher.Sum(nil))[:15], attempt)
+		}
 
-		_, err := daemon.Publish(name, filename, amount, options)
+		response, err := daemon.Publish(name, filename, amount, options)
 		if err == nil || strings.Contains(err.Error(), "failed: Multiple claims (") {
 			publishedNamesMutex.Lock()
 			publishedNames[name] = true
 			publishedNamesMutex.Unlock()
 			if err == nil {
-				return nil
+				return &SyncSummary{ClaimID: response.ClaimID, ClaimName: name}, nil
 			} else {
 				log.Printf("name exists, retrying (%d attempts so far)\n", attempt)
 				continue
 			}
 		} else {
-			return err
+			return nil, err
 		}
 	}
 }
