@@ -43,7 +43,7 @@ func init() {
 	ytSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
 	ytSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
 	ytSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
-	ytSyncCmd.Flags().StringVar(&syncStatus, "status", sync.StatusQueued, "Specify which queue to pull from. Overrides --update (Default: queued)")
+	ytSyncCmd.Flags().StringVar(&syncStatus, "status", "", "Specify which queue to pull from. Overrides --update")
 	ytSyncCmd.Flags().StringVar(&channelID, "channelID", "", "If specified, only this channel will be synced.")
 	ytSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
 	ytSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
@@ -67,7 +67,7 @@ func ytSync(cmd *cobra.Command, args []string) {
 		util.InitSlack(os.Getenv("SLACK_TOKEN"), os.Getenv("SLACK_CHANNEL"), hostname)
 	}
 
-	if !util.InSlice(syncStatus, sync.SyncStatuses) {
+	if syncStatus != "" && !util.InSlice(syncStatus, sync.SyncStatuses) {
 		log.Errorf("status must be one of the following: %v\n", sync.SyncStatuses)
 		return
 	}
