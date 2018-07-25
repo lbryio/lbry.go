@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -291,21 +290,16 @@ func (rt *routingTable) GetClosest(target bits.Bitmap, limit int) []Contact {
 
 // getClosest returns the closest `limit` contacts from the routing table
 func (rt *routingTable) getClosest(target bits.Bitmap, limit int) []Contact {
-	var toSort []sortedContact
-	for _, b := range rt.buckets {
-		for _, c := range b.Contacts() {
-			toSort = append(toSort, sortedContact{c, c.ID.Xor(target)})
-		}
-	}
-	sort.Sort(byXorDistance(toSort))
-
 	var contacts []Contact
-	for _, sorted := range toSort {
-		contacts = append(contacts, sorted.contact)
-		if len(contacts) >= limit {
-			break
-		}
+	for _, b := range rt.buckets {
+		contacts = append(contacts, b.Contacts()...)
 	}
+
+	sortByDistance(contacts, target)
+	if len(contacts) > limit {
+		contacts = contacts[:limit]
+	}
+
 	return contacts
 }
 

@@ -1,7 +1,6 @@
 package dht
 
 import (
-	"sort"
 	"sync"
 	"time"
 
@@ -268,7 +267,7 @@ func (cf *contactFinder) appendNewToShortlist(contacts []Contact) {
 		}
 	}
 
-	sortInPlace(cf.shortlist, cf.target)
+	sortByDistance(cf.shortlist, cf.target)
 }
 
 // popFromShortlist pops the first contact off the shortlist and returns it
@@ -344,18 +343,4 @@ func (cf *contactFinder) closest(contacts ...Contact) *Contact {
 		}
 	}
 	return &closest
-}
-
-func sortInPlace(contacts []Contact, target bits.Bitmap) {
-	toSort := make([]sortedContact, len(contacts))
-
-	for i, n := range contacts {
-		toSort[i] = sortedContact{n, n.ID.Xor(target)}
-	}
-
-	sort.Sort(byXorDistance(toSort))
-
-	for i, c := range toSort {
-		contacts[i] = c.contact
-	}
 }

@@ -3,6 +3,7 @@ package dht
 import (
 	"bytes"
 	"net"
+	"sort"
 	"strconv"
 
 	"github.com/lbryio/lbry.go/errors"
@@ -115,15 +116,8 @@ func (c *Contact) UnmarshalBencode(b []byte) error {
 	return nil
 }
 
-type sortedContact struct {
-	contact             Contact
-	xorDistanceToTarget bits.Bitmap
-}
-
-type byXorDistance []sortedContact
-
-func (a byXorDistance) Len() int      { return len(a) }
-func (a byXorDistance) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a byXorDistance) Less(i, j int) bool {
-	return a[i].xorDistanceToTarget.Cmp(a[j].xorDistanceToTarget) < 0
+func sortByDistance(contacts []Contact, target bits.Bitmap) {
+	sort.Slice(contacts, func(i, j int) bool {
+		return contacts[i].ID.Xor(target).Cmp(contacts[j].ID.Xor(target)) < 0
+	})
 }
