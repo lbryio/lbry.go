@@ -14,8 +14,8 @@ import (
 var testingDHTIP = "127.0.0.1"
 var testingDHTFirstPort = 21000
 
-// TestingCreateDHT initializes a testable DHT network with a specific number of nodes, with bootstrap and concurrent options.
-func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*BootstrapNode, []*DHT) {
+// TestingCreateNetwork initializes a testable DHT network with a specific number of nodes, with bootstrap and concurrent options.
+func TestingCreateNetwork(t *testing.T, numNodes int, bootstrap, concurrent bool) (*BootstrapNode, []*DHT) {
 	var bootstrapNode *BootstrapNode
 	var seeds []string
 
@@ -42,7 +42,11 @@ func TestingCreateDHT(t *testing.T, numNodes int, bootstrap, concurrent bool) (*
 	dhts := make([]*DHT, numNodes)
 
 	for i := 0; i < numNodes; i++ {
-		dht := New(&Config{Address: testingDHTIP + ":" + strconv.Itoa(firstPort+i), NodeID: bits.Rand().Hex(), SeedNodes: seeds})
+		c := NewStandardConfig()
+		c.NodeID = bits.Rand().Hex()
+		c.Address = testingDHTIP + ":" + strconv.Itoa(firstPort+i)
+		c.SeedNodes = seeds
+		dht := New(c)
 
 		go func() {
 			err := dht.Start()

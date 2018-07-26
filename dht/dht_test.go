@@ -14,7 +14,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 		t.Skip("skipping slow nodeFinder test")
 	}
 
-	bs, dhts := TestingCreateDHT(t, 3, true, false)
+	bs, dhts := TestingCreateNetwork(t, 3, true, false)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -63,7 +63,7 @@ func TestNodeFinder_FindNodes(t *testing.T) {
 }
 
 func TestNodeFinder_FindNodes_NoBootstrap(t *testing.T) {
-	_, dhts := TestingCreateDHT(t, 3, false, false)
+	_, dhts := TestingCreateNetwork(t, 3, false, false)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -81,7 +81,7 @@ func TestNodeFinder_FindValue(t *testing.T) {
 		t.Skip("skipping slow nodeFinder test")
 	}
 
-	bs, dhts := TestingCreateDHT(t, 3, true, false)
+	bs, dhts := TestingCreateNetwork(t, 3, true, false)
 	defer func() {
 		for i := range dhts {
 			dhts[i].Shutdown()
@@ -117,7 +117,7 @@ func TestDHT_LargeDHT(t *testing.T) {
 	}
 
 	nodes := 100
-	bs, dhts := TestingCreateDHT(t, nodes, true, true)
+	bs, dhts := TestingCreateNetwork(t, nodes, true, true)
 	defer func() {
 		for _, d := range dhts {
 			go d.Shutdown()
