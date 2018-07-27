@@ -12,9 +12,8 @@ const (
 	Network     = "udp4"
 	DefaultPort = 4444
 
-	DefaultAnnounceRate   = 10
-	DefaultAnnounceBurst  = 1
-	DefaultReannounceTime = 50 * time.Minute
+	DefaultAnnounceRate   = 10               // send at most this many announces per second
+	DefaultReannounceTime = 50 * time.Minute // should be a bit less than hash expiration time
 
 	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
 	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
@@ -55,8 +54,8 @@ type Config struct {
 	ReannounceTime time.Duration
 	// send at most this many announces per second
 	AnnounceRate int
-	// allow bursts of up to this many times the announce rate
-	AnnounceBurst int
+	// channel that will receive notifications about announcements
+	AnnounceNotificationCh chan announceNotification
 }
 
 // NewStandardConfig returns a Config pointer with default values.
@@ -71,6 +70,5 @@ func NewStandardConfig() *Config {
 		PeerProtocolPort: peerproto.DefaultPort,
 		ReannounceTime:   DefaultReannounceTime,
 		AnnounceRate:     DefaultAnnounceRate,
-		AnnounceBurst:    DefaultAnnounceBurst,
 	}
 }

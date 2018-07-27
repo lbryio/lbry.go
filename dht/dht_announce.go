@@ -3,6 +3,7 @@ package dht
 import (
 	"container/ring"
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -14,6 +15,17 @@ import (
 type queueEdit struct {
 	hash bits.Bitmap
 	add  bool
+}
+
+const (
+	announceStarted = "started"
+	announceFinishd = "finished"
+)
+
+type announceNotification struct {
+	hash   bits.Bitmap
+	action string
+	err    error
 }
 
 // Add adds the hash to the list of hashes this node is announcing
@@ -32,54 +44,94 @@ func (dht *DHT) runAnnouncer() {
 		lastAnnounce time.Time
 	}
 
-	queue := ring.New(0)
+	var queue *ring.Ring
 	hashes := make(map[bits.Bitmap]*ring.Ring)
-	limiter := rate.NewLimiter(rate.Limit(dht.conf.AnnounceRate), dht.conf.AnnounceRate*dht.conf.AnnounceBurst)
 
 	var announceNextHash <-chan time.Time
-	timer := time.NewTimer(0)
-	closedCh := make(chan time.Time)
-	close(closedCh)
+	timer := time.NewTimer(math.MaxInt64)
+	timer.Stop()
+
+	limitCh := make(chan time.Time)
+	dht.grp.Add(1)
+	go func() {
+		defer dht.grp.Done()
+		limiter := rate.NewLimiter(rate.Limit(dht.conf.AnnounceRate), dht.conf.AnnounceRate)
+		for {
+			limiter.Wait(context.Background()) // TODO: should use grp.ctx somehow? so when grp is closed, wait returns
+			select {
+			case limitCh <- time.Now():
+			case <-dht.grp.Ch():
+				return
+			}
+		}
+	}()
+
+	maintenance := time.NewTicker(1 * time.Minute)
+
+	// TODO: work to space hash announces out so they aren't bunched up around the reannounce time. track time since last announce. if its been more than the ideal time (reannounce time / numhashes), start announcing hashes early
 
 	for {
 		select {
 		case <-dht.grp.Ch():
-			return
+
+		case <-maintenance.C:
+			maxAnnounce := dht.conf.AnnounceRate * int(dht.conf.ReannounceTime.Seconds())
+			if len(hashes) > maxAnnounce {
+				// TODO: send this to slack
+				log.Warnf("DHT has %d hashes, but can only announce %d hashes in the %s reannounce window. Raise the announce rate or spawn more nodes.",
+					len(hashes), maxAnnounce, dht.conf.ReannounceTime.String())
+			}
 
 		case change := <-dht.announceAddRemove:
 			if change.add {
+				if _, exists := hashes[change.hash]; exists {
+					continue
+				}
+
 				r := ring.New(1)
 				r.Value = hashAndTime{hash: change.hash}
-				queue.Prev().Link(r)
+				if queue != nil {
+					queue.Prev().Link(r)
+				}
 				queue = r
 				hashes[change.hash] = r
-				announceNextHash = closedCh // don't wait to announce next hash
+				announceNextHash = limitCh // announce next hash ASAP
 			} else {
-				if r, exists := hashes[change.hash]; exists {
-					delete(hashes, change.hash)
-					if len(hashes) == 0 {
-						queue = ring.New(0)
-						announceNextHash = make(chan time.Time) // no hashes to announce, wait indefinitely
-					} else {
-						if r == queue {
-							queue = queue.Next() // don't lose our pointer
-						}
-						r.Prev().Link(r.Next())
+				r, exists := hashes[change.hash]
+				if !exists {
+					continue
+				}
+
+				delete(hashes, change.hash)
+
+				if len(hashes) == 0 {
+					queue = ring.New(0)
+					announceNextHash = nil // no hashes to announce, wait indefinitely
+				} else {
+					if r == queue {
+						queue = queue.Next() // don't lose our pointer
 					}
+					r.Prev().Link(r.Next())
 				}
 			}
 
 		case <-announceNextHash:
-			limiter.Wait(context.Background()) // TODO: should use grp.ctx somehow
 			dht.grp.Add(1)
 			ht := queue.Value.(hashAndTime)
 
 			if !ht.lastAnnounce.IsZero() {
 				nextAnnounce := ht.lastAnnounce.Add(dht.conf.ReannounceTime)
-				if nextAnnounce.Before(time.Now()) {
+				if nextAnnounce.After(time.Now()) {
 					timer.Reset(time.Until(nextAnnounce))
 					announceNextHash = timer.C // wait until next hash should be announced
 					continue
+				}
+			}
+
+			if dht.conf.AnnounceNotificationCh != nil {
+				dht.conf.AnnounceNotificationCh <- announceNotification{
+					hash:   ht.hash,
+					action: announceStarted,
 				}
 			}
 
@@ -89,11 +141,19 @@ func (dht *DHT) runAnnouncer() {
 				if err != nil {
 					log.Error(errors.Prefix("announce", err))
 				}
+
+				if dht.conf.AnnounceNotificationCh != nil {
+					dht.conf.AnnounceNotificationCh <- announceNotification{
+						hash:   ht.hash,
+						action: announceFinishd,
+						err:    err,
+					}
+				}
 			}(ht.hash)
 
 			queue.Value = hashAndTime{hash: ht.hash, lastAnnounce: time.Now()}
 			queue = queue.Next()
-			announceNextHash = closedCh // don't wait to announce next hash
+			announceNextHash = limitCh // announce next hash ASAP
 		}
 	}
 }
