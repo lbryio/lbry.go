@@ -28,6 +28,8 @@ var (
 	syncFrom                int64
 	syncUntil               int64
 	concurrentJobs          int
+	videosLimit             int
+	maxVideoSize            int
 )
 
 func init() {
@@ -42,12 +44,14 @@ func init() {
 	ytSyncCmd.Flags().BoolVar(&takeOverExistingChannel, "takeover-existing-channel", false, "If channel exists and we don't own it, take over the channel")
 	ytSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
 	ytSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
-	ytSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones (short for --status synced)")
+	ytSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones")
 	ytSyncCmd.Flags().StringVar(&syncStatus, "status", "", "Specify which queue to pull from. Overrides --update")
 	ytSyncCmd.Flags().StringVar(&channelID, "channelID", "", "If specified, only this channel will be synced.")
 	ytSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
 	ytSyncCmd.Flags().Int64Var(&syncUntil, "before", time.Now().Unix(), "Specify until when to pull jobs [Unix time](Default: current Unix time)")
-	ytSyncCmd.Flags().IntVar(&concurrentJobs, "concurrent-jobs", 1, "how many jobs to process concurrently (Default: 1)")
+	ytSyncCmd.Flags().IntVar(&concurrentJobs, "concurrent-jobs", 1, "how many jobs to process concurrently")
+	ytSyncCmd.Flags().IntVar(&videosLimit, "videos-limit", 1000, "how many videos to process per channel")
+	ytSyncCmd.Flags().IntVar(&maxVideoSize, "max-size", 2048, "Maximum video size to process (in MB)")
 
 	RootCmd.AddCommand(ytSyncCmd)
 }
@@ -130,6 +134,8 @@ func ytSync(cmd *cobra.Command, args []string) {
 		ApiURL:                  apiURL,
 		ApiToken:                apiToken,
 		BlobsDir:                blobsDir,
+		VideosLimit:             videosLimit,
+		MaxVideoSize:            maxVideoSize,
 	}
 
 	err := sm.Start()
