@@ -73,6 +73,7 @@ func (dht *DHT) runAnnouncer() {
 	for {
 		select {
 		case <-dht.grp.Ch():
+			return
 
 		case <-maintenance.C:
 			maxAnnounce := dht.conf.AnnounceRate * int(dht.conf.ReannounceTime.Seconds())
