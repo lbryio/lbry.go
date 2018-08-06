@@ -216,6 +216,17 @@ func TestRoutingTable_GetClosest(t *testing.T) {
 	}
 }
 
+func TestRoutingTable_GetClosest_Empty(t *testing.T) {
+	n1 := bits.FromShortHexP("1")
+	rt := newRoutingTable(n1)
+
+	contacts := rt.GetClosest(bits.FromShortHexP("a"), 3)
+	if len(contacts) != 0 {
+		t.Error("there shouldn't be any contacts")
+		return
+	}
+}
+
 func TestRoutingTable_Refresh(t *testing.T) {
 	t.Skip("TODO: test routing table refreshing")
 }
