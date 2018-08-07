@@ -110,6 +110,9 @@ func (rpc *rpcReceiver) IterativeFindValue(r *http.Request, args *RpcIterativeFi
 		return err
 	}
 	foundContacts, found, err := FindContacts(rpc.dht.node, key, false, nil)
+	if err != nil {
+		return err
+	}
 	result.Contacts = foundContacts
 	result.FoundValue = found
 	return nil
@@ -153,7 +156,11 @@ func (dht *DHT) runRPCServer(port int) {
 	s := rpc2.NewServer()
 	s.RegisterCodec(json.NewCodec(), "application/json")
 	s.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
-	s.RegisterService(&rpcReceiver{dht: dht}, "rpc")
+	err := s.RegisterService(&rpcReceiver{dht: dht}, "rpc")
+	if err != nil {
+		log.Error(errors.Prefix("registering rpc service", err))
+		return
+	}
 
 	handler := mux.NewRouter()
 	handler.Handle("/", s)
@@ -171,6 +178,10 @@ func (dht *DHT) runRPCServer(port int) {
 	}()
 
 	<-dht.grp.Ch()
-	server.Shutdown(context.Background())
+	err = server.Shutdown(context.Background())
+	if err != nil {
+		log.Error(errors.Prefix("shutting down rpc service", err))
+		return
+	}
 	wg.Wait()
 }

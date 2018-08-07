@@ -57,7 +57,11 @@ func (dht *DHT) runAnnouncer() {
 		defer dht.grp.Done()
 		limiter := rate.NewLimiter(rate.Limit(dht.conf.AnnounceRate), dht.conf.AnnounceRate)
 		for {
-			limiter.Wait(context.Background()) // TODO: should use grp.ctx somehow? so when grp is closed, wait returns
+			err := limiter.Wait(context.Background()) // TODO: should use grp.ctx somehow? so when grp is closed, wait returns
+			if err != nil {
+				log.Error(errors.Prefix("rate limiter", err))
+				continue
+			}
 			select {
 			case limitCh <- time.Now():
 			case <-dht.grp.Ch():

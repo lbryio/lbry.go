@@ -70,11 +70,7 @@ func (dht *DHT) connect(conn UDPConn) error {
 	dht.node = NewNode(contact.ID)
 	dht.tokenCache = newTokenCache(dht.node, tokenSecretRotationInterval)
 
-	err = dht.node.Connect(conn)
-	if err != nil {
-		return err
-	}
-	return nil
+	return dht.node.Connect(conn)
 }
 
 // Start starts the dht

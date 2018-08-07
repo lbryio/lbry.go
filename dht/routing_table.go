@@ -263,14 +263,20 @@ func (rt *routingTable) Update(c Contact) {
 		}
 	}
 
-	b.UpdatePeer(peer{Contact: c, Distance: rt.id.Xor(c.ID)}, true)
+	err := b.UpdatePeer(peer{Contact: c, Distance: rt.id.Xor(c.ID)}, true)
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 // Fresh refreshes a contact if its already in the routing table
 func (rt *routingTable) Fresh(c Contact) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	rt.bucketFor(c.ID).UpdatePeer(peer{Contact: c, Distance: rt.id.Xor(c.ID)}, false)
+	err := rt.bucketFor(c.ID).UpdatePeer(peer{Contact: c, Distance: rt.id.Xor(c.ID)}, false)
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 // FailContact marks a contact as having failed, and removes it if it failed too many times

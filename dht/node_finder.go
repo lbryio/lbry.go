@@ -250,10 +250,6 @@ func (cf *contactFinder) probe(cycleID string) *Contact {
 	return cf.closest(res.Contacts...)
 }
 
-func (cf *contactFinder) probeClosestOutstanding() {
-
-}
-
 // appendNewToShortlist appends any new contacts to the shortlist and sorts it by distance
 // contacts that have already been added to the shortlist in the past are ignored
 func (cf *contactFinder) appendNewToShortlist(contacts []Contact) {
@@ -320,11 +316,7 @@ func (cf *contactFinder) isSearchFinished() bool {
 
 	cf.activeContactsMutex.Lock()
 	defer cf.activeContactsMutex.Unlock()
-	if len(cf.activeContacts) >= bucketSize {
-		return true
-	}
-
-	return false
+	return len(cf.activeContacts) >= bucketSize
 }
 
 func (cf *contactFinder) debug(format string, args ...interface{}) {

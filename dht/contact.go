@@ -108,12 +108,7 @@ func (c *Contact) UnmarshalBencode(b []byte) error {
 		return errors.Err("invalid IP")
 	}
 
-	err = bencode.DecodeBytes(raw[2], &c.Port)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return bencode.DecodeBytes(raw[2], &c.Port)
 }
 
 func sortByDistance(contacts []Contact, target bits.Bitmap) {
