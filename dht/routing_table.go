@@ -357,15 +357,15 @@ func (rt *routingTable) shouldSplit(b *bucket, c Contact) bool {
 	return false
 }
 
-func (rt *routingTable) printBucketInfo() {
-	fmt.Printf("there are %d contacts in %d buckets\n", rt.Count(), rt.Len())
-	for i, b := range rt.buckets {
-		fmt.Printf("bucket %d, %d contacts\n", i+1, len(b.peers))
-		fmt.Printf("    start : %s\n", b.Range.Start.String())
-		fmt.Printf("    stop  : %s\n", b.Range.End.String())
-		fmt.Println("")
-	}
-}
+//func (rt *routingTable) printBucketInfo() {
+//	fmt.Printf("there are %d contacts in %d buckets\n", rt.Count(), rt.Len())
+//	for i, b := range rt.buckets {
+//		fmt.Printf("bucket %d, %d contacts\n", i+1, len(b.peers))
+//		fmt.Printf("    start : %s\n", b.Range.Start.String())
+//		fmt.Printf("    stop  : %s\n", b.Range.End.String())
+//		fmt.Println("")
+//	}
+//}
 
 func (rt *routingTable) GetIDsForRefresh(refreshInterval time.Duration) []bits.Bitmap {
 	var bitmaps []bits.Bitmap

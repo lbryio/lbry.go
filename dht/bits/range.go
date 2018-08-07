@@ -28,10 +28,8 @@ func (r Range) IntervalP(n, num int) Range {
 	}
 
 	start := r.intervalStart(n, num)
-	end := new(big.Int)
-	if n == num {
-		end = r.End.Big()
-	} else {
+	end := r.End.Big()
+	if n < num {
 		end = r.intervalStart(n+1, num)
 		end.Sub(end, big.NewInt(1))
 	}
