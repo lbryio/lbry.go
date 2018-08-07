@@ -204,7 +204,7 @@ func (n *Node) handlePacket(pkt packet) {
 		n.handleError(pkt.raddr, e)
 
 	default:
-		log.Errorf("[%s] invalid message type: %s", n.id.HexShort(), pkt.data[5])
+		log.Errorf("[%s] invalid message type: %s", n.id.HexShort(), string(pkt.data[5]))
 		return
 	}
 }
