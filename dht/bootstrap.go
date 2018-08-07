@@ -48,10 +48,6 @@ func (b *BootstrapNode) Add(c Contact) {
 	b.upsert(c)
 }
 
-func (b *BootstrapNode) AddKnownNode(c Contact) {
-	b.Node.rt.Update(c)
-}
-
 // Connect connects to the given connection and starts any background threads necessary
 func (b *BootstrapNode) Connect(conn UDPConn) error {
 	err := b.Node.Connect(conn)
@@ -59,7 +55,7 @@ func (b *BootstrapNode) Connect(conn UDPConn) error {
 		return err
 	}
 
-	log.Debugf("[%s] bootstrap: node connected", b.id.HexShort())
+	log.Infof("[%s] bootstrap: node connected", b.id.HexShort())
 
 	go func() {
 		t := time.NewTicker(b.checkInterval / 5)

@@ -50,6 +50,8 @@ type Config struct {
 	PrintState time.Duration
 	// the port that clients can use to download blobs using the LBRY peer protocol
 	PeerProtocolPort int
+	// if nonzero, an RPC server will listen to requests on this port and respond to them
+	RPCPort int
 	// the time after which the original publisher must reannounce a key/value pair
 	ReannounceTime time.Duration
 	// send at most this many announces per second

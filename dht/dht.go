@@ -100,6 +100,14 @@ func (dht *DHT) Start() error {
 		dht.grp.Done()
 	}()
 
+	if dht.conf.RPCPort > 0 {
+		dht.grp.Add(1)
+		go func() {
+			dht.runRPCServer(dht.conf.RPCPort)
+			dht.grp.Done()
+		}()
+	}
+
 	return nil
 }
 
