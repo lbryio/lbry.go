@@ -94,6 +94,7 @@ func ytSync(cmd *cobra.Command, args []string) {
 	apiToken := os.Getenv("LBRY_API_TOKEN")
 	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")
 	blobsDir := os.Getenv("BLOBS_DIRECTORY")
+	lbrycrdString := os.Getenv("LBRYCRD_STRING")
 	if apiURL == "" {
 		log.Errorln("An API URL was not defined. Please set the environment variable LBRY_API")
 		return
@@ -105,6 +106,9 @@ func ytSync(cmd *cobra.Command, args []string) {
 	if youtubeAPIKey == "" {
 		log.Errorln("A Youtube API key was not defined. Please set the environment variable YOUTUBE_API_KEY")
 		return
+	}
+	if lbrycrdString == "" {
+		log.Infoln("Using default (local) lbrycrd instance. Set LBRYCRD_STRING if you want to use something else")
 	}
 	if blobsDir == "" {
 		usr, err := user.Current()
@@ -136,6 +140,7 @@ func ytSync(cmd *cobra.Command, args []string) {
 		BlobsDir:                blobsDir,
 		VideosLimit:             videosLimit,
 		MaxVideoSize:            maxVideoSize,
+		LbrycrdString:           lbrycrdString,
 	}
 
 	err := sm.Start()
