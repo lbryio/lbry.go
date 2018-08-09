@@ -9,6 +9,7 @@ import (
 
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/reflector.go/dht/bits"
+
 	"golang.org/x/time/rate"
 )
 
