@@ -95,6 +95,10 @@ func ytSync(cmd *cobra.Command, args []string) {
 	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")
 	blobsDir := os.Getenv("BLOBS_DIRECTORY")
 	lbrycrdString := os.Getenv("LBRYCRD_STRING")
+	awsS3ID := os.Getenv("AWS_S3_ID")
+	awsS3Secret := os.Getenv("AWS_S3_SECRET")
+	awsS3Region := os.Getenv("AWS_S3_REGION")
+	awsS3Bucket := os.Getenv("AWS_S3_BUCKET")
 	if apiURL == "" {
 		log.Errorln("An API URL was not defined. Please set the environment variable LBRY_API")
 		return
@@ -105,6 +109,22 @@ func ytSync(cmd *cobra.Command, args []string) {
 	}
 	if youtubeAPIKey == "" {
 		log.Errorln("A Youtube API key was not defined. Please set the environment variable YOUTUBE_API_KEY")
+		return
+	}
+	if awsS3ID == "" {
+		log.Errorln("AWS S3 ID credentials were not defined. Please set the environment variable AWS_S3_ID")
+		return
+	}
+	if awsS3Secret == "" {
+		log.Errorln("AWS S3 Secret credentials were not defined. Please set the environment variable AWS_S3_SECRET")
+		return
+	}
+	if awsS3Region == "" {
+		log.Errorln("AWS S3 Region was not defined. Please set the environment variable AWS_S3_REGION")
+		return
+	}
+	if awsS3Bucket == "" {
+		log.Errorln("AWS S3 Bucket was not defined. Please set the environment variable AWS_S3_BUCKET")
 		return
 	}
 	if lbrycrdString == "" {
@@ -141,6 +161,10 @@ func ytSync(cmd *cobra.Command, args []string) {
 		VideosLimit:             videosLimit,
 		MaxVideoSize:            maxVideoSize,
 		LbrycrdString:           lbrycrdString,
+		AwsS3ID:                 awsS3ID,
+		AwsS3Secret:             awsS3Secret,
+		AwsS3Region:             awsS3Region,
+		AwsS3Bucket:             awsS3Bucket,
 	}
 
 	err := sm.Start()
