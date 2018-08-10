@@ -185,24 +185,48 @@ type VersionResponse struct {
 	PythonVersion     string `json:"python_version"`
 }
 type StatusResponse struct {
-	BlockchainStatus struct {
-		BestBlockhash string `json:"best_blockhash"`
-		Blocks        int    `json:"blocks"`
-		BlocksBehind  int    `json:"blocks_behind"`
-	} `json:"blockchain_status"`
-	BlocksBehind     int `json:"blocks_behind"`
+	BlobManager struct {
+		FinishedBlobs int `json:"finished_blobs"`
+	} `json:"blob_manager"`
 	ConnectionStatus struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"connection_status"`
-	InstallationID string `json:"installation_id"`
-	IsFirstRun     bool   `json:"is_first_run"`
-	IsRunning      bool   `json:"is_running"`
-	LbryID         string `json:"lbry_id"`
-	StartupStatus  struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+	Dht struct {
+		NodeID              string `json:"node_id"`
+		PeersInRoutingTable int    `json:"peers_in_routing_table"`
+	} `json:"dht"`
+	FileManager struct {
+		ManagedFiles int `json:"managed_files"`
+	} `json:"file_manager"`
+	HashAnnouncer struct {
+		AnnounceQueueSize int `json:"announce_queue_size"`
+	} `json:"hash_announcer"`
+	InstallationID    string   `json:"installation_id"`
+	IsFirstRun        bool     `json:"is_first_run"`
+	IsRunning         bool     `json:"is_running"`
+	SkippedComponents []string `json:"skipped_components"`
+	StartupStatus     struct {
+		BlobManager         bool `json:"blob_manager"`
+		BlockchainHeaders   bool `json:"blockchain_headers"`
+		Database            bool `json:"database"`
+		Dht                 bool `json:"dht"`
+		ExchangeRateManager bool `json:"exchange_rate_manager"`
+		FileManager         bool `json:"file_manager"`
+		HashAnnouncer       bool `json:"hash_announcer"`
+		PaymentRateManager  bool `json:"payment_rate_manager"`
+		PeerProtocolServer  bool `json:"peer_protocol_server"`
+		RateLimiter         bool `json:"rate_limiter"`
+		StreamIdentifier    bool `json:"stream_identifier"`
+		Upnp                bool `json:"upnp"`
+		Wallet              bool `json:"wallet"`
 	} `json:"startup_status"`
+	Wallet struct {
+		BestBlockchain string `json:"best_blockchain"`
+		Blocks         int    `json:"blocks"`
+		BlocksBehind   int    `json:"blocks_behind"`
+		IsEncrypted    bool   `json:"is_encrypted"`
+	} `json:"wallet"`
 }
 
 type ClaimListResponse struct {
