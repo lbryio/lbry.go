@@ -39,6 +39,11 @@ type SyncManager struct {
 	BlobsDir                string
 	VideosLimit             int
 	MaxVideoSize            int
+	LbrycrdString           string
+	AwsS3ID                 string
+	AwsS3Secret             string
+	AwsS3Region             string
+	AwsS3Bucket             string
 }
 
 const (
@@ -154,6 +159,10 @@ func (s SyncManager) MarkVideoStatus(channelID string, videoID string, status st
 		vals.Add("claim_name", claimName)
 	}
 	if failureReason != "" {
+		maxReasonLength := 500
+		if len(failureReason) > maxReasonLength {
+			failureReason = failureReason[:500]
+		}
 		vals.Add("failure_reason", failureReason)
 	}
 	res, _ := http.PostForm(endpoint, vals)
@@ -212,6 +221,11 @@ func (s SyncManager) Start() error {
 				TakeOverExistingChannel: s.TakeOverExistingChannel,
 				Refill:                  s.Refill,
 				Manager:                 &s,
+				LbrycrdString:           s.LbrycrdString,
+				AwsS3ID:                 s.AwsS3ID,
+				AwsS3Secret:             s.AwsS3Secret,
+				AwsS3Region:             s.AwsS3Region,
+				AwsS3Bucket:             s.AwsS3Bucket,
 			}
 			shouldInterruptLoop = true
 		} else {
@@ -242,6 +256,11 @@ func (s SyncManager) Start() error {
 						TakeOverExistingChannel: s.TakeOverExistingChannel,
 						Refill:                  s.Refill,
 						Manager:                 &s,
+						LbrycrdString:           s.LbrycrdString,
+						AwsS3ID:                 s.AwsS3ID,
+						AwsS3Secret:             s.AwsS3Secret,
+						AwsS3Region:             s.AwsS3Region,
+						AwsS3Bucket:             s.AwsS3Bucket,
 					})
 				}
 			}
