@@ -61,16 +61,27 @@ type Sync struct {
 	Refill                  int
 	Manager                 *SyncManager
 
-	daemon         *jsonrpc.Client
-	claimAddress   string
-	videoDirectory string
-	db             *redisdb.DB
+	daemon          *jsonrpc.Client
+	claimAddress    string
+	videoDirectory  string
+	db              *redisdb.DB
+	syncedVideos    map[string]syncedVideo
+	syncedVideosMux *sync.Mutex
+	grp             *stop.Group
+	lbryChannelID   string
 
-	grp *stop.Group
+	walletMux *sync.Mutex
+	queue     chan video
+}
 
-	mux   sync.Mutex
-	wg    sync.WaitGroup
-	queue chan video
+func (s *Sync) AppendSyncedVideo(videoID string, published bool, failureReason string) {
+	s.syncedVideosMux.Lock()
+	defer s.syncedVideosMux.Unlock()
+	s.syncedVideos[videoID] = syncedVideo{
+		VideoID:       videoID,
+		Published:     published,
+		FailureReason: failureReason,
+	}
 }
 
 // SendErrorToSlack Sends an error message to the default channel and to the process log.
@@ -110,10 +121,26 @@ func (s *Sync) FullCycle() (e error) {
 	if s.YoutubeChannelID == "" {
 		return errors.Err("channel ID not provided")
 	}
-	err := s.Manager.setChannelSyncStatus(s.YoutubeChannelID, StatusSyncing)
+	s.syncedVideosMux = &sync.Mutex{}
+	s.walletMux = &sync.Mutex{}
+	s.db = redisdb.New()
+	s.grp = stop.New()
+	s.queue = make(chan video)
+	interruptChan := make(chan os.Signal, 1)
+	signal.Notify(interruptChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-interruptChan
+		log.Println("Got interrupt signal, shutting down (if publishing, will shut down after current publish)")
+		s.grp.Stop()
+	}()
+	syncedVideos, err := s.Manager.setChannelStatus(s.YoutubeChannelID, StatusSyncing)
 	if err != nil {
 		return err
 	}
+	s.syncedVideosMux.Lock()
+	s.syncedVideos = syncedVideos
+	s.syncedVideosMux.Unlock()
+
 	defer func() {
 		if e != nil {
 			//conditions for which a channel shouldn't be marked as failed
@@ -123,14 +150,14 @@ func (s *Sync) FullCycle() (e error) {
 			if util.SubstringInSlice(e.Error(), noFailConditions) {
 				return
 			}
-			err := s.Manager.setChannelSyncStatus(s.YoutubeChannelID, StatusFailed)
+			_, err := s.Manager.setChannelStatus(s.YoutubeChannelID, StatusFailed)
 			if err != nil {
 				msg := fmt.Sprintf("Failed setting failed state for channel %s.", s.LbryChannelName)
 				err = errors.Prefix(msg, err)
 				e = errors.Prefix(err.Error(), e)
 			}
 		} else if !s.IsInterrupted() {
-			err := s.Manager.setChannelSyncStatus(s.YoutubeChannelID, StatusSynced)
+			_, err := s.Manager.setChannelStatus(s.YoutubeChannelID, StatusSynced)
 			if err != nil {
 				e = err
 			}
@@ -180,18 +207,6 @@ func (s *Sync) FullCycle() (e error) {
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
-
-	s.db = redisdb.New()
-	s.grp = stop.New()
-	s.queue = make(chan video)
-
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-interruptChan
-		log.Println("Got interrupt signal, shutting down (if publishing, will shut down after current publish)")
-		s.grp.Stop()
-	}()
 
 	log.Printf("Starting daemon")
 	err = startDaemonViaSystemd()
@@ -247,7 +262,11 @@ func (s *Sync) doSync() error {
 	}
 
 	for i := 0; i < s.ConcurrentVideos; i++ {
-		go s.startWorker(i)
+		s.grp.Add(1)
+		go func() {
+			defer s.grp.Done()
+			s.startWorker(i)
+		}()
 	}
 
 	if s.LbryChannelName == "@UCBerkeley" {
@@ -256,14 +275,11 @@ func (s *Sync) doSync() error {
 		err = s.enqueueYoutubeVideos()
 	}
 	close(s.queue)
-	s.wg.Wait()
+	s.grp.Wait()
 	return err
 }
 
 func (s *Sync) startWorker(workerNum int) {
-	s.wg.Add(1)
-	defer s.wg.Done()
-
 	var v video
 	var more bool
 
@@ -300,6 +316,7 @@ func (s *Sync) startWorker(workerNum int) {
 					"no space left on device",
 					"NotEnoughFunds",
 					"Cannot publish using channel",
+					"more than 90% of the space has been used.",
 				}
 				if util.SubstringInSlice(err.Error(), fatalErrors) || s.StopOnError {
 					s.grp.Stop()
@@ -336,6 +353,7 @@ func (s *Sync) startWorker(workerNum int) {
 					}
 					SendErrorToSlack("Video failed after %d retries, skipping. Stack: %s", tryCount, logMsg)
 				}
+				s.AppendSyncedVideo(v.ID(), false, err.Error())
 				err = s.Manager.MarkVideoStatus(s.YoutubeChannelID, v.ID(), VideoStatusFailed, "", "", err.Error())
 				if err != nil {
 					SendErrorToSlack("Failed to mark video on the database: %s", err.Error())
@@ -493,9 +511,31 @@ func (s *Sync) processVideo(v video) (err error) {
 		log.Println(v.ID() + " took " + time.Since(start).String())
 	}(time.Now())
 
-	alreadyPublished, err := s.db.IsPublished(v.ID())
+	s.syncedVideosMux.Lock()
+	sv, ok := s.syncedVideos[v.ID()]
+	s.syncedVideosMux.Unlock()
+	alreadyPublished := ok && sv.Published
+
+	neverRetryFailures := []string{
+		"Error extracting sts from embedded url response",
+		"the video is too big to sync, skipping for now",
+	}
+	if ok && !sv.Published && util.SubstringInSlice(sv.FailureReason, neverRetryFailures) {
+		log.Println(v.ID() + " can't ever be published")
+		return nil
+	}
+
+	//TODO: remove this after a few runs...
+	alreadyPublishedOld, err := s.db.IsPublished(v.ID())
 	if err != nil {
 		return err
+	}
+	//TODO: remove this after a few runs...
+	if alreadyPublishedOld && !alreadyPublished {
+		//seems like something in the migration of blobs didn't go perfectly right so warn about it!
+		SendInfoToSlack("A video that was previously published is on the local database but isn't on the remote db! fix it @Nikooo777! \nchannelID: %s, videoID: %s",
+			s.YoutubeChannelID, v.ID())
+		return nil
 	}
 
 	if alreadyPublished {
@@ -507,18 +547,19 @@ func (s *Sync) processVideo(v video) (err error) {
 		log.Println(v.ID() + " is old: skipping")
 		return nil
 	}
-	summary, err := v.Sync(s.daemon, s.claimAddress, publishAmount, s.LbryChannelName, s.Manager.MaxVideoSize)
+	err = s.Manager.checkUsedSpace()
+	if err != nil {
+		return err
+	}
+	summary, err := v.Sync(s.daemon, s.claimAddress, publishAmount, s.lbryChannelID, s.Manager.MaxVideoSize)
 	if err != nil {
 		return err
 	}
 	err = s.Manager.MarkVideoStatus(s.YoutubeChannelID, v.ID(), VideoStatusPublished, summary.ClaimID, summary.ClaimName, "")
 	if err != nil {
-		SendErrorToSlack("Failed to mark video on the database: %s", err.Error())
-	}
-	err = s.db.SetPublished(v.ID())
-	if err != nil {
 		return err
 	}
+	s.AppendSyncedVideo(v.ID(), true, "")
 
 	return nil
 }

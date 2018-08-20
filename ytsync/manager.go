@@ -90,13 +90,19 @@ func (s SyncManager) fetchChannels(status string) ([]apiYoutubeChannel, error) {
 	return response.Data, nil
 }
 
-type apiSyncUpdateResponse struct {
-	Success bool        `json:"success"`
-	Error   null.String `json:"error"`
-	Data    null.String `json:"data"`
+type apiChannelStatusResponse struct {
+	Success bool          `json:"success"`
+	Error   null.String   `json:"error"`
+	Data    []syncedVideo `json:"data"`
 }
 
-func (s SyncManager) setChannelSyncStatus(channelID string, status string) error {
+type syncedVideo struct {
+	VideoID       string `json:"video_id"`
+	Published     bool   `json:"published"`
+	FailureReason string `json:"failure_reason"`
+}
+
+func (s SyncManager) setChannelStatus(channelID string, status string) (map[string]syncedVideo, error) {
 	endpoint := s.ApiURL + "/yt/channel_status"
 
 	res, _ := http.PostForm(endpoint, url.Values{
@@ -107,18 +113,22 @@ func (s SyncManager) setChannelSyncStatus(channelID string, status string) error
 	})
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
-	var response apiSyncUpdateResponse
+	var response apiChannelStatusResponse
 	err := json.Unmarshal(body, &response)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !response.Error.IsNull() {
-		return errors.Err(response.Error.String)
+		return nil, errors.Err(response.Error.String)
 	}
-	if !response.Data.IsNull() && response.Data.String == "ok" {
-		return nil
+	if response.Data != nil {
+		svs := make(map[string]syncedVideo)
+		for _, v := range response.Data {
+			svs[v.VideoID] = v
+		}
+		return svs, nil
 	}
-	return errors.Err("invalid API response. Status code: %d", res.StatusCode)
+	return nil, errors.Err("invalid API response. Status code: %d", res.StatusCode)
 }
 
 const (
@@ -149,7 +159,11 @@ func (s SyncManager) MarkVideoStatus(channelID string, videoID string, status st
 	res, _ := http.PostForm(endpoint, vals)
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
-	var response apiSyncUpdateResponse
+	var response struct {
+		Success bool        `json:"success"`
+		Error   null.String `json:"error"`
+		Data    null.String `json:"data"`
+	}
 	err := json.Unmarshal(body, &response)
 	if err != nil {
 		return err
@@ -237,7 +251,7 @@ func (s SyncManager) Start() error {
 			time.Sleep(5 * time.Minute)
 		}
 		for i, sync := range syncs {
-			SendInfoToSlack("Syncing %s to LBRY! (iteration %d/%d - total session iterations: %d)", sync.LbryChannelName, i, len(syncs), syncCount)
+			SendInfoToSlack("Syncing %s (%s) to LBRY! (iteration %d/%d - total session iterations: %d)", sync.LbryChannelName, sync.YoutubeChannelID, i+1, len(syncs), syncCount+1)
 			err := sync.FullCycle()
 			if err != nil {
 				fatalErrors := []string{
@@ -251,7 +265,7 @@ func (s SyncManager) Start() error {
 				}
 				SendInfoToSlack("A non fatal error was reported by the sync process. %s\nContinuing...", err.Error())
 			}
-			SendInfoToSlack("Syncing %s reached an end. (Iteration %d/%d - total session iterations: %d))", sync.LbryChannelName, i, len(syncs), syncCount)
+			SendInfoToSlack("Syncing %s (%s) reached an end. (Iteration %d/%d - total session iterations: %d))", sync.LbryChannelName, sync.YoutubeChannelID, i+1, len(syncs), syncCount+1)
 			syncCount++
 			if sync.IsInterrupted() || (s.Limit != 0 && syncCount >= s.Limit) {
 				shouldInterruptLoop = true
