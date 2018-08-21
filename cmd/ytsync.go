@@ -23,6 +23,7 @@ var (
 	limit                   int
 	skipSpaceCheck          bool
 	syncUpdate              bool
+	singleRun               bool
 	syncStatus              string
 	channelID               string
 	syncFrom                int64
@@ -45,6 +46,7 @@ func init() {
 	ytSyncCmd.Flags().IntVar(&limit, "limit", 0, "limit the amount of channels to sync")
 	ytSyncCmd.Flags().BoolVar(&skipSpaceCheck, "skip-space-check", false, "Do not perform free space check on startup")
 	ytSyncCmd.Flags().BoolVar(&syncUpdate, "update", false, "Update previously synced channels instead of syncing new ones")
+	ytSyncCmd.Flags().BoolVar(&singleRun, "run-once", false, "Whether the process should be stopped after one cycle or not")
 	ytSyncCmd.Flags().StringVar(&syncStatus, "status", "", "Specify which queue to pull from. Overrides --update")
 	ytSyncCmd.Flags().StringVar(&channelID, "channelID", "", "If specified, only this channel will be synced.")
 	ytSyncCmd.Flags().Int64Var(&syncFrom, "after", time.Unix(0, 0).Unix(), "Specify from when to pull jobs [Unix time](Default: 0)")
@@ -165,6 +167,7 @@ func ytSync(cmd *cobra.Command, args []string) {
 		AwsS3Secret:             awsS3Secret,
 		AwsS3Region:             awsS3Region,
 		AwsS3Bucket:             awsS3Bucket,
+		SingleRun:               singleRun,
 	}
 
 	err := sm.Start()
