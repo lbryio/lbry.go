@@ -41,6 +41,28 @@ func Wrap(err interface{}, skip int) *errors.Error {
 	return errors.Wrap(err, skip+1)
 }
 
+// Unwrap returns the original error that was wrapped
+func Unwrap(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	deeper := true
+	for deeper {
+		deeper = false
+		if e, ok := err.(*errors.Error); ok {
+			err = e.Err
+			deeper = true
+		}
+		if c, ok := err.(causer); ok {
+			err = c.Cause()
+			deeper = true
+		}
+	}
+
+	return err
+}
+
 // Is compares two wrapped errors to determine if the underlying errors are the same
 // It also interops with errors from pkg/errors
 func Is(e error, original error) bool {

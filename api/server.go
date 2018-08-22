@@ -78,7 +78,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if rsp.Status == 0 {
 		if rsp.Error != nil {
-			if statusError, ok := rsp.Error.(StatusError); ok {
+			ogErr := errors.Unwrap(rsp.Error)
+			if statusError, ok := ogErr.(StatusError); ok {
 				rsp.Status = statusError.Status
 			} else {
 				rsp.Status = http.StatusInternalServerError
