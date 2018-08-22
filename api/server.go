@@ -27,20 +27,13 @@ var LogInfo = func(*http.Request, *Response) {}
 // TraceEnabled Attaches a trace field to the JSON response when enabled.
 var TraceEnabled = false
 
-var ErrAuthenticationRequired = errors.Base("authentication required")
-var ErrNotAuthenticated = errors.Base("could not authenticate user")
-var ErrForbidden = errors.Base("you are not authorized to perform this action")
-
 // StatusError represents an error with an associated HTTP status code.
 type StatusError struct {
 	Status int
 	Err    error
 }
 
-// Allows StatusError to satisfy the error interface.
-func (se StatusError) Error() string {
-	return se.Err.Error()
-}
+func (se StatusError) Error() string { return se.Err.Error() }
 
 // Response is returned by API handlers
 type Response struct {
@@ -87,10 +80,6 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if rsp.Error != nil {
 			if statusError, ok := rsp.Error.(StatusError); ok {
 				rsp.Status = statusError.Status
-			} else if errors.Is(rsp.Error, ErrAuthenticationRequired) {
-				rsp.Status = http.StatusUnauthorized
-			} else if errors.Is(rsp.Error, ErrNotAuthenticated) || errors.Is(rsp.Error, ErrForbidden) {
-				rsp.Status = http.StatusForbidden
 			} else {
 				rsp.Status = http.StatusInternalServerError
 			}
