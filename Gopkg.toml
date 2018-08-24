@@ -12,7 +12,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/nikooo777/ytdl"
+  name = "github.com/rylio/ytdl"
 
 [[constraint]]
   branch = "master"
