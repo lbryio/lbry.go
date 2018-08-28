@@ -89,11 +89,7 @@ func (s *Server) Start(address string) error {
 	s.grp.Add(1)
 	go func() {
 		defer s.grp.Done()
-		<-s.grp.Ch()
-		err := l.Close()
-		if err != nil {
-			log.Errorln(err)
-		}
+		s.listenAndServe(l)
 	}()
 
 	s.grp.Add(1)
@@ -112,10 +108,27 @@ func (s *Server) Start(address string) error {
 	s.grp.Add(1)
 	go func() {
 		defer s.grp.Done()
-		s.listenAndServe(l)
+		<-s.grp.Ch()
+		err := l.Close()
+		if err != nil {
+			log.Errorln(err)
+		}
 	}()
 
 	return nil
 }
 
+
+// how this is used
+
+s := NewServer()
+log.Println("starting")
+s.Start("localhost:1234")
+log.Println("started")
+
+// ... do some other things here ...
+
+log.Println("shutting down")
+s.Shutdown()
+log.Println("shutdown complete")
 ```
