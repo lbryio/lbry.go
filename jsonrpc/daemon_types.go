@@ -241,9 +241,7 @@ type ClaimListResponse struct {
 	LastTakeoverHeight    int       `json:"last_takeover_height"`
 	SupportsWithoutClaims []Support `json:"supports_without_claims"`
 }
-type ClaimListMineResponse struct {
-	Claims []Claim `json:"claims"`
-}
+type ClaimListMineResponse []Claim
 type ClaimShowResponse Claim
 
 type PeerListResponsePeer struct {
