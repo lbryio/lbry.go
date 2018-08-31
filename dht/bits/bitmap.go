@@ -339,7 +339,7 @@ func FromBigP(b *big.Int) Bitmap {
 	return FromShortHexP(b.Text(16))
 }
 
-// Max returns a bitmap with all bits set to 1
+// MaxP returns a bitmap with all bits set to 1
 func MaxP() Bitmap {
 	return FromHexP(strings.Repeat("f", NumBytes*2))
 }
@@ -383,7 +383,7 @@ func setBit(b []byte, n int, one bool) {
 	}
 }
 
-// CLosest returns the closest bitmap to target. if no bitmaps are provided, target itself is returned
+// Closest returns the closest bitmap to target. if no bitmaps are provided, target itself is returned
 func Closest(target Bitmap, bitmaps ...Bitmap) Bitmap {
 	if len(bitmaps) == 0 {
 		return target
