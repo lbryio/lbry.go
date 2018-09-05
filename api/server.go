@@ -236,6 +236,21 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 					underscoredName, strings.Join(validator.GetBoolStringValues(), ", "))
 			}
 			finalValue = reflect.ValueOf(validator.IsTruthy(value))
+
+		case reflect.Float32, reflect.Float64:
+			if value == "" {
+				continue
+			}
+			castVal, err := cast.ToFloat64E(value)
+			if err != nil {
+				return errors.Err("%s: must be a floating point number", underscoredName)
+			}
+			switch structFieldKind {
+			case reflect.Float32:
+				finalValue = reflect.ValueOf(float32(castVal))
+			case reflect.Float64:
+				finalValue = reflect.ValueOf(float64(castVal))
+			}
 		default:
 			return errors.Err("field %s is an unsupported type", name)
 		}
