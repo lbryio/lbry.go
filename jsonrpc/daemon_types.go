@@ -243,6 +243,10 @@ type ClaimListResponse struct {
 }
 type ClaimListMineResponse []Claim
 type ClaimShowResponse Claim
+type ClaimAbandonResponse struct {
+	Txid string  `json:"txid"`
+	Fee  float64 `json:"fee"`
+}
 
 type PeerListResponsePeer struct {
 	IP     string `json:"host"`

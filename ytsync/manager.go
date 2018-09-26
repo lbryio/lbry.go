@@ -78,8 +78,8 @@ func (s *SyncManager) fetchChannels(status string) ([]apiYoutubeChannel, error) 
 		"min_videos":  {strconv.Itoa(1)},
 		"after":       {strconv.Itoa(int(s.SyncFrom))},
 		"before":      {strconv.Itoa(int(s.SyncUntil))},
-		//"sync_server": {s.HostName},
-		"channel_id": {s.YoutubeChannelID},
+		"sync_server": {s.HostName},
+		"channel_id":  {s.YoutubeChannelID},
 	})
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
@@ -214,9 +214,6 @@ func (s *SyncManager) Start() error {
 				return errors.Err("Expected 1 channel, %d returned", len(channels))
 			}
 			lbryChannelName := channels[0].DesiredChannelName
-			if !s.isWorthProcessing(channels[0]) {
-				break
-			}
 			syncs = make([]Sync, 1)
 			syncs[0] = Sync{
 				YoutubeAPIKey:           s.YoutubeAPIKey,
@@ -250,9 +247,6 @@ func (s *SyncManager) Start() error {
 					return err
 				}
 				for _, c := range channels {
-					if !s.isWorthProcessing(c) {
-						continue
-					}
 					syncs = append(syncs, Sync{
 						YoutubeAPIKey:           s.YoutubeAPIKey,
 						YoutubeChannelID:        c.ChannelId,
@@ -310,10 +304,6 @@ func (s *SyncManager) Start() error {
 		}
 	}
 	return nil
-}
-
-func (s *SyncManager) isWorthProcessing(channel apiYoutubeChannel) bool {
-	return channel.TotalVideos > 0 && (channel.SyncServer.IsNull() || channel.SyncServer.String == s.HostName)
 }
 
 func (s *SyncManager) checkUsedSpace() error {

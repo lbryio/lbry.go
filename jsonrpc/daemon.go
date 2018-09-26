@@ -468,3 +468,18 @@ func (d *Client) ClaimListMine() (*ClaimListMineResponse, error) {
 
 	return response, nil
 }
+
+func (d *Client) ClaimAbandon(txID string, nOut int) (*ClaimAbandonResponse, error) {
+	response := new(ClaimAbandonResponse)
+	err := d.call(response, "claim_abandon", map[string]interface{}{
+		"txid": txID,
+		"nout": nOut,
+	})
+	if err != nil {
+		return nil, err
+	} else if response == nil {
+		return nil, errors.Err("no response")
+	}
+
+	return response, nil
+}

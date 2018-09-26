@@ -27,7 +27,6 @@ import (
 	"github.com/lbryio/lbry.go/jsonrpc"
 	"github.com/lbryio/lbry.go/stop"
 	"github.com/lbryio/lbry.go/util"
-	"github.com/lbryio/lbry.go/ytsync/redisdb"
 	"github.com/lbryio/lbry.go/ytsync/sources"
 	"github.com/mitchellh/go-ps"
 	log "github.com/sirupsen/logrus"
@@ -77,7 +76,6 @@ type Sync struct {
 	daemon          *jsonrpc.Client
 	claimAddress    string
 	videoDirectory  string
-	db              *redisdb.DB
 	syncedVideosMux *sync.RWMutex
 	syncedVideos    map[string]syncedVideo
 	claimNames      map[string]bool
@@ -222,6 +220,18 @@ func (s *Sync) uploadWallet() error {
 	return os.Remove(defaultWalletDir)
 }
 
+func (s *Sync) setStatusSyncing() error {
+	syncedVideos, claimNames, err := s.Manager.setChannelStatus(s.YoutubeChannelID, StatusSyncing, "")
+	if err != nil {
+		return err
+	}
+	s.syncedVideosMux.Lock()
+	s.syncedVideos = syncedVideos
+	s.claimNames = claimNames
+	s.syncedVideosMux.Unlock()
+	return nil
+}
+
 func (s *Sync) FullCycle() (e error) {
 	if os.Getenv("HOME") == "" {
 		return errors.Err("no $HOME env var found")
@@ -231,7 +241,6 @@ func (s *Sync) FullCycle() (e error) {
 	}
 	s.syncedVideosMux = &sync.RWMutex{}
 	s.walletMux = &sync.Mutex{}
-	s.db = redisdb.New()
 	s.grp = stop.New()
 	s.queue = make(chan video)
 	interruptChan := make(chan os.Signal, 1)
@@ -242,16 +251,12 @@ func (s *Sync) FullCycle() (e error) {
 		log.Println("Got interrupt signal, shutting down (if publishing, will shut down after current publish)")
 		s.grp.Stop()
 	}()
-	syncedVideos, claimNames, err := s.Manager.setChannelStatus(s.YoutubeChannelID, StatusSyncing, "")
+	err := s.setStatusSyncing()
 	if err != nil {
 		return err
 	}
-	s.syncedVideosMux.Lock()
-	s.syncedVideos = syncedVideos
-	s.claimNames = claimNames
-	s.syncedVideosMux.Unlock()
 
-	defer s.updateChannelStatus(&e)
+	defer s.setChannelTerminationStatus(&e)
 
 	err = s.downloadWallet()
 	if err != nil && err.Error() != "wallet not on S3" {
@@ -296,7 +301,7 @@ func (s *Sync) FullCycle() (e error) {
 
 	return nil
 }
-func (s *Sync) updateChannelStatus(e *error) {
+func (s *Sync) setChannelTerminationStatus(e *error) {
 	if *e != nil {
 		//conditions for which a channel shouldn't be marked as failed
 		noFailConditions := []string{
@@ -321,20 +326,20 @@ func (s *Sync) updateChannelStatus(e *error) {
 }
 
 func (s *Sync) waitForDaemonStart() error {
-
 	for {
 		select {
 		case <-s.grp.Ch():
 			return errors.Err("interrupted during daemon startup")
 		default:
 			s, err := s.daemon.Status()
-			if err == nil && s.StartupStatus.Wallet {
+			if err == nil && s.StartupStatus.Wallet && s.StartupStatus.FileManager {
 				return nil
 			}
 			time.Sleep(5 * time.Second)
 		}
 	}
 }
+
 func (s *Sync) stopAndUploadWallet(e *error) {
 	log.Printf("Stopping daemon")
 	shutdownErr := stopDaemonViaSystemd()
@@ -365,40 +370,68 @@ func logShutdownError(shutdownErr error) {
 	SendErrorToSlack("WALLET HAS NOT BEEN MOVED TO THE WALLET BACKUP DIR")
 }
 
-func hasDupes(claims []jsonrpc.Claim) (bool, error) {
-	videoIDs := make(map[string]interface{})
+// fixDupes abandons duplicate claims
+func (s *Sync) fixDupes(claims []jsonrpc.Claim) (bool, error) {
+	abandonedClaims := false
+	videoIDs := make(map[string]jsonrpc.Claim)
 	for _, c := range claims {
 		if !util.InSlice(c.Category, []string{"claim", "update"}) || c.Value.Stream == nil {
 			continue
 		}
 		if c.Value.Stream.Metadata == nil || c.Value.Stream.Metadata.Thumbnail == nil {
-			return false, errors.Err("something is wrong with the this claim: %s", c.ClaimID)
+			return false, errors.Err("something is wrong with this claim: %s", c.ClaimID)
 		}
 		tn := *c.Value.Stream.Metadata.Thumbnail
-		videoID := tn[:strings.LastIndex(tn, "/")+1]
-		_, ok := videoIDs[videoID]
-		if !ok {
-			videoIDs[videoID] = nil
+		videoID := tn[strings.LastIndex(tn, "/")+1:]
+
+		log.Infof("claimid: %s, claimName: %s, videoID: %s", c.ClaimID, c.Name, videoID)
+		cl, ok := videoIDs[videoID]
+		if !ok || cl.ClaimID == c.ClaimID {
+			videoIDs[videoID] = c
 			continue
 		}
-		return true, nil
+		// only keep the most recent one
+		claimToAbandon := c
+		videoIDs[videoID] = cl
+		if c.Height > cl.Height {
+			claimToAbandon = cl
+			videoIDs[videoID] = c
+		}
+		_, err := s.daemon.ClaimAbandon(claimToAbandon.Txid, claimToAbandon.Nout)
+		if err != nil {
+			return true, err
+		}
+		log.Debugf("abandoning %+v", claimToAbandon)
+		abandonedClaims = true
+		//return true, nil
 	}
-	return false, nil
+	return abandonedClaims, nil
 }
 
-//publishesCount counts the amount of videos published so far
-func publishesCount(claims []jsonrpc.Claim) (int, error) {
+//updateRemoteDB counts the amount of videos published so far and updates the remote db if some videos weren't marked as published
+func (s *Sync) updateRemoteDB(claims []jsonrpc.Claim) (total int, fixed int, err error) {
 	count := 0
 	for _, c := range claims {
 		if !util.InSlice(c.Category, []string{"claim", "update"}) || c.Value.Stream == nil {
 			continue
 		}
 		if c.Value.Stream.Metadata == nil || c.Value.Stream.Metadata.Thumbnail == nil {
-			return count, errors.Err("something is wrong with the this claim: %s", c.ClaimID)
+			return count, fixed, errors.Err("something is wrong with the this claim: %s", c.ClaimID)
 		}
-		count++
+		//check if claimID is in remote db
+		tn := *c.Value.Stream.Metadata.Thumbnail
+		videoID := tn[strings.LastIndex(tn, "/")+1:]
+		pv, ok := s.syncedVideos[videoID]
+		if !ok || pv.ClaimName != c.Name {
+			fixed++
+			err = s.Manager.MarkVideoStatus(s.YoutubeChannelID, videoID, VideoStatusPublished, c.ClaimID, c.Name, "", nil)
+			if err != nil {
+				return total, fixed, err
+			}
+		}
+		total++
 	}
-	return count, nil
+	return total, fixed, nil
 }
 
 func (s *Sync) doSync() error {
@@ -407,16 +440,33 @@ func (s *Sync) doSync() error {
 	if err != nil {
 		return errors.Prefix("cannot list claims: ", err)
 	}
-	hasDupes, err := hasDupes(*claims)
+	hasDupes, err := s.fixDupes(*claims)
 	if err != nil {
 		return errors.Prefix("error checking for duplicates: ", err)
 	}
 	if hasDupes {
-		return errors.Err("channel has duplicates! Manual fix required")
+		SendInfoToSlack("Channel had dupes and was fixed!")
+		err = s.waitForNewBlock()
+		if err != nil {
+			return err
+		}
+		claims, err = s.daemon.ClaimListMine()
+		if err != nil {
+			return errors.Prefix("cannot list claims: ", err)
+		}
 	}
-	pubsOnWallet, err := publishesCount(*claims)
+
+	pubsOnWallet, nFixed, err := s.updateRemoteDB(*claims)
 	if err != nil {
 		return errors.Prefix("error counting claims: ", err)
+	}
+	if nFixed > 0 {
+		err := s.setStatusSyncing()
+		if err != nil {
+			return err
+		}
+		SendInfoToSlack("%d claims were not on the remote database and were fixed", nFixed)
+
 	}
 	pubsOnDB := 0
 	for _, sv := range s.syncedVideos {
@@ -424,11 +474,13 @@ func (s *Sync) doSync() error {
 			pubsOnDB++
 		}
 	}
-	if pubsOnWallet > pubsOnDB {
+
+	if pubsOnWallet > pubsOnDB { //This case should never happen
+		SendInfoToSlack("We're claiming to have published %d videos but in reality we published %d (%s)", pubsOnDB, pubsOnWallet, s.YoutubeChannelID)
 		return errors.Err("not all published videos are in the database")
 	}
 	if pubsOnWallet < pubsOnDB {
-		SendInfoToSlack("We're claiming to have published %d videos but we only published %d (%s)", pubsOnDB, pubsOnWallet, s.YoutubeChannelID)
+		SendInfoToSlack("we're claiming to have published %d videos but we only published %d (%s)", pubsOnDB, pubsOnWallet, s.YoutubeChannelID)
 	}
 	err = s.walletSetup()
 	if err != nil {
@@ -509,6 +561,7 @@ func (s *Sync) startWorker(workerNum int) {
 						"Playback on other websites has been disabled by the video owner",
 						"Error in daemon: Cannot publish empty file",
 						"Error extracting sts from embedded url response",
+						"Unable to extract signature tokens",
 						"Client.Timeout exceeded while awaiting headers)",
 						"the video is too big to sync, skipping for now",
 					}
@@ -704,23 +757,11 @@ func (s *Sync) processVideo(v video) (err error) {
 
 	neverRetryFailures := []string{
 		"Error extracting sts from embedded url response",
+		"Unable to extract signature tokens",
 		"the video is too big to sync, skipping for now",
 	}
 	if ok && !sv.Published && util.SubstringInSlice(sv.FailureReason, neverRetryFailures) {
 		log.Println(v.ID() + " can't ever be published")
-		return nil
-	}
-
-	//TODO: remove this after a few runs...
-	alreadyPublishedOld, err := s.db.IsPublished(v.ID())
-	if err != nil {
-		return err
-	}
-	//TODO: remove this after a few runs...
-	if alreadyPublishedOld && !alreadyPublished {
-		//seems like something in the migration of blobs didn't go perfectly right so warn about it!
-		SendInfoToSlack("A video that was previously published is on the local database but isn't on the remote db! fix it @Nikooo777! \nchannelID: %s, videoID: %s",
-			s.YoutubeChannelID, v.ID())
 		return nil
 	}
 
