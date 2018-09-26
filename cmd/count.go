@@ -2,6 +2,7 @@ package cmd
 
 import (
 	sync "github.com/lbryio/lbry.go/ytsync"
+	"github.com/lbryio/lbry.go/ytsync/sdk"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -22,7 +23,9 @@ func ytcount(cmd *cobra.Command, args []string) {
 	channelID := args[1]
 
 	s := sync.Sync{
-		YoutubeAPIKey:    ytAPIKey,
+		APIConfig: &sdk.APIConfig{
+			YoutubeAPIKey: ytAPIKey,
+		},
 		YoutubeChannelID: channelID,
 	}
 

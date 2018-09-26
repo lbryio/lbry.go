@@ -9,6 +9,7 @@ import (
 
 	"github.com/lbryio/lbry.go/util"
 	sync "github.com/lbryio/lbry.go/ytsync"
+	"github.com/lbryio/lbry.go/ytsync/sdk"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -141,7 +142,7 @@ func ytSync(cmd *cobra.Command, args []string) {
 		blobsDir = usr.HomeDir + "/.lbrynet/blobfiles/"
 	}
 
-	sm := sync.SyncManager{
+	/*sm := sync.SyncManager{
 		StopOnError:             stopOnError,
 		MaxTries:                maxTries,
 		TakeOverExistingChannel: takeOverExistingChannel,
@@ -150,26 +151,64 @@ func ytSync(cmd *cobra.Command, args []string) {
 		SkipSpaceCheck:          skipSpaceCheck,
 		SyncUpdate:              syncUpdate,
 		SyncStatus:              syncStatus,
-		SyncFrom:                syncFrom,
-		SyncUntil:               syncUntil,
-		ConcurrentJobs:          concurrentJobs,
-		ConcurrentVideos:        concurrentJobs,
-		HostName:                hostname,
-		YoutubeChannelID:        channelID,
-		YoutubeAPIKey:           youtubeAPIKey,
-		ApiURL:                  apiURL,
-		ApiToken:                apiToken,
-		BlobsDir:                blobsDir,
-		VideosLimit:             videosLimit,
-		MaxVideoSize:            maxVideoSize,
-		LbrycrdString:           lbrycrdString,
-		AwsS3ID:                 awsS3ID,
-		AwsS3Secret:             awsS3Secret,
-		AwsS3Region:             awsS3Region,
-		AwsS3Bucket:             awsS3Bucket,
-		SingleRun:               singleRun,
+		SyncProperties: &sdk.SyncProperties{
+			SyncFrom:         syncFrom,
+			SyncUntil:        syncUntil,
+			YoutubeChannelID: channelID,
+		},
+		APIConfig: &sdk.APIConfig{
+			YoutubeAPIKey: youtubeAPIKey,
+			ApiURL:        apiURL,
+			ApiToken:      apiToken,
+			HostName:      hostname,
+		},
+		ConcurrentJobs:   concurrentJobs,
+		ConcurrentVideos: concurrentJobs,
+		BlobsDir:         blobsDir,
+		VideosLimit:      videosLimit,
+		MaxVideoSize:     maxVideoSize,
+		LbrycrdString:    lbrycrdString,
+		AwsS3ID:          awsS3ID,
+		AwsS3Secret:      awsS3Secret,
+		AwsS3Region:      awsS3Region,
+		AwsS3Bucket:      awsS3Bucket,
+		SingleRun:        singleRun,
 	}
-
+	*/
+	syncProperties := &sdk.SyncProperties{
+		SyncFrom:         syncFrom,
+		SyncUntil:        syncUntil,
+		YoutubeChannelID: channelID,
+	}
+	apiConfig := &sdk.APIConfig{
+		YoutubeAPIKey: youtubeAPIKey,
+		ApiURL:        apiURL,
+		ApiToken:      apiToken,
+		HostName:      hostname,
+	}
+	sm := sync.NewSyncManager(
+		stopOnError,
+		maxTries,
+		takeOverExistingChannel,
+		refill,
+		limit,
+		skipSpaceCheck,
+		syncUpdate,
+		concurrentJobs,
+		concurrentJobs,
+		blobsDir,
+		videosLimit,
+		maxVideoSize,
+		lbrycrdString,
+		awsS3ID,
+		awsS3Secret,
+		awsS3Region,
+		awsS3Bucket,
+		syncStatus,
+		singleRun,
+		syncProperties,
+		apiConfig,
+	)
 	err := sm.Start()
 	if err != nil {
 		sync.SendErrorToSlack(err.Error())
