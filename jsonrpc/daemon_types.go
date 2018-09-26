@@ -31,25 +31,32 @@ type Support struct {
 }
 
 type Claim struct {
-	Address          string           `json:"address"`
-	Amount           decimal.Decimal  `json:"amount"`
-	ClaimID          string           `json:"claim_id"`
-	ClaimSequence    int              `json:"claim_sequence"`
-	DecodedClaim     bool             `json:"decoded_claim"`
-	Depth            int              `json:"depth"`
-	EffectiveAmount  decimal.Decimal  `json:"effective_amount"`
-	Height           int              `json:"height"`
-	Hex              string           `json:"hex"`
-	Name             string           `json:"name"`
-	Nout             int              `json:"nout"`
-	Supports         []Support        `json:"supports"`
-	Txid             string           `json:"txid"`
-	ValidAtHeight    int              `json:"valid_at_height"`
-	Value            lbryschema.Claim `json:"value"`
-	Error            *string          `json:"error,omitempty"`
-	ChannelName      *string          `json:"channel_name,omitempty"`
-	HasSignature     *bool            `json:"has_signature,omitempty"`
-	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
+	Address            string           `json:"address"`
+	Amount             decimal.Decimal  `json:"amount"`
+	BlocksToExpiration int              `json:"blocks_to_expiration"`
+	Category           string           `json:"category"`
+	ClaimID            string           `json:"claim_id"`
+	ClaimSequence      int              `json:"claim_sequence"`
+	Confirmations      int              `json:"confirmations"`
+	DecodedClaim       bool             `json:"decoded_claim"`
+	Depth              int              `json:"depth"`
+	EffectiveAmount    decimal.Decimal  `json:"effective_amount"`
+	ExpirationHeight   int              `json:"expiration_height"`
+	Expired            bool             `json:"expired"`
+	Height             int              `json:"height"`
+	Hex                string           `json:"hex"`
+	IsSpent            bool             `json:"is_spent"`
+	Name               string           `json:"name"`
+	Nout               int              `json:"nout"`
+	PermanentUrl       string           `json:"permanent_url"`
+	Supports           []Support        `json:"supports"`
+	Txid               string           `json:"txid"`
+	ValidAtHeight      int              `json:"valid_at_height"`
+	Value              lbryschema.Claim `json:"value"`
+	Error              *string          `json:"error,omitempty"`
+	ChannelName        *string          `json:"channel_name,omitempty"`
+	HasSignature       *bool            `json:"has_signature,omitempty"`
+	SignatureIsValid   *bool            `json:"signature_is_valid,omitempty"`
 }
 
 type File struct {
@@ -234,7 +241,7 @@ type ClaimListResponse struct {
 	LastTakeoverHeight    int       `json:"last_takeover_height"`
 	SupportsWithoutClaims []Support `json:"supports_without_claims"`
 }
-
+type ClaimListMineResponse []Claim
 type ClaimShowResponse Claim
 
 type PeerListResponsePeer struct {

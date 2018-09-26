@@ -456,3 +456,15 @@ func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
 	}
 	return channel.ClaimsInChannel, nil
 }
+
+func (d *Client) ClaimListMine() (*ClaimListMineResponse, error) {
+	response := new(ClaimListMineResponse)
+	err := d.call(response, "claim_list_mine", map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	} else if response == nil {
+		return nil, errors.Err("no response")
+	}
+
+	return response, nil
+}
