@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/lbryio/lbry.go/errors"
@@ -18,11 +17,8 @@ import (
 // ResponseHeaders are returned with each response
 var ResponseHeaders map[string]string
 
-// LogError Allows specific error logging for the server at specific points.
-var LogError = func(*http.Request, *Response, error) {}
-
-// LogInfo Allows for specific logging information.
-var LogInfo = func(*http.Request, *Response) {}
+// Log allows logging of events and errors
+var Log = func(*http.Request, *Response, error) {}
 
 // TraceEnabled Attaches a trace field to the JSON response when enabled.
 var TraceEnabled = false
@@ -92,12 +88,10 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	success := rsp.Status < http.StatusBadRequest
-
-	consoleText := r.RemoteAddr + " [" + strconv.Itoa(rsp.Status) + "]: " + r.Method + " " + r.URL.Path
 	if success {
-		LogInfo(r, &rsp)
+		Log(r, &rsp, nil)
 	} else {
-		LogError(r, &rsp, errors.Prefix(consoleText, rsp.Error))
+		Log(r, &rsp, rsp.Error)
 	}
 
 	// redirect
@@ -105,7 +99,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, rsp.RedirectURL, rsp.Status)
 		return
 	} else if rsp.RedirectURL != "" {
-		LogError(r, &rsp, errors.Base(
+		Log(r, &rsp, errors.Base(
 			"status code %d does not indicate a redirect, but RedirectURL is non-empty '%s'",
 			rsp.Status, rsp.RedirectURL,
 		))
@@ -140,7 +134,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Trace:   trace,
 	}, "", "  ")
 	if err != nil {
-		LogError(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
+		Log(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
 	}
 
 	w.WriteHeader(rsp.Status)
