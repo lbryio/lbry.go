@@ -1,7 +1,6 @@
 package errors
 
 import (
-	base "errors"
 	"fmt"
 
 	"github.com/go-errors/errors"
@@ -100,8 +99,8 @@ func FullTrace(err error) string {
 }
 
 // Base returns a simple error with no stack trace attached
-func Base(text string) error {
-	return base.New(text)
+func Base(format string, a ...interface{}) error {
+	return fmt.Errorf(format, a...)
 }
 
 // HasTrace checks if error has a trace attached

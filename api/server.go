@@ -97,7 +97,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if success {
 		LogInfo(r, &rsp)
 	} else {
-		LogError(r, &rsp, errors.Base(consoleText))
+		LogError(r, &rsp, errors.Prefix(consoleText, rsp.Error))
 	}
 
 	// redirect
@@ -105,9 +105,10 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, rsp.RedirectURL, rsp.Status)
 		return
 	} else if rsp.RedirectURL != "" {
-		LogError(r, &rsp, errors.Base("status code "+strconv.Itoa(rsp.Status)+
-			" does not indicate a redirect, but RedirectURL is non-empty '"+
-			rsp.RedirectURL+"'"))
+		LogError(r, &rsp, errors.Base(
+			"status code %d does not indicate a redirect, but RedirectURL is non-empty '%s'",
+			rsp.Status, rsp.RedirectURL,
+		))
 	}
 
 	var errorString *string
@@ -140,10 +141,6 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}, "", "  ")
 	if err != nil {
 		LogError(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
-	}
-
-	if rsp.Status >= http.StatusInternalServerError {
-		LogError(r, &rsp, errors.Prefix(r.Method+" "+r.URL.Path+"\n", rsp.Error))
 	}
 
 	w.WriteHeader(rsp.Status)
