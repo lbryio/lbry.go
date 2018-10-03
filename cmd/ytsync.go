@@ -142,39 +142,6 @@ func ytSync(cmd *cobra.Command, args []string) {
 		blobsDir = usr.HomeDir + "/.lbrynet/blobfiles/"
 	}
 
-	/*sm := sync.SyncManager{
-		StopOnError:             stopOnError,
-		MaxTries:                maxTries,
-		TakeOverExistingChannel: takeOverExistingChannel,
-		Refill:                  refill,
-		Limit:                   limit,
-		SkipSpaceCheck:          skipSpaceCheck,
-		SyncUpdate:              syncUpdate,
-		SyncStatus:              syncStatus,
-		SyncProperties: &sdk.SyncProperties{
-			SyncFrom:         syncFrom,
-			SyncUntil:        syncUntil,
-			YoutubeChannelID: channelID,
-		},
-		APIConfig: &sdk.APIConfig{
-			YoutubeAPIKey: youtubeAPIKey,
-			ApiURL:        apiURL,
-			ApiToken:      apiToken,
-			HostName:      hostname,
-		},
-		ConcurrentJobs:   concurrentJobs,
-		ConcurrentVideos: concurrentJobs,
-		BlobsDir:         blobsDir,
-		VideosLimit:      videosLimit,
-		MaxVideoSize:     maxVideoSize,
-		LbrycrdString:    lbrycrdString,
-		AwsS3ID:          awsS3ID,
-		AwsS3Secret:      awsS3Secret,
-		AwsS3Region:      awsS3Region,
-		AwsS3Bucket:      awsS3Bucket,
-		SingleRun:        singleRun,
-	}
-	*/
 	syncProperties := &sdk.SyncProperties{
 		SyncFrom:         syncFrom,
 		SyncUntil:        syncUntil,
