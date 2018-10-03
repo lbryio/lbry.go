@@ -1,6 +1,7 @@
 package sources
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"regexp"
@@ -22,14 +23,16 @@ import (
 )
 
 type ucbVideo struct {
-	id              string
-	title           string
-	channel         string
-	description     string
-	publishedAt     time.Time
-	dir             string
-	claimNames      map[string]bool
-	syncedVideosMux *sync.RWMutex
+	id               string
+	playlistPosition int
+	title            string
+	channel          string
+	description      string
+	publishedAt      time.Time
+	dir              string
+	size             *int64
+	claimNames       map[string]bool
+	syncedVideosMux  *sync.RWMutex
 }
 
 func NewUCBVideo(id, title, channel, description, publishedAt, dir string) *ucbVideo {
@@ -48,12 +51,15 @@ func (v *ucbVideo) ID() string {
 	return v.id
 }
 
+func (v *ucbVideo) SetPlaylistPosition(p int) {
+	v.playlistPosition = p
+}
 func (v *ucbVideo) PlaylistPosition() int {
-	return 0
+	return v.playlistPosition
 }
 
 func (v *ucbVideo) IDAndNum() string {
-	return v.ID() + " (?)"
+	return fmt.Sprintf("%s %d", v.ID(), v.playlistPosition)
 }
 
 func (v *ucbVideo) PublishedAt() time.Time {
@@ -121,8 +127,9 @@ func (v *ucbVideo) download() error {
 		log.Debugln(v.id + " already exists at " + videoPath)
 		return nil
 	}
-
-	creds := credentials.NewStaticCredentials("ID-GOES-HERE", "SECRET-GOES-HERE", "")
+	awsID := os.Getenv("S3_UCB_ACCESS_ID")
+	awsSecret := os.Getenv("s3_UCB_ACCESS_SECRET")
+	creds := credentials.NewStaticCredentials(awsID, awsSecret, "")
 	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-2"), Credentials: creds})
 	if err != nil {
 		return err
@@ -146,7 +153,7 @@ func (v *ucbVideo) download() error {
 	} else if bytesWritten == 0 {
 		return errors.Err("zero bytes written")
 	}
-
+	v.size = &bytesWritten
 	return nil
 }
 
@@ -157,7 +164,9 @@ func (v *ucbVideo) saveThumbnail() error {
 	}
 	defer resp.Body.Close()
 
-	creds := credentials.NewStaticCredentials("ID-GOES-HERE", "SECRET-GOES-HERE", "")
+	awsID := os.Getenv("S3_UCB_ACCESS_ID")
+	awsSecret := os.Getenv("s3_UCB_ACCESS_SECRET")
+	creds := credentials.NewStaticCredentials(awsID, awsSecret, "")
 	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-2"), Credentials: creds})
 	if err != nil {
 		return err
@@ -175,6 +184,7 @@ func (v *ucbVideo) saveThumbnail() error {
 }
 
 func (v *ucbVideo) publish(daemon *jsonrpc.Client, claimAddress string, amount float64, channelID string, namer *namer.Namer) (*SyncSummary, error) {
+	channelID = "de0fcd76d525b1db36f24523e75c28b542e92fa2" //@UCBerkeley#de0fcd76d525b1db36f24523e75c28b542e92fa2
 	options := jsonrpc.PublishOptions{
 		Title:         &v.title,
 		Author:        strPtr("UC Berkeley"),
@@ -191,7 +201,7 @@ func (v *ucbVideo) publish(daemon *jsonrpc.Client, claimAddress string, amount f
 }
 
 func (v *ucbVideo) Size() *int64 {
-	return nil
+	return v.size
 }
 
 func (v *ucbVideo) Sync(daemon *jsonrpc.Client, claimAddress string, amount float64, channelID string, maxVideoSize int, namer *namer.Namer) (*SyncSummary, error) {
@@ -209,9 +219,6 @@ func (v *ucbVideo) Sync(daemon *jsonrpc.Client, claimAddress string, amount floa
 	//log.Debugln("Created thumbnail for " + v.id)
 
 	summary, err := v.publish(daemon, claimAddress, amount, channelID, namer)
-	if err != nil {
-		return nil, errors.Prefix("publish error", err)
-	}
 
-	return summary, nil
+	return summary, errors.Prefix("publish error", err)
 }

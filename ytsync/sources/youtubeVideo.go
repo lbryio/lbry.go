@@ -52,6 +52,8 @@ func (v *YoutubeVideo) ID() string {
 	return v.id
 }
 
+func (v *YoutubeVideo) SetPlaylistPosition(p int) {
+}
 func (v *YoutubeVideo) PlaylistPosition() int {
 	return int(v.playlistPosition)
 }

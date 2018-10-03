@@ -46,6 +46,7 @@ const (
 type video interface {
 	Size() *int64
 	ID() string
+	SetPlaylistPosition(p int)
 	IDAndNum() string
 	PlaylistPosition() int
 	PublishedAt() time.Time
@@ -497,7 +498,7 @@ func (s *Sync) doSync() error {
 		}(i)
 	}
 
-	if s.LbryChannelName == "@UCBerkeley" {
+	if s.YoutubeChannelID == "UCBerkeleyFakeID12345678" {
 		err = s.enqueueUCBVideos()
 	} else {
 		err = s.enqueueYoutubeVideos()
@@ -689,7 +690,7 @@ func (s *Sync) enqueueUCBVideos() error {
 	if err != nil {
 		return err
 	}
-
+	index := 0
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 	for {
 		line, err := reader.Read()
@@ -705,13 +706,17 @@ func (s *Sync) enqueueUCBVideos() error {
 		if err != nil {
 			return err
 		}
-
 		videos = append(videos, sources.NewUCBVideo(line[0], line[2], line[1], line[3], data.PublishedAt, s.videoDirectory))
+		index++
 	}
 
-	log.Printf("Publishing %d videos\n", len(videos))
+	vCount := len(videos)
+	log.Printf("Publishing %d videos\n", vCount)
 
 	sort.Sort(byPublishedAt(videos))
+	for i, v := range videos {
+		v.SetPlaylistPosition(vCount - i)
+	}
 
 Enqueue:
 	for _, v := range videos {
