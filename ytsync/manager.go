@@ -1,49 +1,71 @@
 package ytsync
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/lbry.go/null"
 	"github.com/lbryio/lbry.go/util"
+	"github.com/lbryio/lbry.go/ytsync/namer"
+	"github.com/lbryio/lbry.go/ytsync/sdk"
 	log "github.com/sirupsen/logrus"
 )
 
 type SyncManager struct {
-	StopOnError             bool
-	MaxTries                int
-	TakeOverExistingChannel bool
-	Refill                  int
-	Limit                   int
-	SkipSpaceCheck          bool
-	SyncUpdate              bool
-	SyncStatus              string
-	SyncFrom                int64
-	SyncUntil               int64
-	ConcurrentJobs          int
-	ConcurrentVideos        int
-	HostName                string
-	YoutubeChannelID        string
-	YoutubeAPIKey           string
-	ApiURL                  string
-	ApiToken                string
-	BlobsDir                string
-	VideosLimit             int
-	MaxVideoSize            int
-	LbrycrdString           string
-	AwsS3ID                 string
-	AwsS3Secret             string
-	AwsS3Region             string
-	AwsS3Bucket             string
-	SingleRun               bool
+	stopOnError             bool
+	maxTries                int
+	takeOverExistingChannel bool
+	refill                  int
+	limit                   int
+	skipSpaceCheck          bool
+	syncUpdate              bool
+	concurrentJobs          int
+	concurrentVideos        int
+	blobsDir                string
+	videosLimit             int
+	maxVideoSize            int
+	lbrycrdString           string
+	awsS3ID                 string
+	awsS3Secret             string
+	awsS3Region             string
+	syncStatus              string
+	awsS3Bucket             string
+	singleRun               bool
+	syncProperties          *sdk.SyncProperties
+	apiConfig               *sdk.APIConfig
+	namer                   *namer.Namer
+}
+
+func NewSyncManager(stopOnError bool, maxTries int, takeOverExistingChannel bool, refill int, limit int,
+	skipSpaceCheck bool, syncUpdate bool, concurrentJobs int, concurrentVideos int, blobsDir string, videosLimit int,
+	maxVideoSize int, lbrycrdString string, awsS3ID string, awsS3Secret string, awsS3Region string, awsS3Bucket string,
+	syncStatus string, singleRun bool, syncProperties *sdk.SyncProperties, apiConfig *sdk.APIConfig) *SyncManager {
+	return &SyncManager{
+		stopOnError:             stopOnError,
+		maxTries:                maxTries,
+		takeOverExistingChannel: takeOverExistingChannel,
+		refill:                  refill,
+		limit:                   limit,
+		skipSpaceCheck:          skipSpaceCheck,
+		syncUpdate:              syncUpdate,
+		concurrentJobs:          concurrentJobs,
+		concurrentVideos:        concurrentVideos,
+		blobsDir:                blobsDir,
+		videosLimit:             videosLimit,
+		maxVideoSize:            maxVideoSize,
+		lbrycrdString:           lbrycrdString,
+		awsS3ID:                 awsS3ID,
+		awsS3Secret:             awsS3Secret,
+		awsS3Region:             awsS3Region,
+		awsS3Bucket:             awsS3Bucket,
+		syncStatus:              syncStatus,
+		singleRun:               singleRun,
+		syncProperties:          syncProperties,
+		apiConfig:               apiConfig,
+		namer:                   namer.NewNamer(),
+	}
 }
 
 const (
@@ -57,143 +79,13 @@ const (
 
 var SyncStatuses = []string{StatusPending, StatusQueued, StatusSyncing, StatusSynced, StatusFailed, StatusFinalized}
 
-type apiJobsResponse struct {
-	Success bool                `json:"success"`
-	Error   null.String         `json:"error"`
-	Data    []apiYoutubeChannel `json:"data"`
-}
-
-type apiYoutubeChannel struct {
-	ChannelId          string      `json:"channel_id"`
-	TotalVideos        uint        `json:"total_videos"`
-	DesiredChannelName string      `json:"desired_channel_name"`
-	SyncServer         null.String `json:"sync_server"`
-}
-
-func (s *SyncManager) fetchChannels(status string) ([]apiYoutubeChannel, error) {
-	endpoint := s.ApiURL + "/yt/jobs"
-	res, _ := http.PostForm(endpoint, url.Values{
-		"auth_token":  {s.ApiToken},
-		"sync_status": {status},
-		"min_videos":  {strconv.Itoa(1)},
-		"after":       {strconv.Itoa(int(s.SyncFrom))},
-		"before":      {strconv.Itoa(int(s.SyncUntil))},
-		"sync_server": {s.HostName},
-		"channel_id":  {s.YoutubeChannelID},
-	})
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-	var response apiJobsResponse
-	err := json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, err
-	}
-	if response.Data == nil {
-		return nil, errors.Err(response.Error)
-	}
-	log.Printf("Fetched channels: %d", len(response.Data))
-	return response.Data, nil
-}
-
-type apiChannelStatusResponse struct {
-	Success bool          `json:"success"`
-	Error   null.String   `json:"error"`
-	Data    []syncedVideo `json:"data"`
-}
-
-type syncedVideo struct {
-	VideoID       string `json:"video_id"`
-	Published     bool   `json:"published"`
-	FailureReason string `json:"failure_reason"`
-	ClaimName     string `json:"claim_name"`
-}
-
-func (s *SyncManager) setChannelStatus(channelID string, status string, failureReason string) (map[string]syncedVideo, map[string]bool, error) {
-	endpoint := s.ApiURL + "/yt/channel_status"
-	if len(failureReason) > maxReasonLength {
-		failureReason = failureReason[:maxReasonLength]
-	}
-	res, _ := http.PostForm(endpoint, url.Values{
-		"channel_id":     {channelID},
-		"sync_server":    {s.HostName},
-		"auth_token":     {s.ApiToken},
-		"sync_status":    {status},
-		"failure_reason": {failureReason},
-	})
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-	var response apiChannelStatusResponse
-	err := json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !response.Error.IsNull() {
-		return nil, nil, errors.Err(response.Error.String)
-	}
-	if response.Data != nil {
-		svs := make(map[string]syncedVideo)
-		claimNames := make(map[string]bool)
-		for _, v := range response.Data {
-			svs[v.VideoID] = v
-			claimNames[v.ClaimName] = v.Published
-		}
-		return svs, claimNames, nil
-	}
-	return nil, nil, errors.Err("invalid API response. Status code: %d", res.StatusCode)
-}
-
 const (
 	VideoStatusPublished = "published"
 	VideoStatusFailed    = "failed"
 )
 
-func (s *SyncManager) MarkVideoStatus(channelID string, videoID string, status string, claimID string, claimName string, failureReason string, size *int64) error {
-	endpoint := s.ApiURL + "/yt/video_status"
-	if len(failureReason) > maxReasonLength {
-		failureReason = failureReason[:maxReasonLength]
-	}
-	vals := url.Values{
-		"youtube_channel_id": {channelID},
-		"video_id":           {videoID},
-		"status":             {status},
-		"auth_token":         {s.ApiToken},
-	}
-	if status == VideoStatusPublished {
-		if claimID == "" || claimName == "" {
-			return errors.Err("claimID or claimName missing")
-		}
-		vals.Add("published_at", strconv.FormatInt(time.Now().Unix(), 10))
-		vals.Add("claim_id", claimID)
-		vals.Add("claim_name", claimName)
-		if size != nil {
-			vals.Add("size", strconv.FormatInt(*size, 10))
-		}
-	}
-	if failureReason != "" {
-		vals.Add("failure_reason", failureReason)
-	}
-	res, _ := http.PostForm(endpoint, vals)
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-	var response struct {
-		Success bool        `json:"success"`
-		Error   null.String `json:"error"`
-		Data    null.String `json:"data"`
-	}
-	err := json.Unmarshal(body, &response)
-	if err != nil {
-		return err
-	}
-	if !response.Error.IsNull() {
-		return errors.Err(response.Error.String)
-	}
-	if !response.Data.IsNull() && response.Data.String == "ok" {
-		return nil
-	}
-	return errors.Err("invalid API response. Status code: %d", res.StatusCode)
-}
-
 func (s *SyncManager) Start() error {
+
 	syncCount := 0
 	for {
 		err := s.checkUsedSpace()
@@ -204,9 +96,9 @@ func (s *SyncManager) Start() error {
 		var syncs []Sync
 		shouldInterruptLoop := false
 
-		isSingleChannelSync := s.YoutubeChannelID != ""
+		isSingleChannelSync := s.syncProperties.YoutubeChannelID != ""
 		if isSingleChannelSync {
-			channels, err := s.fetchChannels("")
+			channels, err := s.apiConfig.FetchChannels("", s.syncProperties)
 			if err != nil {
 				return err
 			}
@@ -216,52 +108,53 @@ func (s *SyncManager) Start() error {
 			lbryChannelName := channels[0].DesiredChannelName
 			syncs = make([]Sync, 1)
 			syncs[0] = Sync{
-				YoutubeAPIKey:           s.YoutubeAPIKey,
-				YoutubeChannelID:        s.YoutubeChannelID,
+				APIConfig:               s.apiConfig,
+				YoutubeChannelID:        s.syncProperties.YoutubeChannelID,
 				LbryChannelName:         lbryChannelName,
-				StopOnError:             s.StopOnError,
-				MaxTries:                s.MaxTries,
-				ConcurrentVideos:        s.ConcurrentVideos,
-				TakeOverExistingChannel: s.TakeOverExistingChannel,
-				Refill:                  s.Refill,
+				StopOnError:             s.stopOnError,
+				MaxTries:                s.maxTries,
+				ConcurrentVideos:        s.concurrentVideos,
+				TakeOverExistingChannel: s.takeOverExistingChannel,
+				Refill:                  s.refill,
 				Manager:                 s,
-				LbrycrdString:           s.LbrycrdString,
-				AwsS3ID:                 s.AwsS3ID,
-				AwsS3Secret:             s.AwsS3Secret,
-				AwsS3Region:             s.AwsS3Region,
-				AwsS3Bucket:             s.AwsS3Bucket,
+				LbrycrdString:           s.lbrycrdString,
+				AwsS3ID:                 s.awsS3ID,
+				AwsS3Secret:             s.awsS3Secret,
+				AwsS3Region:             s.awsS3Region,
+				AwsS3Bucket:             s.awsS3Bucket,
+				namer:                   s.namer,
 			}
 			shouldInterruptLoop = true
 		} else {
 			var queuesToSync []string
-			if s.SyncStatus != "" {
-				queuesToSync = append(queuesToSync, s.SyncStatus)
-			} else if s.SyncUpdate {
+			if s.syncStatus != "" {
+				queuesToSync = append(queuesToSync, s.syncStatus)
+			} else if s.syncUpdate {
 				queuesToSync = append(queuesToSync, StatusSyncing, StatusSynced)
 			} else {
 				queuesToSync = append(queuesToSync, StatusSyncing, StatusQueued)
 			}
 			for _, q := range queuesToSync {
-				channels, err := s.fetchChannels(q)
+				channels, err := s.apiConfig.FetchChannels(q, s.syncProperties)
 				if err != nil {
 					return err
 				}
 				for _, c := range channels {
 					syncs = append(syncs, Sync{
-						YoutubeAPIKey:           s.YoutubeAPIKey,
+						APIConfig:               s.apiConfig,
 						YoutubeChannelID:        c.ChannelId,
 						LbryChannelName:         c.DesiredChannelName,
-						StopOnError:             s.StopOnError,
-						MaxTries:                s.MaxTries,
-						ConcurrentVideos:        s.ConcurrentVideos,
-						TakeOverExistingChannel: s.TakeOverExistingChannel,
-						Refill:                  s.Refill,
+						StopOnError:             s.stopOnError,
+						MaxTries:                s.maxTries,
+						ConcurrentVideos:        s.concurrentVideos,
+						TakeOverExistingChannel: s.takeOverExistingChannel,
+						Refill:                  s.refill,
 						Manager:                 s,
-						LbrycrdString:           s.LbrycrdString,
-						AwsS3ID:                 s.AwsS3ID,
-						AwsS3Secret:             s.AwsS3Secret,
-						AwsS3Region:             s.AwsS3Region,
-						AwsS3Bucket:             s.AwsS3Bucket,
+						LbrycrdString:           s.lbrycrdString,
+						AwsS3ID:                 s.awsS3ID,
+						AwsS3Secret:             s.awsS3Secret,
+						AwsS3Region:             s.awsS3Region,
+						AwsS3Bucket:             s.awsS3Bucket,
 					})
 				}
 			}
@@ -294,12 +187,12 @@ func (s *SyncManager) Start() error {
 			if !shouldNotCount {
 				syncCount++
 			}
-			if sync.IsInterrupted() || (s.Limit != 0 && syncCount >= s.Limit) {
+			if sync.IsInterrupted() || (s.limit != 0 && syncCount >= s.limit) {
 				shouldInterruptLoop = true
 				break
 			}
 		}
-		if shouldInterruptLoop || s.SingleRun {
+		if shouldInterruptLoop || s.singleRun {
 			break
 		}
 	}
@@ -307,11 +200,11 @@ func (s *SyncManager) Start() error {
 }
 
 func (s *SyncManager) checkUsedSpace() error {
-	usedPctile, err := GetUsedSpace(s.BlobsDir)
+	usedPctile, err := GetUsedSpace(s.blobsDir)
 	if err != nil {
 		return err
 	}
-	if usedPctile >= 0.90 && !s.SkipSpaceCheck {
+	if usedPctile >= 0.90 && !s.skipSpaceCheck {
 		return errors.Err(fmt.Sprintf("more than 90%% of the space has been used. use --skip-space-check to ignore. Used: %.1f%%", usedPctile*100))
 	}
 	log.Infof("disk usage: %.1f%%", usedPctile*100)

@@ -6,15 +6,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
-
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbry.go/jsonrpc"
+	"github.com/lbryio/lbry.go/ytsync/namer"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -174,7 +174,7 @@ func (v *ucbVideo) saveThumbnail() error {
 	return err
 }
 
-func (v *ucbVideo) publish(daemon *jsonrpc.Client, claimAddress string, amount float64, channelID string) (*SyncSummary, error) {
+func (v *ucbVideo) publish(daemon *jsonrpc.Client, claimAddress string, amount float64, channelID string, namer *namer.Namer) (*SyncSummary, error) {
 	options := jsonrpc.PublishOptions{
 		Title:         &v.title,
 		Author:        strPtr("UC Berkeley"),
@@ -187,16 +187,14 @@ func (v *ucbVideo) publish(daemon *jsonrpc.Client, claimAddress string, amount f
 		ChangeAddress: &claimAddress,
 	}
 
-	return publishAndRetryExistingNames(daemon, v.title, v.getFilename(), amount, options, v.claimNames, v.syncedVideosMux)
+	return publishAndRetryExistingNames(daemon, v.title, v.getFilename(), amount, options, namer)
 }
 
 func (v *ucbVideo) Size() *int64 {
 	return nil
 }
 
-func (v *ucbVideo) Sync(daemon *jsonrpc.Client, claimAddress string, amount float64, channelID string, maxVideoSize int, claimNames map[string]bool, syncedVideosMux *sync.RWMutex) (*SyncSummary, error) {
-	v.claimNames = claimNames
-	v.syncedVideosMux = syncedVideosMux
+func (v *ucbVideo) Sync(daemon *jsonrpc.Client, claimAddress string, amount float64, channelID string, maxVideoSize int, namer *namer.Namer) (*SyncSummary, error) {
 	//download and thumbnail can be done in parallel
 	err := v.download()
 	if err != nil {
@@ -210,7 +208,7 @@ func (v *ucbVideo) Sync(daemon *jsonrpc.Client, claimAddress string, amount floa
 	//}
 	//log.Debugln("Created thumbnail for " + v.id)
 
-	summary, err := v.publish(daemon, claimAddress, amount, channelID)
+	summary, err := v.publish(daemon, claimAddress, amount, channelID, namer)
 	if err != nil {
 		return nil, errors.Prefix("publish error", err)
 	}
