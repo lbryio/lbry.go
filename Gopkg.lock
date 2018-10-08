@@ -2,58 +2,6 @@
 
 
 [[projects]]
-  digest = "1:9a88883f474d09f1da61894cd8115c7f33988d6941e4f6236324c777aaff8f2c"
-  name = "github.com/PuerkitoBio/goquery"
-  packages = ["."]
-  pruneopts = ""
-  revision = "dc2ec5c7ca4d9aae063b79b9f581dd3ea6afd2b2"
-  version = "v1.4.1"
-
-[[projects]]
-  digest = "1:e3726ad6f38f710e84c8dcd0e830014de6eaeea81f28d91ae898afecc078479a"
-  name = "github.com/andybalholm/cascadia"
-  packages = ["."]
-  pruneopts = ""
-  revision = "901648c87902174f774fac311d7f176f8647bdaa"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:261d95f4464744d542759a7a33846f56f24113f5a93c7577f4cd7044f7cb3d76"
-  name = "github.com/aws/aws-sdk-go"
-  packages = [
-    "aws",
-    "aws/awserr",
-    "aws/awsutil",
-    "aws/client",
-    "aws/client/metadata",
-    "aws/corehandlers",
-    "aws/credentials",
-    "aws/credentials/ec2rolecreds",
-    "aws/credentials/endpointcreds",
-    "aws/credentials/stscreds",
-    "aws/defaults",
-    "aws/ec2metadata",
-    "aws/endpoints",
-    "aws/request",
-    "aws/session",
-    "aws/signer/v4",
-    "internal/shareddefaults",
-    "private/protocol",
-    "private/protocol/query",
-    "private/protocol/query/queryutil",
-    "private/protocol/rest",
-    "private/protocol/restxml",
-    "private/protocol/xml/xmlutil",
-    "service/s3",
-    "service/s3/s3iface",
-    "service/s3/s3manager",
-    "service/sts",
-  ]
-  pruneopts = ""
-  revision = "b69f447375c7fa0047ebcdd8ae5d585d5aac2f71"
-  version = "v1.10.51"
-
-[[projects]]
   branch = "master"
   digest = "1:cc8ebf0c6745d09f728f1fa4fbd29baaa2e3a65efb49b5fefb0c163171ee7863"
   name = "github.com/btcsuite/btcd"
@@ -131,7 +79,13 @@
 [[projects]]
   digest = "1:f958a1c137db276e52f0b50efee41a1a389dcdded59a69711f3e872757dab34b"
   name = "github.com/golang/protobuf"
-  packages = ["proto"]
+  packages = [
+    "proto",
+    "ptypes",
+    "ptypes/any",
+    "ptypes/duration",
+    "ptypes/timestamp",
+  ]
   pruneopts = ""
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
@@ -153,13 +107,6 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:6f49eae0c1e5dab1dafafee34b207aeb7a42303105960944828c2079b92fc88e"
-  name = "github.com/jmespath/go-jmespath"
-  packages = ["."]
-  pruneopts = ""
-  revision = "0b12d6b5"
-
-[[projects]]
   branch = "master"
   digest = "1:d261f80387a38eeddc1d819ee9ee56d37ca10fc02e6e09ff400fb0ce146e13dc"
   name = "github.com/lbryio/lbryschema.go"
@@ -177,14 +124,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1dee6133ab829c8559a39031ad1e0e3538e4a7b34d3e0509d1fc247737e928c1"
-  name = "github.com/mitchellh/go-ps"
-  packages = ["."]
-  pruneopts = ""
-  revision = "4fdf99ab29366514c69ccccddab5dc58b8d84062"
-
-[[projects]]
-  branch = "master"
   digest = "1:eb9117392ee8e7aa44f78e0db603f70b1050ee0ebda4bd40040befb5b218c546"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -198,14 +137,6 @@
   pruneopts = ""
   revision = "8ab4d0b364ef1e9af5d102531da20d5ec902b6c4"
   version = "v0.2.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:8d6d81d0d9d8153e65d637bda77a7c4e6ba496c61efac3578d7d8c981ac31a7b"
-  name = "github.com/rylio/ytdl"
-  packages = ["."]
-  pruneopts = ""
-  revision = "06f6510946275931157f5fe73f55ec7d6fd65870"
 
 [[projects]]
   branch = "master"
@@ -281,9 +212,12 @@
   name = "golang.org/x/net"
   packages = [
     "context",
-    "context/ctxhttp",
-    "html",
-    "html/atom",
+    "http/httpguts",
+    "http2",
+    "http2/hpack",
+    "idna",
+    "internal/timeseries",
+    "trace",
   ]
   pruneopts = ""
   revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
@@ -300,18 +234,70 @@
   revision = "bff228c7b664c5fce602223a05fb708fd8654986"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b064108d68f82d0201d9f812297c928e57488e82ccdb77ed06ac69f64519a890"
-  name = "google.golang.org/api"
+  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
+  name = "golang.org/x/text"
   packages = [
-    "gensupport",
-    "googleapi",
-    "googleapi/internal/uritemplates",
-    "googleapi/transport",
-    "youtube/v3",
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
   ]
   pruneopts = ""
-  revision = "ef86ce4234efee96020bde00391d6a9cfae66561"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1b3b4ec811695907c4a3cb92e4f32834a4a42459bff7e02068b6b2b5344803cd"
+  name = "google.golang.org/genproto"
+  packages = ["googleapis/rpc/status"]
+  pruneopts = ""
+  revision = "af9cb2a35e7f169ec875002c1829c9b315cddc04"
+
+[[projects]]
+  digest = "1:15656947b87a6a240e61dcfae9e71a55a8d5677f240d12ab48f02cdbabf1e309"
+  name = "google.golang.org/grpc"
+  packages = [
+    ".",
+    "balancer",
+    "balancer/base",
+    "balancer/roundrobin",
+    "codes",
+    "connectivity",
+    "credentials",
+    "encoding",
+    "encoding/proto",
+    "grpclog",
+    "internal",
+    "internal/backoff",
+    "internal/channelz",
+    "internal/envconfig",
+    "internal/grpcrand",
+    "internal/transport",
+    "keepalive",
+    "metadata",
+    "naming",
+    "peer",
+    "resolver",
+    "resolver/dns",
+    "resolver/passthrough",
+    "stats",
+    "status",
+    "tap",
+  ]
+  pruneopts = ""
+  revision = "8dea3dc473e90c8179e519d91302d0597c0ca1d1"
+  version = "v1.15.0"
 
 [[projects]]
   digest = "1:f771bf87a3253de520c2af6fb6e75314dce0fedc0b30b208134fe502932bb15d"
@@ -325,12 +311,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/aws/aws-sdk-go/aws",
-    "github.com/aws/aws-sdk-go/aws/awserr",
-    "github.com/aws/aws-sdk-go/aws/credentials",
-    "github.com/aws/aws-sdk-go/aws/session",
-    "github.com/aws/aws-sdk-go/service/s3",
-    "github.com/aws/aws-sdk-go/service/s3/s3manager",
     "github.com/btcsuite/btcd/chaincfg",
     "github.com/btcsuite/btcd/chaincfg/chainhash",
     "github.com/btcsuite/btcd/rpcclient",
@@ -339,12 +319,11 @@
     "github.com/davecgh/go-spew/spew",
     "github.com/go-errors/errors",
     "github.com/go-ini/ini",
+    "github.com/golang/protobuf/proto",
     "github.com/lbryio/lbryschema.go/pb",
     "github.com/lbryio/ozzo-validation",
-    "github.com/mitchellh/go-ps",
     "github.com/mitchellh/mapstructure",
     "github.com/nlopes/slack",
-    "github.com/rylio/ytdl",
     "github.com/shopspring/decimal",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cast",
@@ -353,8 +332,8 @@
     "github.com/zeebo/bencode",
     "golang.org/x/crypto/ripemd160",
     "golang.org/x/crypto/sha3",
-    "google.golang.org/api/googleapi/transport",
-    "google.golang.org/api/youtube/v3",
+    "golang.org/x/net/context",
+    "google.golang.org/grpc",
     "gopkg.in/nullbio/null.v6/convert",
   ]
   solver-name = "gps-cdcl"

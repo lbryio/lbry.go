@@ -8,10 +8,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/rylio/ytdl"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/lbryio/lbryschema.go"
 
 [[constraint]]
@@ -44,10 +40,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "google.golang.org/api"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/btcsuite/btcd"
 
 [[constraint]]
@@ -57,6 +49,3 @@
 [[constraint]]
   branch = "master"
   name = "github.com/btcsuite/btcutil"
-[[constraint]]
-  name = "github.com/aws/aws-sdk-go"
-  version = "^1.10.51"
