@@ -3,6 +3,7 @@ package stream
 import (
 	"bytes"
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/hex"
@@ -12,7 +13,10 @@ import (
 	"github.com/lbryio/lbry.go/errors"
 )
 
-const MaxBlobSize = 2 * 1024 * 1024
+const MaxBlobSize = 2097152 // 2mb, or 2 * 2^20
+
+// -1 to leave room for padding, since there must be at least one byte of pkcs7 padding
+const maxBlobDataSize = MaxBlobSize - 1
 
 type Blob []byte
 
@@ -32,11 +36,6 @@ func (b Blob) Hash() []byte {
 	return hashBytes[:]
 }
 
-// HexHash returns th blob hash as a hex string
-func (b Blob) HashHex() string {
-	return hex.EncodeToString(b.Hash())
-}
-
 // ValidForSend returns true if the blob size is within the limits
 func (b Blob) ValidForSend() error {
 	if b.Size() > MaxBlobSize {
@@ -46,6 +45,86 @@ func (b Blob) ValidForSend() error {
 		return ErrBlobEmpty
 	}
 	return nil
+}
+
+func NewBlob(data, key, iv []byte) (Blob, error) {
+	if len(data) == 0 {
+		// this is here to match python behavior. in theory we could encrypt an empty blob
+		return nil, errors.Err("cannot encrypt empty slice")
+	}
+	blockCipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	if len(iv) != blockCipher.BlockSize() {
+		return nil, errors.Err("IV length must equal to block size")
+	}
+
+	cbc := cipher.NewCBCEncrypter(blockCipher, iv)
+	plaintext, err := pkcs7Pad(data, blockCipher.BlockSize())
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+
+	ciphertext := make([]byte, len(plaintext))
+	cbc.CryptBlocks(ciphertext, plaintext)
+	return ciphertext, nil
+}
+
+func (b Blob) Plaintext(key, iv []byte) ([]byte, error) {
+	blockCipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	if len(iv) != blockCipher.BlockSize() {
+		return nil, errors.Err("IV length must equal to block size")
+	}
+
+	cbc := cipher.NewCBCDecrypter(blockCipher, iv)
+	plaintext := make([]byte, len(b))
+	cbc.CryptBlocks(plaintext, b)
+
+	plaintext, err = pkcs7Unpad(plaintext, blockCipher.BlockSize())
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+
+	return plaintext, nil
+}
+
+// https://github.com/fullsailor/pkcs7/blob/master/pkcs7.go#L468
+func pkcs7Pad(data []byte, blockLen int) ([]byte, error) {
+	if blockLen < 1 {
+		return nil, errors.Err("invalid block length %d", blockLen)
+	}
+	padLen := blockLen - (len(data) % blockLen)
+	if padLen == 0 {
+		padLen = blockLen
+	}
+	pad := bytes.Repeat([]byte{byte(padLen)}, padLen)
+	return append(data, pad...), nil
+}
+
+func pkcs7Unpad(data []byte, blockLen int) ([]byte, error) {
+	if blockLen < 1 {
+		return nil, errors.Err("invalid block length %d", blockLen)
+	}
+	if len(data)%blockLen != 0 || len(data) == 0 {
+		return nil, errors.Err("invalid data length %d", len(data))
+	}
+
+	// the last byte is the length of padding
+	padLen := int(data[len(data)-1])
+
+	// check padding integrity, all bytes should be the same
+	pad := data[len(data)-padLen:]
+	for _, padbyte := range pad {
+		if padbyte != byte(padLen) {
+			return nil, errors.Err("invalid padding")
+		}
+	}
+
+	return data[:len(data)-padLen], nil
 }
 
 // BlobInfo is the stream descriptor info for a single blob in a stream
@@ -161,6 +240,14 @@ func (s *SDBlob) computeStreamHash() []byte {
 	)
 }
 
+func (s SDBlob) fileSize() int {
+	size := 0
+	for _, bi := range s.BlobInfos {
+		size += bi.Length
+	}
+	return size
+}
+
 // streamHash calculates the stream hash, given the stream's fields and blobs
 func streamHash(hexStreamName, hexKey, hexSuggestedFileName string, blobInfos []BlobInfo) []byte {
 	blobSum := sha512.New384()
@@ -178,12 +265,12 @@ func streamHash(hexStreamName, hexKey, hexSuggestedFileName string, blobInfos []
 
 // randIV returns a random AES IV
 func randIV() []byte {
-	blob := make([]byte, aes.BlockSize)
-	_, err := rand.Read(blob)
+	iv := make([]byte, aes.BlockSize)
+	_, err := rand.Read(iv)
 	if err != nil {
-		panic("failed to make random blob")
+		panic("failed to make random iv")
 	}
-	return blob
+	return iv
 }
 
 // NullIV returns an IV of 0s
