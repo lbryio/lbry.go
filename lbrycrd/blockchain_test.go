@@ -1,17 +1,16 @@
-package util
+package lbrycrd_test
 
 import (
 	"testing"
+
+	"github.com/lbryio/lbry.go/lbrycrd"
 )
 
-type claimIdMatch struct {
-	ClaimId string
-	TxHash  string
-	N       uint
-}
-
-var claimIdTests = []claimIdMatch{
-
+var claimIdTests = []struct {
+	claimID string
+	txHash  string
+	n       int
+}{
 	{"589bc4845caca70977332025990b2a1807732b44",
 		"6a9dbe3084b86cec8aa519970d2245dfa15193294cab65819a0d96d455c2a5df",
 		1},
@@ -43,15 +42,13 @@ var claimIdTests = []claimIdMatch{
 }
 
 func TestGetClaimIDFromOutput(t *testing.T) {
-
-	for _, claimMatch := range claimIdTests {
-		claimID, err := ClaimIDFromOutpoint(claimMatch.TxHash, int(claimMatch.N))
+	for _, test := range claimIdTests {
+		claimID, err := lbrycrd.ClaimIDFromOutpoint(test.txHash, test.n)
 		if err != nil {
-			t.Error(err)
+			t.Errorf("%s: %v", test.claimID, err)
 		}
-		if claimID != claimMatch.ClaimId {
-			t.Error("Expected ", claimMatch.ClaimId, " got ", claimID)
+		if test.claimID != claimID {
+			t.Errorf("expected %s, got %s", test.claimID, claimID)
 		}
 	}
-
 }

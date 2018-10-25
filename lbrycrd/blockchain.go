@@ -1,4 +1,4 @@
-package util
+package lbrycrd
 
 import (
 	"crypto/sha256"
