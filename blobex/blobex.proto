@@ -34,7 +34,7 @@ service BlobExchange {
     rpc PriceCheck(PriceCheckRequest) returns (PriceCheckResponse) {}
     rpc DownloadCheck(HashesRequest) returns (HashesResponse) {}
     rpc Download(stream DownloadRequest) returns (stream DownloadResponse) {}
-    rpc UploadOffer(HashesRequest) returns (HashesResponse) {}
+    rpc UploadCheck(HashesRequest) returns (HashesResponse) {}
     rpc Upload(stream UploadRequest) returns (stream UploadResponse) {}
 }
 

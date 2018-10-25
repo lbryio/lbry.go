@@ -40,7 +40,7 @@ func (s *Server) Download(BlobExchange_DownloadServer) error {
 	return nil
 }
 
-func (s *Server) UploadOffer(context.Context, *HashesRequest) (*HashesResponse, error) {
+func (s *Server) UploadCheck(context.Context, *HashesRequest) (*HashesResponse, error) {
 	return nil, nil
 }
 
