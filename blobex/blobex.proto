@@ -71,7 +71,8 @@ message DownloadResponse {
     Error error = 1;
     string hash = 2;
     bytes blob = 3;
-    string address = 4; // address where payment for data download should be sent
+    string address = 4;  // address where payment for data download should be sent
+    uint64 price = 5;    // price of the data in this blob
 }
 
 // upload the hash
