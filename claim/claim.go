@@ -2,16 +2,18 @@ package claim
 
 import (
 	"encoding/hex"
-	"errors"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+
+	"github.com/lbryio/lbry.go/errors"
 	"github.com/lbryio/lbryschema.go/address"
 	"github.com/lbryio/types/go"
 )
 
 type ClaimHelper struct {
 	*pb.Claim
+	migratedFrom []byte
 }
 
 func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
@@ -21,7 +23,7 @@ func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
 		if fee != nil {
 			tmp_addr := fee.GetAddress()
 			if len(tmp_addr) != 25 {
-				return errors.New("invalid address length: " + string(len(tmp_addr)) + "!")
+				return errors.Err("invalid address length: " + string(len(tmp_addr)) + "!")
 			}
 			addr := [25]byte{}
 			for i := range addr {
@@ -29,7 +31,7 @@ func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
 			}
 			_, err := address.EncodeAddress(addr, blockchainName)
 			if err != nil {
-				return err
+				return errors.Err(err)
 			}
 		}
 	}
@@ -44,20 +46,20 @@ func (c *ClaimHelper) ValidateCertificate() error {
 	keyType := certificate.GetKeyType()
 	_, err := c.GetCertificatePublicKey()
 	if err != nil {
-		return err
+		return errors.Err(err)
 	}
 	if keyType.String() != SECP256k1 {
-		return errors.New("wrong curve: " + keyType.String())
+		return errors.Err("wrong curve: " + keyType.String())
 	}
 	return nil
 }
 
 func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) error {
 	if c.String() != "" {
-		return errors.New("already initialized")
+		return errors.Err("already initialized")
 	}
 	if len(raw_claim) < 1 {
-		return errors.New("there is nothing to decode")
+		return errors.Err("there is nothing to decode")
 	}
 
 	claim_pb := &pb.Claim{}
@@ -65,7 +67,7 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 	if err != nil {
 		return err
 	}
-	*c = ClaimHelper{claim_pb}
+	*c = ClaimHelper{claim_pb, raw_claim}
 	err = c.ValidateAddresses(blockchainName)
 	if err != nil {
 		return err
@@ -86,8 +88,8 @@ func (c *ClaimHelper) LoadFromHexString(claim_hex string, blockchainName string)
 	return c.LoadFromBytes(buf, blockchainName)
 }
 
-func DecodeClaimBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
-	claim := &ClaimHelper{&pb.Claim{}}
+func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
+	claim := &ClaimHelper{&pb.Claim{}, serialized}
 	err := claim.LoadFromBytes(serialized, blockchainName)
 	if err != nil {
 		return nil, err
@@ -109,7 +111,46 @@ func DecodeClaimJSON(claimJSON string, blockchainName string) (*ClaimHelper, err
 	if err != nil {
 		return nil, err
 	}
-	return &ClaimHelper{c}, nil
+	return &ClaimHelper{c, []byte(claimJSON)}, nil
+}
+
+// DecodeClaimBytes take a byte array and tries to decode it to a protobuf claim or migrate it from either json v1,2,3
+func DecodeClaimBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
+	helper, err := DecodeClaimProtoBytes(serialized, blockchainName)
+	if err == nil {
+		return helper, nil
+	}
+	helper = &ClaimHelper{}
+	//If protobuf fails, try json versions before returning an error.
+	v1Claim := new(V1Claim)
+	err = v1Claim.Unmarshal(serialized)
+	if err != nil {
+		v2Claim := new(V2Claim)
+		err := v2Claim.Unmarshal(serialized)
+		if err != nil {
+			v3Claim := new(V3Claim)
+			err := v3Claim.Unmarshal(serialized)
+			if err != nil {
+				return nil, errors.Prefix("Claim value has no matching verion", err)
+			}
+			helper.Claim, err = migrateV3Claim(*v3Claim)
+			if err != nil {
+				return nil, errors.Prefix("V3 Metadata Migration Error", err)
+			}
+			return helper, nil
+		}
+		helper.Claim, err = migrateV2Claim(*v2Claim)
+		if err != nil {
+			return nil, errors.Prefix("V2 Metadata Migration Error ", err)
+		}
+		return helper, nil
+	}
+
+	helper.Claim, err = migrateV1Claim(*v1Claim)
+	if err != nil {
+		return nil, errors.Prefix("V1 Metadata Migration Error ", err)
+	}
+	return helper, nil
 }
 
 func (c *ClaimHelper) GetStream() *pb.Stream {
