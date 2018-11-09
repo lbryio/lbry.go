@@ -8,10 +8,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/lbryio/lbryschema.go"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/mitchellh/mapstructure"
 
 [[constraint]]
