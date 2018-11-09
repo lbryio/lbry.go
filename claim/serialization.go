@@ -1,10 +1,11 @@
 package claim
 
 import (
-	"github.com/lbryio/lbryschema.go/pb"
 	"encoding/hex"
 	"errors"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/lbryio/types/go"
 )
 
 func (c *ClaimHelper) Serialized() ([]byte, error) {
