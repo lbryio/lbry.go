@@ -1,12 +1,13 @@
 package claim
 
 import (
-	"github.com/lbryio/lbryschema.go/address"
-	"github.com/lbryio/lbryschema.go/pb"
 	"encoding/hex"
 	"errors"
+
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/lbryio/lbryschema.go/address"
+	"github.com/lbryio/types/go"
 )
 
 type ClaimHelper struct {
