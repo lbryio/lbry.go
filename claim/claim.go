@@ -13,7 +13,6 @@ import (
 
 type ClaimHelper struct {
 	*pb.Claim
-	migratedFrom []byte
 }
 
 func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
@@ -67,7 +66,7 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 	if err != nil {
 		return err
 	}
-	*c = ClaimHelper{claim_pb, raw_claim}
+	*c = ClaimHelper{claim_pb}
 	err = c.ValidateAddresses(blockchainName)
 	if err != nil {
 		return err
@@ -89,7 +88,7 @@ func (c *ClaimHelper) LoadFromHexString(claim_hex string, blockchainName string)
 }
 
 func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
-	claim := &ClaimHelper{&pb.Claim{}, serialized}
+	claim := &ClaimHelper{&pb.Claim{}}
 	err := claim.LoadFromBytes(serialized, blockchainName)
 	if err != nil {
 		return nil, err
@@ -111,7 +110,7 @@ func DecodeClaimJSON(claimJSON string, blockchainName string) (*ClaimHelper, err
 	if err != nil {
 		return nil, err
 	}
-	return &ClaimHelper{c, []byte(claimJSON)}, nil
+	return &ClaimHelper{c}, nil
 }
 
 // DecodeClaimBytes take a byte array and tries to decode it to a protobuf claim or migrate it from either json v1,2,3
