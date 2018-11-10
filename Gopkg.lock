@@ -80,10 +80,12 @@
   digest = "1:f958a1c137db276e52f0b50efee41a1a389dcdded59a69711f3e872757dab34b"
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
+    "ptypes/struct",
     "ptypes/timestamp",
   ]
   pruneopts = ""
@@ -107,20 +109,20 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:d261f80387a38eeddc1d819ee9ee56d37ca10fc02e6e09ff400fb0ce146e13dc"
-  name = "github.com/lbryio/lbryschema.go"
-  packages = ["pb"]
-  pruneopts = ""
-  revision = "185433f2fd0c732547654749b98b37e56223dd22"
-
-[[projects]]
   digest = "1:5e30b8342813a6a85a647f9277e34ffcd5872dc57ab590dd9b251b145b6ec88f"
   name = "github.com/lbryio/ozzo-validation"
   packages = ["."]
   pruneopts = ""
   revision = "d1008ad1fd04ceb5faedaf34881df0c504382706"
   version = "v3.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:349bf8c6b66272abd25af9538be35071991811b6ba3e5c849515c0bfcf3f2bd0"
+  name = "github.com/lbryio/types"
+  packages = ["go"]
+  pruneopts = ""
+  revision = "594241d24e0025d769d2cb58168536b6963d51cf"
 
 [[projects]]
   branch = "master"
@@ -137,6 +139,14 @@
   pruneopts = ""
   revision = "8ab4d0b364ef1e9af5d102531da20d5ec902b6c4"
   version = "v0.2.0"
+
+[[projects]]
+  digest = "1:3962f553b77bf6c03fc07cd687a22dd3b00fe11aa14d31194f5505f5bb65cdc8"
+  name = "github.com/sergi/go-diff"
+  packages = ["diffmatchpatch"]
+  pruneopts = ""
+  revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -319,11 +329,13 @@
     "github.com/davecgh/go-spew/spew",
     "github.com/go-errors/errors",
     "github.com/go-ini/ini",
+    "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
-    "github.com/lbryio/lbryschema.go/pb",
     "github.com/lbryio/ozzo-validation",
+    "github.com/lbryio/types/go",
     "github.com/mitchellh/mapstructure",
     "github.com/nlopes/slack",
+    "github.com/sergi/go-diff/diffmatchpatch",
     "github.com/shopspring/decimal",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cast",

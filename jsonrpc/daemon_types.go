@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/lbryio/lbry.go/errors"
-	lbryschema "github.com/lbryio/lbryschema.go/pb"
+	lbryschema "github.com/lbryio/types/go"
 
 	"github.com/shopspring/decimal"
 )
