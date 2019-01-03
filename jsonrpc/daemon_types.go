@@ -312,7 +312,7 @@ type ChannelNewResponse struct {
 	Txid    string          `json:"txid"`
 }
 
-type ChannelListResponse []struct {
+type ChannelListSingleResponse struct {
 	Address            string            `json:"address"`
 	Amount             decimal.Decimal   `json:"amount"`
 	BlocksToExpiration int               `json:"blocks_to_expiration"`
@@ -333,6 +333,8 @@ type ChannelListResponse []struct {
 	Txid               string            `json:"txid"`
 	Value              *lbryschema.Claim `json:"value"`
 }
+
+type ChannelListResponse []ChannelListSingleResponse
 
 type WalletListResponse []string
 
