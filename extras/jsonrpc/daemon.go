@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/extras/errors"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"

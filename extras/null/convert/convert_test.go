@@ -234,7 +234,7 @@ func TestConversions(t *testing.T) {
 		if bp, boolTest := ct.d.(*bool); boolTest && *bp != ct.wantbool && ct.wanterr == "" {
 			errf("want bool %v, got %v", ct.wantbool, *bp)
 		}
-		if !ct.wanttime.IsNull() && !ct.wanttime.Equal(getTimeValue(ct.d)) {
+		if !ct.wanttime.IsZero() && !ct.wanttime.Equal(getTimeValue(ct.d)) {
 			errf("want time %v, got %v", ct.wanttime, getTimeValue(ct.d))
 		}
 		if ct.wantnil && *ct.d.(**int64) != nil {

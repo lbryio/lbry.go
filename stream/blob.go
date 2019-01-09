@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"strconv"
 
-	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/extras/errors"
 )
 
 const MaxBlobSize = 2097152 // 2mb, or 2 * 2^20

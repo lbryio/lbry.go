@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/extras/errors"
 
 	"github.com/btcsuite/btcutil/base58"
 	"golang.org/x/crypto/sha3"

@@ -23,7 +23,7 @@ import (
 	"encoding/pem"
 	"net/http"
 
-	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/extras/errors"
 )
 
 func publicKey(isPrivateRepo bool) (*rsa.PublicKey, error) {

@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/extras/errors"
 )
 
 type Stream []Blob

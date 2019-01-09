@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/lbryio/lbry.go/errors"
+	"github.com/lbryio/lbry.go/extras/errors"
 	lbryschema "github.com/lbryio/types/go"
 
 	"github.com/shopspring/decimal"

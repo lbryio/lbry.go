@@ -1,5 +1,18 @@
 os: linux
-dist: trusty
+dist: xenial
 language: go
 go:
-  - "1.10.x"
+  - 1.11.x
+
+env:
+  - GO111MODULE=on
+
+install: true
+
+script:
+  # Fail if a .go file hasn't been formatted with gofmt
+  - test -z $(gofmt -s -l $(find . -iname '*.go' -type f | grep -v /vendor/ ))
+  - make
+
+notifications:
+  email: false

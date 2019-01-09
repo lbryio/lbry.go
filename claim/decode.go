@@ -3,9 +3,10 @@ package claim
 import (
 	"bytes"
 
+	types "github.com/lbryio/types/go"
+
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	types "github.com/lbryio/types/go"
 )
 
 func ToJSON(value []byte) (string, error) {

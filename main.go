@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"time"
 
-	"github.com/lbryio/lbry.go/cmd"
+	"github.com/lbryio/lbry.go/claim"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -14,5 +16,14 @@ var Version string
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	log.SetLevel(log.DebugLevel)
-	cmd.Execute()
+
+	value, err := hex.DecodeString("080110011ac10108011279080410011a0343617422002a00320d5075626c696320446f6d61696e38004a5568747470733a2f2f737065652e63682f373961653031353766356165356535336232326562646465666663326564623862363130666437372f68773978754137686d326b32645a35477479744a336448372e6a706752005a001a42080110011a30970015f05a30531c465a3f889ab516b972c57c529cd4b57b0bd1685a19c0caa8073f6d4f3db338c1034481fb3eb37241220a696d6167652f6a7065672a5c080110031a4088d15f554d64776f3b43bc63b50c16a69162eb256c9e7afe04505f88a36d7455069de25244834f6d14479b45064d4766fa359bd041886b612040c9dbc9d1d0ec221412bcd69bf6a7d503002f09d34c76f904253a4be2")
+	if err != nil {
+		panic(err)
+	}
+	s, err := claim.ToJSON(value)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
 }
