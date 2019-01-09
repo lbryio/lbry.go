@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/lbryio/reflector.go/dht/bits"
+	"github.com/lbryio/lbry.go/dht/bits"
 )
 
 func TestBootstrapPing(t *testing.T) {

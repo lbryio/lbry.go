@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/reflector.go/dht/bits"
+	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/extras/errors"
 
 	"github.com/gorilla/mux"
 	rpc2 "github.com/gorilla/rpc/v2"

@@ -4,13 +4,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lbryio/reflector.go/dht/bits"
-	peerproto "github.com/lbryio/reflector.go/peer"
+	"github.com/lbryio/lbry.go/dht/bits"
 )
 
 const (
-	Network     = "udp4"
-	DefaultPort = 4444
+	Network         = "udp4"
+	DefaultPort     = 4444
+	DefaultPeerPort = 3333
 
 	DefaultAnnounceRate   = 10               // send at most this many announces per second
 	DefaultReannounceTime = 50 * time.Minute // should be a bit less than hash expiration time
@@ -69,7 +69,7 @@ func NewStandardConfig() *Config {
 			"lbrynet2.lbry.io:4444",
 			"lbrynet3.lbry.io:4444",
 		},
-		PeerProtocolPort: peerproto.DefaultPort,
+		PeerProtocolPort: DefaultPeerPort,
 		ReannounceTime:   DefaultReannounceTime,
 		AnnounceRate:     DefaultAnnounceRate,
 	}

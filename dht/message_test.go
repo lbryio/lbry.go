@@ -8,8 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lbryio/lbry.go/dht/bits"
+
 	"github.com/davecgh/go-spew/spew"
-	"github.com/lbryio/reflector.go/dht/bits"
 	"github.com/lyoshenka/bencode"
 )
 

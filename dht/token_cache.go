@@ -4,9 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/reflector.go/dht/bits"
-
-	"github.com/lbryio/lbry.go/stop"
+	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/extras/stop"
 )
 
 // TODO: this should be moved out of dht and into node, and it should be completely hidden inside node. dht should not need to know about tokens

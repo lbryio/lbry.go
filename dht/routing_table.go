@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/lbry.go/stop"
-	"github.com/lbryio/reflector.go/dht/bits"
+	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/extras/stop"
 )
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap

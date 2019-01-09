@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/errors.go"
-	"github.com/lbryio/lbry.go/stop"
-	"github.com/lbryio/lbry.go/util"
-	"github.com/lbryio/reflector.go/dht/bits"
+	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/extras/stop"
+	"github.com/lbryio/lbry.go/extras/util"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lyoshenka/bencode"

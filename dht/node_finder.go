@@ -4,10 +4,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/crypto"
-	"github.com/lbryio/lbry.go/errors"
-	"github.com/lbryio/lbry.go/stop"
-	"github.com/lbryio/reflector.go/dht/bits"
+	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/extras/crypto"
+	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/extras/stop"
 
 	"github.com/sirupsen/logrus"
 	"github.com/uber-go/atomic"

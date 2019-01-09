@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/reflector.go/dht/bits"
+	"github.com/lbryio/lbry.go/dht/bits"
 )
 
 func TestNodeFinder_FindNodes(t *testing.T) {
