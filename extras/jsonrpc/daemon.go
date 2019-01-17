@@ -483,3 +483,28 @@ func (d *Client) ClaimAbandon(txID string, nOut int) (*ClaimAbandonResponse, err
 
 	return response, nil
 }
+
+//============================================
+//				NEW SDK
+//============================================
+func (d *Client) AccountList() (*AccountListResponse, error) {
+	response := new(AccountListResponse)
+	return response, d.call(response, "account_list", map[string]interface{}{})
+}
+
+func (d *Client) AccountBalance(account *string) (*AccountBalanceResponse, error) {
+	response := new(AccountBalanceResponse)
+	return response, d.call(response, "account_balance", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) AccountFund(fromAccount string, toAccount string, amount string, outputs uint64) (*AccountFundResponse, error) {
+	response := new(AccountFundResponse)
+	return response, d.call(response, "account_fund", map[string]interface{}{
+		"from_account": fromAccount,
+		"to_account":   toAccount,
+		"amount":       amount,
+		"outputs":      outputs,
+	})
+}
