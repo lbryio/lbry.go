@@ -374,3 +374,58 @@ type NumClaimsInChannelResponse map[string]struct {
 	ClaimsInChannel uint64 `json:"claims_in_channel,omitempty"`
 	Error           string `json:"error,omitempty"`
 }
+
+type Account struct {
+	AddressGenerator struct {
+		Change struct {
+			Gap                   uint64 `json:"gap"`
+			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
+		} `json:"change"`
+		Name      string `json:"name"`
+		Receiving struct {
+			Gap                   uint64 `json:"gap"`
+			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
+		} `json:"receiving"`
+	} `json:"address_generator"`
+	Certificates     uint64  `json:"certificates"`
+	Coins            float64 `json:"coins"`
+	Encrypted        bool    `json:"encrypted"`
+	ID               string  `json:"id"`
+	IsDefaultAccount bool    `json:"is_default_account"`
+	Name             string  `json:"name"`
+	PublicKey        string  `json:"public_key"`
+	Satoshis         uint64  `json:"satoshis"`
+}
+
+type AccountListResponse struct {
+	LBCMainnet *[]Account `json:"lbc_mainnet"`
+	LBCTestnet *[]Account `json:"lbc_testnet"`
+	LBCRegtest *[]Account `json:"lbc_regtest"`
+}
+type AccountBalanceResponse string
+
+type AccountFundResponse struct {
+	Height int64  `json:"height"`
+	Hex    string `json:"hex"`
+	Inputs []struct {
+		Address       string `json:"address"`
+		Amount        string `json:"amount"`
+		Confirmations int64  `json:"confirmations"`
+		Height        int64  `json:"height"`
+		IsChange      bool   `json:"is_change"`
+		IsMine        bool   `json:"is_mine"`
+		Nout          uint64 `json:"nout"`
+		Txid          string `json:"txid"`
+	} `json:"inputs"`
+	Outputs []struct {
+		Address       string `json:"address"`
+		Amount        string `json:"amount"`
+		Confirmations int64  `json:"confirmations"`
+		Height        int64  `json:"height"`
+		Nout          uint64 `json:"nout"`
+		Txid          string `json:"txid"`
+	} `json:"outputs"`
+	TotalFee    string `json:"total_fee"`
+	TotalOutput string `json:"total_output"`
+	Txid        string `json:"txid"`
+}
