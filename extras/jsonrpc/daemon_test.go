@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbry.go/extras/util"
-
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 )
@@ -35,7 +35,7 @@ func TestClient_AccountFund(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	account := (*accounts.LBCRegtest)[0].ID
+	account := (accounts.LBCRegtest)[0].ID
 	balanceString, err := d.AccountBalance(&account)
 	if err != nil {
 		t.Error(err)
@@ -101,6 +101,31 @@ func TestClient_Publish(t *testing.T) {
 		ClaimAddress:     &address,
 		ChangeAddress:    &address,
 	})
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_ChannelNew(t *testing.T) {
+	d := NewClient("")
+	got, err := d.ChannelNew("@Test", 13.37, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_ClaimAbandon(t *testing.T) {
+	d := NewClient("")
+	channelResponse, err := d.ChannelNew("@TestToDelete", 13.37, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	txID := channelResponse.Output.Txid
+	nout := channelResponse.Output.Nout
+	time.Sleep(10 * time.Second)
+	got, err := d.ClaimAbandon(txID, nout, nil, false)
 	if err != nil {
 		t.Error(err)
 	}

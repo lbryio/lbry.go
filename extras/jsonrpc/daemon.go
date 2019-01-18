@@ -330,14 +330,6 @@ func (d *Client) Resolve(url string) (*ResolveResponse, error) {
 	})
 }
 
-func (d *Client) ChannelNew(name string, amount float64) (*ChannelNewResponse, error) {
-	response := new(ChannelNewResponse)
-	return response, d.call(response, "channel_new", map[string]interface{}{
-		"channel_name": name,
-		"amount":       amount,
-	})
-}
-
 func (d *Client) BlobAnnounce(blobHash, sdHash, streamHash *string) (*BlobAnnounceResponse, error) {
 	response := new(BlobAnnounceResponse)
 	return response, d.call(response, "blob_announce", map[string]interface{}{
@@ -416,21 +408,6 @@ func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
 func (d *Client) ClaimListMine() (*ClaimListMineResponse, error) {
 	response := new(ClaimListMineResponse)
 	err := d.call(response, "claim_list_mine", map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
-	}
-
-	return response, nil
-}
-
-func (d *Client) ClaimAbandon(txID string, nOut int) (*ClaimAbandonResponse, error) {
-	response := new(ClaimAbandonResponse)
-	err := d.call(response, "claim_abandon", map[string]interface{}{
-		"txid": txID,
-		"nout": nOut,
-	})
 	if err != nil {
 		return nil, err
 	} else if response == nil {
@@ -521,4 +498,29 @@ func (d *Client) Publish(name, filePath string, bid float64, options PublishOpti
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "publish", structs.Map(args))
+}
+
+func (d *Client) ChannelNew(name string, amount float64, accountID *string) (*ChannelNewResponse, error) {
+	response := new(ChannelNewResponse)
+	return response, d.call(response, "channel_new", map[string]interface{}{
+		"channel_name": name,
+		"amount":       fmt.Sprintf("%.1f", amount),
+		"account_id":   accountID,
+	})
+}
+
+func (d *Client) ClaimAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
+	response := new(ClaimAbandonResponse)
+	err := d.call(response, "claim_abandon", map[string]interface{}{
+		"txid":       txID,
+		"nout":       nOut,
+		"account_id": accountID,
+	})
+	if err != nil {
+		return nil, err
+	} else if response == nil {
+		return nil, errors.Err("no response")
+	}
+
+	return response, nil
 }
