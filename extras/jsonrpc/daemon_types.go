@@ -243,10 +243,6 @@ type ClaimListResponse struct {
 }
 type ClaimListMineResponse []Claim
 type ClaimShowResponse Claim
-type ClaimAbandonResponse struct {
-	Txid string  `json:"txid"`
-	Fee  float64 `json:"fee"`
-}
 
 type PeerListResponsePeer struct {
 	IP     string `json:"host"`
@@ -302,39 +298,6 @@ type ResolveResponseItem struct {
 	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
 	Error           *string `json:"error,omitempty"`
 }
-
-type ChannelNewResponse struct {
-	ClaimID string          `json:"claim_id"`
-	Fee     decimal.Decimal `json:"fee"`
-	Nout    int             `json:"nout"`
-	Success bool            `json:"success"`
-	Tx      string          `json:"tx"`
-	Txid    string          `json:"txid"`
-}
-
-type ChannelListSingleResponse struct {
-	Address            string            `json:"address"`
-	Amount             decimal.Decimal   `json:"amount"`
-	BlocksToExpiration int               `json:"blocks_to_expiration"`
-	CanSign            bool              `json:"can_sign"`
-	Category           string            `json:"category"`
-	ClaimID            string            `json:"claim_id"`
-	Confirmations      int               `json:"confirmations"`
-	DecodedClaim       bool              `json:"decoded_claim"`
-	ExpirationHeight   int               `json:"expiration_height"`
-	Expired            bool              `json:"expired"`
-	HasSignature       bool              `json:"has_signature"`
-	Height             int               `json:"height"`
-	Hex                string            `json:"hex"`
-	IsPending          bool              `json:"is_pending"`
-	IsSpent            bool              `json:"is_spent"`
-	Name               string            `json:"name"`
-	Nout               int               `json:"nout"`
-	Txid               string            `json:"txid"`
-	Value              *lbryschema.Claim `json:"value"`
-}
-
-type ChannelListResponse []ChannelListSingleResponse
 
 type WalletListResponse []string
 
@@ -393,9 +356,9 @@ type Account struct {
 }
 
 type AccountListResponse struct {
-	LBCMainnet *[]Account `json:"lbc_mainnet"`
-	LBCTestnet *[]Account `json:"lbc_testnet"`
-	LBCRegtest *[]Account `json:"lbc_regtest"`
+	LBCMainnet []Account `json:"lbc_mainnet"`
+	LBCTestnet []Account `json:"lbc_testnet"`
+	LBCRegtest []Account `json:"lbc_regtest"`
 }
 type AccountBalanceResponse string
 
@@ -415,7 +378,7 @@ type Transaction struct {
 	Value         *lbryschema.Claim `json:"value"`
 }
 
-type AccountFundResponse struct {
+type TransactionSummary struct {
 	Height      int64         `json:"height"`
 	Hex         string        `json:"hex"`
 	Inputs      []Transaction `json:"inputs"`
@@ -425,20 +388,28 @@ type AccountFundResponse struct {
 	Txid        string        `json:"txid"`
 }
 
+type AccountFundResponse TransactionSummary
+
 type AddressUnusedResponse string
 
 type PublishResponse struct {
-	ClaimAddress string      `json:"claim_address"`
-	ClaimID      string      `json:"claim_id"`
-	Output       Transaction `json:"output"`
-	Success      bool        `json:"success"`
-	Tx           struct {
-		Height  int64         `json:"height"`
-		Hex     string        `json:"hex"`
-		Inputs  []Transaction `json:"inputs"`
-		Outputs []Transaction `json:"inputs"`
-	} `json:"tx"`
-	TotalFee    string `json:"total_fee"`
-	TotalOutput string `json:"total_output"`
-	Txid        string `json:"txid"`
+	ClaimAddress string             `json:"claim_address"`
+	ClaimID      string             `json:"claim_id"`
+	Output       Transaction        `json:"output"`
+	Success      bool               `json:"success"`
+	Tx           TransactionSummary `json:"tx"`
+}
+
+type ChannelNewResponse PublishResponse
+
+type ChannelListResponse struct {
+	Items      []Transaction `json:"items"`
+	Page       uint64        `json:"page"`
+	PageSize   uint64        `json:"page_size"`
+	TotalPages uint64        `json:"total_pages"`
+}
+
+type ClaimAbandonResponse struct {
+	Success bool               `json:"success"`
+	Tx      TransactionSummary `json:"tx"`
 }
