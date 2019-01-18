@@ -12,6 +12,7 @@ import (
 
 	"github.com/lbryio/lbry.go/extras/errors"
 
+	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -49,7 +50,7 @@ func NewClientAndWait(address string) *Client {
 	}
 }
 
-func decode(data interface{}, targetStruct interface{}) error {
+func Decode(data interface{}, targetStruct interface{}) error {
 	config := &mapstructure.DecoderConfig{
 		Metadata: nil,
 		Result:   targetStruct,
@@ -125,7 +126,7 @@ func (d *Client) call(response interface{}, command string, params map[string]in
 	if err != nil {
 		return err
 	}
-	return decode(result, response)
+	return Decode(result, response)
 }
 
 func (d *Client) SetRPCTimeout(timeout time.Duration) {
@@ -269,7 +270,7 @@ func (d *Client) BlobGet(blobHash string, encoding *string, timeout *uint) (*Blo
 	}
 
 	response := new(BlobGetResponse)
-	return response, decode(rawResponse, response)
+	return response, Decode(rawResponse, response)
 }
 
 func (d *Client) StreamAvailability(url string, search_timeout *uint64, blob_timeout *uint64) (*StreamAvailabilityResponse, error) {
@@ -334,51 +335,6 @@ func (d *Client) ChannelNew(name string, amount float64) (*ChannelNewResponse, e
 	return response, d.call(response, "channel_new", map[string]interface{}{
 		"channel_name": name,
 		"amount":       amount,
-	})
-}
-
-func (d *Client) ChannelList() (*ChannelListResponse, error) {
-	response := new(ChannelListResponse)
-	return response, d.call(response, "channel_list", map[string]interface{}{})
-}
-
-type PublishOptions struct {
-	Fee           *Fee
-	Title         *string
-	Description   *string
-	Author        *string
-	Language      *string
-	License       *string
-	LicenseURL    *string
-	Thumbnail     *string
-	Preview       *string
-	NSFW          *bool
-	ChannelName   *string
-	ChannelID     *string
-	ClaimAddress  *string
-	ChangeAddress *string
-}
-
-func (d *Client) Publish(name, filePath string, bid float64, options PublishOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
-	return response, d.call(response, "publish", map[string]interface{}{
-		"name":           name,
-		"file_path":      filePath,
-		"bid":            bid,
-		"fee":            options.Fee,
-		"title":          options.Title,
-		"description":    options.Description,
-		"author":         options.Author,
-		"language":       options.Language,
-		"license":        options.License,
-		"license_url":    options.LicenseURL,
-		"thumbnail":      options.Thumbnail,
-		"preview":        options.Preview,
-		"nsfw":           options.NSFW,
-		"channel_name":   options.ChannelName,
-		"channel_id":     options.ChannelID,
-		"claim_address":  options.ClaimAddress,
-		"change_address": options.ChangeAddress,
 	})
 }
 
@@ -507,4 +463,62 @@ func (d *Client) AccountFund(fromAccount string, toAccount string, amount string
 		"amount":       amount,
 		"outputs":      outputs,
 	})
+}
+
+func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) {
+	response := new(AddressUnusedResponse)
+	return response, d.call(response, "address_unused", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*ChannelListResponse, error) {
+	response := new(ChannelListResponse)
+	return response, d.call(response, "channel_list", map[string]interface{}{
+		"account_id": account,
+		"page":       page,
+		"page_size":  pageSize,
+	})
+}
+
+type Metadata struct {
+	Fee         *Fee    `json:"fee,omitempty"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Author      string  `json:"author"`
+	Language    string  `json:"language"`
+	License     string  `json:"license"`
+	LicenseURL  *string `json:"license_url,omitempty"`
+	Thumbnail   *string `json:"thumbnail,omitempty"`
+	Preview     *string `json:"preview,omitempty"`
+	NSFW        bool    `json:"nsfw"`
+	Sources     *struct {
+		LBRYSDHash string `json:"lbry_sd_hash"`
+	} `json:"sources,omitempty"`
+}
+type PublishOptions struct {
+	*Metadata        `json:"metadata"`
+	ChannelName      *string `json:"channel_name,omitempty"`
+	ChannelID        *string `json:"channel_id,omitempty"`
+	ChannelAccountID *string `json:"channel_account_id,omitempty"`
+	AccountID        *string `json:"account_id,omitempty"`
+	ClaimAddress     *string `json:"claim_address,omitempty"`
+	ChangeAddress    *string `json:"change_address,omitempty"`
+}
+
+func (d *Client) Publish(name, filePath string, bid float64, options PublishOptions) (*PublishResponse, error) {
+	response := new(PublishResponse)
+	args := struct {
+		Name            string `json:"name"`
+		FilePath        string `json:"file_path,omitempty"`
+		Bid             string `json:"bid"`
+		*PublishOptions `json:",flatten"`
+	}{
+		Name:           name,
+		FilePath:       filePath,
+		Bid:            fmt.Sprintf("%.1f", bid),
+		PublishOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "publish", structs.Map(args))
 }

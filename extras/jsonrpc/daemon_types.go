@@ -338,14 +338,6 @@ type ChannelListResponse []ChannelListSingleResponse
 
 type WalletListResponse []string
 
-type PublishResponse struct {
-	ClaimID string          `json:"claim_id"`
-	Fee     decimal.Decimal `json:"fee"`
-	Nout    int             `json:"nout"`
-	Tx      string          `json:"tx"`
-	Txid    string          `json:"txid"`
-}
-
 type BlobAnnounceResponse bool
 
 type WalletPrefillAddressesResponse struct {
@@ -375,6 +367,9 @@ type NumClaimsInChannelResponse map[string]struct {
 	Error           string `json:"error,omitempty"`
 }
 
+//============================================
+//				NEW SDK
+//============================================
 type Account struct {
 	AddressGenerator struct {
 		Change struct {
@@ -404,27 +399,45 @@ type AccountListResponse struct {
 }
 type AccountBalanceResponse string
 
+type Transaction struct {
+	Address       string            `json:"address"`
+	Amount        string            `json:"amount"`
+	ClaimID       string            `json:"claim_id"`
+	Confirmations int64             `json:"confirmations"`
+	Height        int64             `json:"height"`
+	IsChange      bool              `json:"is_change"`
+	IsMine        bool              `json:"is_mine"`
+	Name          string            `json:"name"`
+	Nout          uint64            `json:"nout"`
+	PermanentUrl  string            `json:"permanent_url"`
+	Txid          string            `json:"txid"`
+	Type          string            `json:"type"`
+	Value         *lbryschema.Claim `json:"value"`
+}
+
 type AccountFundResponse struct {
-	Height int64  `json:"height"`
-	Hex    string `json:"hex"`
-	Inputs []struct {
-		Address       string `json:"address"`
-		Amount        string `json:"amount"`
-		Confirmations int64  `json:"confirmations"`
-		Height        int64  `json:"height"`
-		IsChange      bool   `json:"is_change"`
-		IsMine        bool   `json:"is_mine"`
-		Nout          uint64 `json:"nout"`
-		Txid          string `json:"txid"`
-	} `json:"inputs"`
-	Outputs []struct {
-		Address       string `json:"address"`
-		Amount        string `json:"amount"`
-		Confirmations int64  `json:"confirmations"`
-		Height        int64  `json:"height"`
-		Nout          uint64 `json:"nout"`
-		Txid          string `json:"txid"`
-	} `json:"outputs"`
+	Height      int64         `json:"height"`
+	Hex         string        `json:"hex"`
+	Inputs      []Transaction `json:"inputs"`
+	Outputs     []Transaction `json:"outputs"`
+	TotalFee    string        `json:"total_fee"`
+	TotalOutput string        `json:"total_output"`
+	Txid        string        `json:"txid"`
+}
+
+type AddressUnusedResponse string
+
+type PublishResponse struct {
+	ClaimAddress string      `json:"claim_address"`
+	ClaimID      string      `json:"claim_id"`
+	Output       Transaction `json:"output"`
+	Success      bool        `json:"success"`
+	Tx           struct {
+		Height  int64         `json:"height"`
+		Hex     string        `json:"hex"`
+		Inputs  []Transaction `json:"inputs"`
+		Outputs []Transaction `json:"inputs"`
+	} `json:"tx"`
 	TotalFee    string `json:"total_fee"`
 	TotalOutput string `json:"total_output"`
 	Txid        string `json:"txid"`
