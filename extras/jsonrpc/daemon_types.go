@@ -24,41 +24,6 @@ type Fee struct {
 	Address  *string         `json:"address"`
 }
 
-type Support struct {
-	Amount decimal.Decimal `json:"amount"`
-	Nout   int             `json:"nout"`
-	Txid   string          `json:"txid"`
-}
-
-type Claim struct {
-	Address            string           `json:"address"`
-	Amount             decimal.Decimal  `json:"amount"`
-	BlocksToExpiration int              `json:"blocks_to_expiration"`
-	Category           string           `json:"category"`
-	ClaimID            string           `json:"claim_id"`
-	ClaimSequence      int              `json:"claim_sequence"`
-	Confirmations      int              `json:"confirmations"`
-	DecodedClaim       bool             `json:"decoded_claim"`
-	Depth              int              `json:"depth"`
-	EffectiveAmount    decimal.Decimal  `json:"effective_amount"`
-	ExpirationHeight   int              `json:"expiration_height"`
-	Expired            bool             `json:"expired"`
-	Height             int              `json:"height"`
-	Hex                string           `json:"hex"`
-	IsSpent            bool             `json:"is_spent"`
-	Name               string           `json:"name"`
-	Nout               int              `json:"nout"`
-	PermanentUrl       string           `json:"permanent_url"`
-	Supports           []Support        `json:"supports"`
-	Txid               string           `json:"txid"`
-	ValidAtHeight      int              `json:"valid_at_height"`
-	Value              lbryschema.Claim `json:"value"`
-	Error              *string          `json:"error,omitempty"`
-	ChannelName        *string          `json:"channel_name,omitempty"`
-	HasSignature       *bool            `json:"has_signature,omitempty"`
-	SignatureIsValid   *bool            `json:"signature_is_valid,omitempty"`
-}
-
 type File struct {
 	ClaimID           string            `json:"claim_id"`
 	Completed         bool              `json:"completed"`
@@ -191,57 +156,7 @@ type VersionResponse struct {
 	Processor         string `json:"processor"`
 	PythonVersion     string `json:"python_version"`
 }
-type StatusResponse struct {
-	BlobManager struct {
-		FinishedBlobs int `json:"finished_blobs"`
-	} `json:"blob_manager"`
-	ConnectionStatus struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"connection_status"`
-	Dht struct {
-		NodeID              string `json:"node_id"`
-		PeersInRoutingTable int    `json:"peers_in_routing_table"`
-	} `json:"dht"`
-	FileManager struct {
-		ManagedFiles int `json:"managed_files"`
-	} `json:"file_manager"`
-	HashAnnouncer struct {
-		AnnounceQueueSize int `json:"announce_queue_size"`
-	} `json:"hash_announcer"`
-	InstallationID    string   `json:"installation_id"`
-	IsFirstRun        bool     `json:"is_first_run"`
-	IsRunning         bool     `json:"is_running"`
-	SkippedComponents []string `json:"skipped_components"`
-	StartupStatus     struct {
-		BlobManager         bool `json:"blob_manager"`
-		BlockchainHeaders   bool `json:"blockchain_headers"`
-		Database            bool `json:"database"`
-		Dht                 bool `json:"dht"`
-		ExchangeRateManager bool `json:"exchange_rate_manager"`
-		FileManager         bool `json:"file_manager"`
-		HashAnnouncer       bool `json:"hash_announcer"`
-		PaymentRateManager  bool `json:"payment_rate_manager"`
-		PeerProtocolServer  bool `json:"peer_protocol_server"`
-		RateLimiter         bool `json:"rate_limiter"`
-		StreamIdentifier    bool `json:"stream_identifier"`
-		Upnp                bool `json:"upnp"`
-		Wallet              bool `json:"wallet"`
-	} `json:"startup_status"`
-	Wallet struct {
-		BestBlockchain string `json:"best_blockchain"`
-		Blocks         int    `json:"blocks"`
-		BlocksBehind   int    `json:"blocks_behind"`
-		IsEncrypted    bool   `json:"is_encrypted"`
-	} `json:"wallet"`
-}
 
-type ClaimListResponse struct {
-	Claims                []Claim   `json:"claims"`
-	LastTakeoverHeight    int       `json:"last_takeover_height"`
-	SupportsWithoutClaims []Support `json:"supports_without_claims"`
-}
-type ClaimListMineResponse []Claim
 type ClaimShowResponse Claim
 
 type PeerListResponsePeer struct {
@@ -309,18 +224,6 @@ type WalletPrefillAddressesResponse struct {
 	Hex       string `json:"hex"`
 }
 
-type UTXOListResponse []struct {
-	Address    string          `json:"address"`
-	Amount     decimal.Decimal `json:"amount"`
-	Height     int             `json:"height"`
-	IsClaim    bool            `json:"is_claim"`
-	IsCoinbase bool            `json:"is_coinbase"`
-	IsSupport  bool            `json:"is_support"`
-	IsUpdate   bool            `json:"is_update"`
-	Nout       int             `json:"nout"`
-	Txid       string          `json:"txid"`
-}
-
 type WalletNewAddressResponse string
 
 type WalletUnusedAddressResponse string
@@ -366,8 +269,8 @@ type Transaction struct {
 	Address       string            `json:"address"`
 	Amount        string            `json:"amount"`
 	ClaimID       string            `json:"claim_id"`
-	Confirmations int64             `json:"confirmations"`
-	Height        int64             `json:"height"`
+	Confirmations int               `json:"confirmations"`
+	Height        int               `json:"height"`
 	IsChange      bool              `json:"is_change"`
 	IsMine        bool              `json:"is_mine"`
 	Name          string            `json:"name"`
@@ -379,7 +282,7 @@ type Transaction struct {
 }
 
 type TransactionSummary struct {
-	Height      int64         `json:"height"`
+	Height      int           `json:"height"`
 	Hex         string        `json:"hex"`
 	Inputs      []Transaction `json:"inputs"`
 	Outputs     []Transaction `json:"outputs"`
@@ -390,7 +293,9 @@ type TransactionSummary struct {
 
 type AccountFundResponse TransactionSummary
 
-type AddressUnusedResponse string
+type Address string
+type AddressUnusedResponse Address
+type AddressListResponse []Address
 
 type PublishResponse struct {
 	ClaimAddress string             `json:"claim_address"`
@@ -412,4 +317,114 @@ type ChannelListResponse struct {
 type ClaimAbandonResponse struct {
 	Success bool               `json:"success"`
 	Tx      TransactionSummary `json:"tx"`
+}
+type Support struct {
+	Amount string `json:"amount"`
+	Nout   uint64 `json:"nout"`
+	Txid   string `json:"txid"`
+}
+
+type Claim struct {
+	Address          string           `json:"address"`
+	Amount           string           `json:"amount"`
+	ChannelName      *string          `json:"channel_name,omitempty"`
+	ClaimID          string           `json:"claim_id"`
+	ClaimSequence    uint64           `json:"claim_sequence"`
+	DecodedClaim     bool             `json:"decoded_claim"`
+	Depth            int64            `json:"depth"`
+	EffectiveAmount  string           `json:"effective_amount"`
+	HasSignature     *bool            `json:"has_signature,omitempty"`
+	Height           int              `json:"height"`
+	Hex              string           `json:"hex"`
+	Name             string           `json:"name"`
+	Nout             uint64           `json:"nout"`
+	PermanentUrl     string           `json:"permanent_url"`
+	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
+	Supports         []Support        `json:"supports"`
+	Txid             string           `json:"txid"`
+	ValidAtHeight    int              `json:"valid_at_height"`
+	Value            lbryschema.Claim `json:"value"`
+}
+
+type ClaimListResponse struct {
+	Claims                []Claim   `json:"claims"`
+	LastTakeoverHeight    int       `json:"last_takeover_height"`
+	SupportsWithoutClaims []Support `json:"supports_without_claims"`
+}
+
+type ClaimListMineResponse struct {
+	Claims     []Claim `json:"items"`
+	Page       uint64  `json:"page"`
+	PageSize   uint64  `json:"page_size"`
+	TotalPages uint64  `json:"total_pages"`
+}
+
+type StatusResponse struct {
+	BlobManager struct {
+		FinishedBlobs uint64 `json:"finished_blobs"`
+	} `json:"blob_manager"`
+	ConnectionStatus struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"connection_status"`
+	Dht struct {
+		NodeID              string `json:"node_id"`
+		PeersInRoutingTable uint64 `json:"peers_in_routing_table"`
+	} `json:"dht"`
+	FileManager struct {
+		ManagedFiles uint64 `json:"managed_files"`
+	} `json:"file_manager"`
+	HashAnnouncer struct {
+		AnnounceQueueSize uint64 `json:"announce_queue_size"`
+	} `json:"hash_announcer"`
+	InstallationID    string   `json:"installation_id"`
+	IsFirstRun        bool     `json:"is_first_run"`
+	IsRunning         bool     `json:"is_running"`
+	SkippedComponents []string `json:"skipped_components"`
+	StartupStatus     struct {
+		BlobManager         bool `json:"blob_manager"`
+		BlockchainHeaders   bool `json:"blockchain_headers"`
+		Database            bool `json:"database"`
+		Dht                 bool `json:"dht"`
+		ExchangeRateManager bool `json:"exchange_rate_manager"`
+		FileManager         bool `json:"file_manager"`
+		HashAnnouncer       bool `json:"hash_announcer"`
+		PaymentRateManager  bool `json:"payment_rate_manager"`
+		PeerProtocolServer  bool `json:"peer_protocol_server"`
+		RateLimiter         bool `json:"rate_limiter"`
+		Upnp                bool `json:"upnp"`
+		Wallet              bool `json:"wallet"`
+	} `json:"startup_status"`
+	Upnp struct {
+		AioupnpVersion  string   `json:"aioupnp_version"`
+		DhtRedirectSet  bool     `json:"dht_redirect_set"`
+		ExternalIp      string   `json:"external_ip"`
+		Gateway         string   `json:"gateway"`
+		PeerRedirectSet bool     `json:"peer_redirect_set"`
+		Redirects       struct{} `json:"redirects"`
+	}
+	Wallet struct {
+		BestBlockchain string `json:"best_blockchain"`
+		Blocks         int    `json:"blocks"`
+		BlocksBehind   int    `json:"blocks_behind"`
+		IsEncrypted    bool   `json:"is_encrypted"`
+		IsLocked       bool   `json:"is_locked"`
+	} `json:"wallet"`
+}
+
+type UTXOListResponse struct {
+	UTXOs []struct {
+		Address    string `json:"address"`
+		Amount     string `json:"amount"`
+		Height     int    `json:"height"`
+		IsClaim    bool   `json:"is_claim"`
+		IsCoinbase bool   `json:"is_coinbase"`
+		IsSupport  bool   `json:"is_support"`
+		IsUpdate   bool   `json:"is_update"`
+		Nout       int    `json:"nout"`
+		Txid       string `json:"txid"`
+	} `json:"items"`
+	Page       uint64 `json:"page"`
+	PageSize   uint64 `json:"page_size"`
+	TotalPages uint64 `json:"total_pages"`
 }
