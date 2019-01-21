@@ -76,7 +76,7 @@ func TestClient_Publish(t *testing.T) {
 		t.Error(err)
 	}
 	address := string(*addressResponse)
-	got, err := d.Publish("test", "/home/niko/test.txt", 13.37, PublishOptions{
+	got, err := d.Publish("test", "/home/niko/test.txt", 14.37, PublishOptions{
 		Metadata: &Metadata{
 			Fee: &Fee{
 				Currency: "LBC",
@@ -95,7 +95,7 @@ func TestClient_Publish(t *testing.T) {
 			Sources:     nil,
 		},
 		ChannelName:      nil,
-		ChannelID:        nil,
+		ChannelID:        util.PtrToString("0a32af305113435d1cdf4ec61452b9a6dcb74da8"),
 		ChannelAccountID: nil,
 		AccountID:        nil,
 		ClaimAddress:     &address,
@@ -126,6 +126,51 @@ func TestClient_ClaimAbandon(t *testing.T) {
 	nout := channelResponse.Output.Nout
 	time.Sleep(10 * time.Second)
 	got, err := d.ClaimAbandon(txID, nout, nil, false)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_AddressList(t *testing.T) {
+	d := NewClient("")
+	got, err := d.AddressList(nil)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_ClaimList(t *testing.T) {
+	d := NewClient("")
+	got, err := d.ClaimList("test")
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_ClaimListMine(t *testing.T) {
+	d := NewClient("")
+	got, err := d.ClaimListMine(nil, 0, 50)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_Status(t *testing.T) {
+	d := NewClient("")
+	got, err := d.Status()
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_UTXOList(t *testing.T) {
+	d := NewClient("")
+	got, err := d.UTXOList(nil, 0, 50)
 	if err != nil {
 		t.Error(err)
 	}
