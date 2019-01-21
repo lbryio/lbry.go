@@ -140,11 +140,6 @@ func (d *Client) Commands() (*CommandsResponse, error) {
 	return response, d.call(response, "commands", map[string]interface{}{})
 }
 
-func (d *Client) Status() (*StatusResponse, error) {
-	response := new(StatusResponse)
-	return response, d.call(response, "status", map[string]interface{}{})
-}
-
 func (d *Client) WalletBalance() (*WalletBalanceResponse, error) {
 	rawResponse, err := d.callNoDecode("wallet_balance", map[string]interface{}{})
 	if err != nil {
@@ -165,11 +160,6 @@ func (d *Client) WalletList() (*WalletListResponse, error) {
 	return response, d.call(response, "wallet_list", map[string]interface{}{})
 }
 
-func (d *Client) UTXOList() (*UTXOListResponse, error) {
-	response := new(UTXOListResponse)
-	return response, d.call(response, "utxo_list", map[string]interface{}{})
-}
-
 func (d *Client) Version() (*VersionResponse, error) {
 	response := new(VersionResponse)
 	return response, d.call(response, "version", map[string]interface{}{})
@@ -181,13 +171,6 @@ func (d *Client) Get(url string, filename *string, timeout *uint) (*GetResponse,
 		"uri":       url,
 		"file_name": filename,
 		"timeout":   timeout,
-	})
-}
-
-func (d *Client) ClaimList(name string) (*ClaimListResponse, error) {
-	response := new(ClaimListResponse)
-	return response, d.call(response, "claim_list", map[string]interface{}{
-		"name": name,
 	})
 }
 
@@ -405,18 +388,6 @@ func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
 	return channel.ClaimsInChannel, nil
 }
 
-func (d *Client) ClaimListMine() (*ClaimListMineResponse, error) {
-	response := new(ClaimListMineResponse)
-	err := d.call(response, "claim_list_mine", map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
-	}
-
-	return response, nil
-}
-
 //============================================
 //				NEW SDK
 //============================================
@@ -523,4 +494,48 @@ func (d *Client) ClaimAbandon(txID string, nOut uint64, accountID *string, block
 	}
 
 	return response, nil
+}
+
+func (d *Client) AddressList(account *string) (*AddressListResponse, error) {
+	response := new(AddressListResponse)
+	return response, d.call(response, "address_list", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) ClaimList(name string) (*ClaimListResponse, error) {
+	response := new(ClaimListResponse)
+	return response, d.call(response, "claim_list", map[string]interface{}{
+		"name": name,
+	})
+}
+
+func (d *Client) ClaimListMine(account *string, page uint64, pageSize uint64) (*ClaimListMineResponse, error) {
+	response := new(ClaimListMineResponse)
+	err := d.call(response, "claim_list_mine", map[string]interface{}{
+		"account_id": account,
+		"page":       page,
+		"page_size":  pageSize,
+	})
+	if err != nil {
+		return nil, err
+	} else if response == nil {
+		return nil, errors.Err("no response")
+	}
+
+	return response, nil
+}
+
+func (d *Client) Status() (*StatusResponse, error) {
+	response := new(StatusResponse)
+	return response, d.call(response, "status", map[string]interface{}{})
+}
+
+func (d *Client) UTXOList(account *string, page uint64, pageSize uint64) (*UTXOListResponse, error) {
+	response := new(UTXOListResponse)
+	return response, d.call(response, "utxo_list", map[string]interface{}{
+		"account_id": account,
+		"page":       page,
+		"page_size":  pageSize,
+	})
 }
