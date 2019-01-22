@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"testing"
@@ -171,6 +172,55 @@ func TestClient_Status(t *testing.T) {
 func TestClient_UTXOList(t *testing.T) {
 	d := NewClient("")
 	got, err := d.UTXOList(nil, 0, 50)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_Version(t *testing.T) {
+	d := NewClient("")
+	got, err := d.Version()
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_Commands(t *testing.T) {
+	d := NewClient("")
+	got, err := d.Commands()
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_Resolve(t *testing.T) {
+	d := NewClient("")
+	got, err := d.Resolve("test")
+	if err != nil {
+		t.Error(err)
+	}
+	b, err := json.Marshal(*got)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%s", b)
+}
+
+func TestClient_NumClaimsInChannel(t *testing.T) {
+	d := NewClient("")
+	got, err := d.NumClaimsInChannel("@Test#0a32af305113435d1cdf4ec61452b9a6dcb74da8")
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%d", got)
+}
+
+func TestClient_ClaimShow(t *testing.T) {
+	d := NewClient("")
+	got, err := d.ClaimShow(util.PtrToString("4742f25e6d51b4b0483d5b8cd82e3ea121dacde9"), nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
