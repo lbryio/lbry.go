@@ -141,23 +141,7 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 	return data, nil
 }
 
-type CommandsResponse []string
-
 type WalletBalanceResponse decimal.Decimal
-
-type VersionResponse struct {
-	Build             string `json:"build"`
-	LbrynetVersion    string `json:"lbrynet_version"`
-	LbryschemaVersion string `json:"lbryschema_version"`
-	LbryumVersion     string `json:"lbryum_version"`
-	OsRelease         string `json:"os_release"`
-	OsSystem          string `json:"os_system"`
-	Platform          string `json:"platform"`
-	Processor         string `json:"processor"`
-	PythonVersion     string `json:"python_version"`
-}
-
-type ClaimShowResponse Claim
 
 type PeerListResponsePeer struct {
 	IP     string `json:"host"`
@@ -206,14 +190,6 @@ type StreamAvailabilityResponse struct {
 type GetResponse File
 type FileListResponse []File
 
-type ResolveResponse map[string]ResolveResponseItem
-type ResolveResponseItem struct {
-	Certificate     *Claim  `json:"certificate,omitempty"`
-	Claim           *Claim  `json:"claim,omitempty"`
-	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
-	Error           *string `json:"error,omitempty"`
-}
-
 type WalletListResponse []string
 
 type BlobAnnounceResponse bool
@@ -227,11 +203,6 @@ type WalletPrefillAddressesResponse struct {
 type WalletNewAddressResponse string
 
 type WalletUnusedAddressResponse string
-
-type NumClaimsInChannelResponse map[string]struct {
-	ClaimsInChannel uint64 `json:"claims_in_channel,omitempty"`
-	Error           string `json:"error,omitempty"`
-}
 
 //============================================
 //				NEW SDK
@@ -342,6 +313,7 @@ type Claim struct {
 	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
 	Supports         []Support        `json:"supports"`
 	Txid             string           `json:"txid"`
+	Type             string           `json:"type"`
 	ValidAtHeight    int              `json:"valid_at_height"`
 	Value            lbryschema.Claim `json:"value"`
 }
@@ -412,19 +384,54 @@ type StatusResponse struct {
 	} `json:"wallet"`
 }
 
-type UTXOListResponse struct {
-	UTXOs []struct {
-		Address    string `json:"address"`
-		Amount     string `json:"amount"`
-		Height     int    `json:"height"`
-		IsClaim    bool   `json:"is_claim"`
-		IsCoinbase bool   `json:"is_coinbase"`
-		IsSupport  bool   `json:"is_support"`
-		IsUpdate   bool   `json:"is_update"`
-		Nout       int    `json:"nout"`
-		Txid       string `json:"txid"`
-	} `json:"items"`
-	Page       uint64 `json:"page"`
-	PageSize   uint64 `json:"page_size"`
-	TotalPages uint64 `json:"total_pages"`
+type UTXOListResponse []struct {
+	Address    string `json:"address"`
+	Amount     string `json:"amount"`
+	Height     int    `json:"height"`
+	IsClaim    bool   `json:"is_claim"`
+	IsCoinbase bool   `json:"is_coinbase"`
+	IsSupport  bool   `json:"is_support"`
+	IsUpdate   bool   `json:"is_update"`
+	Nout       int    `json:"nout"`
+	Txid       string `json:"txid"`
 }
+
+type VersionResponse struct {
+	Build   string `json:"build"`
+	Desktop string `json:"desktop"`
+	Distro  struct {
+		Codename     string `json:"codename"`
+		ID           string `json:"id"`
+		Like         string `json:"like"`
+		Version      string `json:"version"`
+		VersionParts struct {
+			BuildNumber string `json:"build_number"`
+			Major       string `json:"major"`
+			Minor       string `json:"minor"`
+		} `json:"version_parts"`
+	} `json:"distro"`
+	LbrynetVersion    string `json:"lbrynet_version"`
+	LbryschemaVersion string `json:"lbryschema_version"`
+	OsRelease         string `json:"os_release"`
+	OsSystem          string `json:"os_system"`
+	Platform          string `json:"platform"`
+	Processor         string `json:"processor"`
+	PythonVersion     string `json:"python_version"`
+}
+
+type CommandsResponse []string
+
+type ResolveResponse map[string]ResolveResponseItem
+type ResolveResponseItem struct {
+	Certificate     *Claim  `json:"certificate,omitempty"`
+	Claim           *Claim  `json:"claim,omitempty"`
+	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
+	Error           *string `json:"error,omitempty"`
+}
+
+type NumClaimsInChannelResponse map[string]struct {
+	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
+	Error           *string `json:"error,omitempty"`
+}
+
+type ClaimShowResponse *Claim
