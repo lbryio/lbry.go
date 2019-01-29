@@ -171,7 +171,7 @@ func TestClient_Status(t *testing.T) {
 
 func TestClient_UTXOList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.UTXOList(nil, 0, 50)
+	got, err := d.UTXOList(nil)
 	if err != nil {
 		t.Error(err)
 	}
