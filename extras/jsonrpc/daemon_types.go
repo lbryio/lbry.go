@@ -313,6 +313,7 @@ type Claim struct {
 	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
 	Supports         []Support        `json:"supports"`
 	Txid             string           `json:"txid"`
+	Type             string           `json:"type"`
 	ValidAtHeight    int              `json:"valid_at_height"`
 	Value            lbryschema.Claim `json:"value"`
 }
