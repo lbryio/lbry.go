@@ -214,7 +214,7 @@ func (d *Client) Publish(name, filePath string, bid float64, options PublishOpti
 	}{
 		Name:           name,
 		FilePath:       filePath,
-		Bid:            fmt.Sprintf("%.1f", bid),
+		Bid:            fmt.Sprintf("%.6f", bid),
 		PublishOptions: &options,
 	}
 	structs.DefaultTagName = "json"
@@ -225,7 +225,7 @@ func (d *Client) ChannelNew(name string, amount float64, accountID *string) (*Ch
 	response := new(ChannelNewResponse)
 	return response, d.call(response, "channel_new", map[string]interface{}{
 		"channel_name": name,
-		"amount":       fmt.Sprintf("%.1f", amount),
+		"amount":       fmt.Sprintf("%.6f", amount),
 		"account_id":   accountID,
 	})
 }
