@@ -153,7 +153,7 @@ func TestClient_ClaimList(t *testing.T) {
 
 func TestClient_ClaimListMine(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimListMine(nil, 0, 50)
+	got, err := d.ClaimListMine(nil, 1, 50)
 	if err != nil {
 		t.Error(err)
 	}
