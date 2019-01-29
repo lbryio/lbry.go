@@ -284,15 +284,10 @@ func (d *Client) Status() (*StatusResponse, error) {
 	return response, d.call(response, "status", map[string]interface{}{})
 }
 
-func (d *Client) UTXOList(account *string, page uint64, pageSize uint64) (*UTXOListResponse, error) {
-	if page == 0 {
-		return nil, errors.Err("pages start from 1")
-	}
+func (d *Client) UTXOList(account *string) (*UTXOListResponse, error) {
 	response := new(UTXOListResponse)
 	return response, d.call(response, "utxo_list", map[string]interface{}{
 		"account_id": account,
-		"page":       page,
-		"page_size":  pageSize,
 	})
 }
 

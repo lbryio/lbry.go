@@ -383,21 +383,16 @@ type StatusResponse struct {
 	} `json:"wallet"`
 }
 
-type UTXOListResponse struct {
-	UTXOs []struct {
-		Address    string `json:"address"`
-		Amount     string `json:"amount"`
-		Height     int    `json:"height"`
-		IsClaim    bool   `json:"is_claim"`
-		IsCoinbase bool   `json:"is_coinbase"`
-		IsSupport  bool   `json:"is_support"`
-		IsUpdate   bool   `json:"is_update"`
-		Nout       int    `json:"nout"`
-		Txid       string `json:"txid"`
-	} `json:"items"`
-	Page       uint64 `json:"page"`
-	PageSize   uint64 `json:"page_size"`
-	TotalPages uint64 `json:"total_pages"`
+type UTXOListResponse []struct {
+	Address    string `json:"address"`
+	Amount     string `json:"amount"`
+	Height     int    `json:"height"`
+	IsClaim    bool   `json:"is_claim"`
+	IsCoinbase bool   `json:"is_coinbase"`
+	IsSupport  bool   `json:"is_support"`
+	IsUpdate   bool   `json:"is_update"`
+	Nout       int    `json:"nout"`
+	Txid       string `json:"txid"`
 }
 
 type VersionResponse struct {
