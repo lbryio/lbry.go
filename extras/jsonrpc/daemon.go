@@ -157,6 +157,7 @@ func (d *Client) AccountFund(fromAccount string, toAccount string, amount string
 		"to_account":   toAccount,
 		"amount":       amount,
 		"outputs":      outputs,
+		"broadcast":    true,
 	})
 }
 
