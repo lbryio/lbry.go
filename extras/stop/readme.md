@@ -64,6 +64,8 @@ grp.StopAndWait()
 
 ## Example
 
+### Structure
+
 ```
 type Server struct {
 	grp   *stop.Group
@@ -112,10 +114,11 @@ func (s *Server) Start(address string) error {
 	// listenAndServe blocks until the server is shut down, just like http.ListenAndServe()
 	return s.listenAndServe(l)
 }
+```
 
+### Usage
 
-// how this is used
-
+```
 s := NewServer()
 log.Println("starting")
 go s.Start("localhost:1234")
