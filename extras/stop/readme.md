@@ -89,12 +89,6 @@ func (s *Server) Start(address string) error {
 	s.grp.Add(1)
 	go func() {
 		defer s.grp.Done()
-		s.listenAndServe(l)
-	}()
-
-	s.grp.Add(1)
-	go func() {
-		defer s.grp.Done()
 		for {
 			select {
 			case <-s.grp.Ch():
@@ -115,7 +109,8 @@ func (s *Server) Start(address string) error {
 		}
 	}()
 
-	return nil
+	// listenAndServe blocks until the server is shut down, just like http.ListenAndServe()
+	return s.listenAndServe(l)
 }
 
 
@@ -123,8 +118,7 @@ func (s *Server) Start(address string) error {
 
 s := NewServer()
 log.Println("starting")
-s.Start("localhost:1234")
-log.Println("started")
+go s.Start("localhost:1234")
 
 // ... do some other things here ...
 
