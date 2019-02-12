@@ -25,8 +25,9 @@ require (
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
 	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
-	github.com/nlopes/slack v0.2.0
+	github.com/nlopes/slack v0.5.0
 	github.com/onsi/gomega v1.4.3 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
 	github.com/sergi/go-diff v1.0.0
 	github.com/shopspring/decimal v0.0.0-20180607144847-19e3cb6c2930

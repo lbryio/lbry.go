@@ -65,7 +65,7 @@ func sendToSlack(channel, username, message string) error {
 		err = errors.Err("no slack token provided")
 	} else {
 		log.Debugln("slack: " + channel + ": " + message)
-		_, _, err = slackApi.PostMessage(channel, message, slack.PostMessageParameters{Username: username})
+		_, _, err = slackApi.PostMessage(channel, slack.MsgOptionText(message, false), slack.MsgOptionUsername(username))
 	}
 
 	if err != nil {
