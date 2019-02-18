@@ -71,6 +71,11 @@ func NewBlob(data, key, iv []byte) (Blob, error) {
 	return ciphertext, nil
 }
 
+// DecryptBlob decrypts a blob
+func DecryptBlob(b Blob, key, iv []byte) ([]byte, error) {
+	return b.Plaintext(key, iv)
+}
+
 func (b Blob) Plaintext(key, iv []byte) ([]byte, error) {
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {
