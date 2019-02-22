@@ -419,8 +419,6 @@ type VersionResponse struct {
 	PythonVersion     string `json:"python_version"`
 }
 
-type CommandsResponse []string
-
 type ResolveResponse map[string]ResolveResponseItem
 type ResolveResponseItem struct {
 	Certificate     *Claim  `json:"certificate,omitempty"`
