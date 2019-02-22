@@ -300,7 +300,7 @@ type Claim struct {
 	Amount           string           `json:"amount"`
 	ChannelName      *string          `json:"channel_name,omitempty"`
 	ClaimID          string           `json:"claim_id"`
-	ClaimSequence    uint64           `json:"claim_sequence"`
+	ClaimSequence    int64            `json:"claim_sequence"`
 	DecodedClaim     bool             `json:"decoded_claim"`
 	Depth            int64            `json:"depth"`
 	EffectiveAmount  string           `json:"effective_amount"`
@@ -343,9 +343,6 @@ type StatusResponse struct {
 		NodeID              string `json:"node_id"`
 		PeersInRoutingTable uint64 `json:"peers_in_routing_table"`
 	} `json:"dht"`
-	FileManager struct {
-		ManagedFiles uint64 `json:"managed_files"`
-	} `json:"file_manager"`
 	HashAnnouncer struct {
 		AnnounceQueueSize uint64 `json:"announce_queue_size"`
 	} `json:"hash_announcer"`
@@ -359,14 +356,15 @@ type StatusResponse struct {
 		Database            bool `json:"database"`
 		Dht                 bool `json:"dht"`
 		ExchangeRateManager bool `json:"exchange_rate_manager"`
-		FileManager         bool `json:"file_manager"`
 		HashAnnouncer       bool `json:"hash_announcer"`
-		PaymentRateManager  bool `json:"payment_rate_manager"`
 		PeerProtocolServer  bool `json:"peer_protocol_server"`
-		RateLimiter         bool `json:"rate_limiter"`
+		StreamManager       bool `json:"stream_manager"`
 		Upnp                bool `json:"upnp"`
 		Wallet              bool `json:"wallet"`
 	} `json:"startup_status"`
+	StreamManager struct {
+		ManagedFiles int64 `json:"managed_files"`
+	} `json:"stream_manager"`
 	Upnp struct {
 		AioupnpVersion  string   `json:"aioupnp_version"`
 		DhtRedirectSet  bool     `json:"dht_redirect_set"`
@@ -376,11 +374,11 @@ type StatusResponse struct {
 		Redirects       struct{} `json:"redirects"`
 	}
 	Wallet struct {
-		BestBlockchain string `json:"best_blockchain"`
-		Blocks         int    `json:"blocks"`
-		BlocksBehind   int    `json:"blocks_behind"`
-		IsEncrypted    bool   `json:"is_encrypted"`
-		IsLocked       bool   `json:"is_locked"`
+		BestBlochash string `json:"best_blockhash"`
+		Blocks       int    `json:"blocks"`
+		BlocksBehind int    `json:"blocks_behind"`
+		IsEncrypted  bool   `json:"is_encrypted"`
+		IsLocked     bool   `json:"is_locked"`
 	} `json:"wallet"`
 }
 
