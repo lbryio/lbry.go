@@ -8,6 +8,7 @@ require (
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/davecgh/go-spew v1.1.0
+	github.com/fatih/structs v1.1.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-ini/ini v1.38.2
 	github.com/go-ozzo/ozzo-validation v3.5.0+incompatible // indirect
