@@ -30,28 +30,6 @@ func TestClient_AccountBalance(t *testing.T) {
 	log.Infof("%s", *got)
 }
 
-func TestClient_AccountFund(t *testing.T) {
-	d := NewClient("")
-	accounts, err := d.AccountList()
-	if err != nil {
-		t.Error(err)
-	}
-	account := (accounts.LBCRegtest)[0].ID
-	balanceString, err := d.AccountBalance(&account)
-	if err != nil {
-		t.Error(err)
-	}
-	balance, err := strconv.ParseFloat(string(*balanceString), 64)
-	if err != nil {
-		t.Error(err)
-	}
-	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance-0.1), 40)
-	if err != nil {
-		t.Error(err)
-	}
-	log.Infof("%+v", *got)
-}
-
 func TestClient_AddressUnused(t *testing.T) {
 	d := NewClient("")
 	got, err := d.AddressUnused(nil)
@@ -63,7 +41,7 @@ func TestClient_AddressUnused(t *testing.T) {
 
 func TestClient_ChannelList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelList(nil, 0, 50)
+	got, err := d.ChannelList(nil, 1, 50)
 	if err != nil {
 		t.Error(err)
 	}
@@ -77,7 +55,7 @@ func TestClient_Publish(t *testing.T) {
 		t.Error(err)
 	}
 	address := string(*addressResponse)
-	got, err := d.Publish("test", "/home/niko/test.txt", 14.37, PublishOptions{
+	got, err := d.Publish("test", "/home/niko/work/allClaims.txt", 14.37, PublishOptions{
 		Metadata: &Metadata{
 			Fee: &Fee{
 				Currency: "LBC",
@@ -93,10 +71,9 @@ func TestClient_Publish(t *testing.T) {
 			Thumbnail:   util.PtrToString("https://scrn.storni.info/2019-01-18_16-37-39-098537783.png"),
 			Preview:     nil,
 			NSFW:        false,
-			Sources:     nil,
 		},
 		ChannelName:      nil,
-		ChannelID:        util.PtrToString("0a32af305113435d1cdf4ec61452b9a6dcb74da8"),
+		ChannelID:        util.PtrToString("bda0520bff61e4a70c966d7298e6b89107cf8bed"),
 		ChannelAccountID: nil,
 		AccountID:        nil,
 		ClaimAddress:     &address,
@@ -187,15 +164,6 @@ func TestClient_Version(t *testing.T) {
 	log.Infof("%+v", *got)
 }
 
-func TestClient_Commands(t *testing.T) {
-	d := NewClient("")
-	got, err := d.Commands()
-	if err != nil {
-		t.Error(err)
-	}
-	log.Infof("%+v", *got)
-}
-
 func TestClient_Resolve(t *testing.T) {
 	d := NewClient("")
 	got, err := d.Resolve("test")
@@ -211,7 +179,7 @@ func TestClient_Resolve(t *testing.T) {
 
 func TestClient_NumClaimsInChannel(t *testing.T) {
 	d := NewClient("")
-	got, err := d.NumClaimsInChannel("@Test#0a32af305113435d1cdf4ec61452b9a6dcb74da8")
+	got, err := d.NumClaimsInChannel("@Test#bda0520bff61e4a70c966d7298e6b89107cf8bed")
 	if err != nil {
 		t.Error(err)
 	}
@@ -221,6 +189,28 @@ func TestClient_NumClaimsInChannel(t *testing.T) {
 func TestClient_ClaimShow(t *testing.T) {
 	d := NewClient("")
 	got, err := d.ClaimShow(util.PtrToString("4742f25e6d51b4b0483d5b8cd82e3ea121dacde9"), nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_AccountFund(t *testing.T) {
+	d := NewClient("")
+	accounts, err := d.AccountList()
+	if err != nil {
+		t.Error(err)
+	}
+	account := (accounts.LBCRegtest)[0].ID
+	balanceString, err := d.AccountBalance(&account)
+	if err != nil {
+		t.Error(err)
+	}
+	balance, err := strconv.ParseFloat(string(*balanceString), 64)
+	if err != nil {
+		t.Error(err)
+	}
+	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance-0.1), 40)
 	if err != nil {
 		t.Error(err)
 	}
