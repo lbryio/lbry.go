@@ -191,9 +191,6 @@ type Metadata struct {
 	Thumbnail   *string `json:"thumbnail,omitempty"`
 	Preview     *string `json:"preview,omitempty"`
 	NSFW        bool    `json:"nsfw"`
-	Sources     *struct {
-		LBRYSDHash string `json:"lbry_sd_hash"`
-	} `json:"sources,omitempty"`
 }
 type PublishOptions struct {
 	*Metadata        `json:"metadata"`
@@ -297,15 +294,10 @@ func (d *Client) Version() (*VersionResponse, error) {
 	return response, d.call(response, "version", map[string]interface{}{})
 }
 
-func (d *Client) Commands() (*CommandsResponse, error) {
-	response := new(CommandsResponse)
-	return response, d.call(response, "commands", map[string]interface{}{})
-}
-
 func (d *Client) Resolve(uri string) (*ResolveResponse, error) {
 	response := new(ResolveResponse)
 	return response, d.call(response, "resolve", map[string]interface{}{
-		"uri": uri,
+		"urls": uri,
 	})
 }
 
