@@ -294,10 +294,10 @@ func (d *Client) Version() (*VersionResponse, error) {
 	return response, d.call(response, "version", map[string]interface{}{})
 }
 
-func (d *Client) Resolve(uri string) (*ResolveResponse, error) {
+func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	response := new(ResolveResponse)
 	return response, d.call(response, "resolve", map[string]interface{}{
-		"urls": uri,
+		"urls": urls,
 	})
 }
 
