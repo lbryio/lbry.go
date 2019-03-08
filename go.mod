@@ -11,7 +11,7 @@ require (
 	github.com/go-errors/errors v1.0.1
 	github.com/go-ini/ini v1.38.2
 	github.com/go-ozzo/ozzo-validation v3.5.0+incompatible // indirect
-	github.com/golang/protobuf v1.2.0
+	github.com/golang/protobuf v1.3.0
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
@@ -20,7 +20,7 @@ require (
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
-	github.com/lbryio/types v0.0.0-20181001180206-594241d24e00
+	github.com/lbryio/types v0.0.0-20190304154608-a6f2fd6d5f38
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
