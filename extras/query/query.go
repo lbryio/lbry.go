@@ -71,6 +71,8 @@ func InterpolateParams(query string, args ...interface{}) (string, error) {
 				query = strings.Replace(query, "?", strconv.FormatFloat(field.Float(), 'f', -1, 64), 1)
 			case reflect.String:
 				query = strings.Replace(query, "?", `"`+field.String()+`"`, 1)
+			case reflect.Slice:
+				query = strings.Replace(query, "?", `x`+fmt.Sprintf("%0x", field), 1)
 			default:
 				return "", errors.Err("dont know how to interpolate type " + field.Type().String())
 			}
