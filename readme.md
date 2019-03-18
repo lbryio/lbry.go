@@ -16,7 +16,7 @@ This project uses Go modules. Make sure you have Go 1.11+ installed.
 
 ## Contributing
 
-Contributions to this project are welcome, encouraged, and compensated. For more details, see [lbry.io/faq/contributing](https://lbry.io/faq/contributing)
+Contributions to this project are welcome, encouraged, and compensated. For more details, see [lbry.com/faq/contributing](https://lbry.com/faq/contributing)
 
 Make sure you `go fmt` your code before submitting PRs.
 
@@ -26,9 +26,9 @@ This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 
 ## Security
 
-We take security seriously. Please contact security@lbry.io regarding any issues you may encounter.
+We take security seriously. Please contact security@lbry.com regarding any issues you may encounter.
 Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it.
 
 ## Contact
 
-The primary contact for this project is [@lyoshenka](https://github.com/lyoshenka) (grin@lbry.io)
+The primary contact for this project is [@lyoshenka](https://github.com/lyoshenka) (grin@lbry.com)
