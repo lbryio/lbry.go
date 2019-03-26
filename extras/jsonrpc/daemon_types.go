@@ -300,7 +300,7 @@ type Claim struct {
 	Amount           string           `json:"amount"`
 	ChannelName      *string          `json:"channel_name,omitempty"`
 	ClaimID          string           `json:"claim_id"`
-	ClaimSequence    uint64           `json:"claim_sequence"`
+	ClaimSequence    int64            `json:"claim_sequence"`
 	DecodedClaim     bool             `json:"decoded_claim"`
 	Depth            int64            `json:"depth"`
 	EffectiveAmount  string           `json:"effective_amount"`
