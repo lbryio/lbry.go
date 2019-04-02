@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/lbryio/lbry.go/extras/errors"
-	lbryschema "github.com/lbryio/types/v1/go"
+	lbryschema "github.com/lbryio/types/v2/go"
 
 	"github.com/shopspring/decimal"
 )
@@ -93,49 +93,13 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 			return d, nil
 		}
 
-	case reflect.TypeOf(lbryschema.Metadata_Version(0)):
-		val, err := getEnumVal(lbryschema.Metadata_Version_value, data)
-		return lbryschema.Metadata_Version(val), err
-	case reflect.TypeOf(lbryschema.Metadata_Language(0)):
-		val, err := getEnumVal(lbryschema.Metadata_Language_value, data)
-		return lbryschema.Metadata_Language(val), err
-
-	case reflect.TypeOf(lbryschema.Stream_Version(0)):
-		val, err := getEnumVal(lbryschema.Stream_Version_value, data)
-		return lbryschema.Stream_Version(val), err
-
-	case reflect.TypeOf(lbryschema.Claim_Version(0)):
-		val, err := getEnumVal(lbryschema.Claim_Version_value, data)
-		return lbryschema.Claim_Version(val), err
-	case reflect.TypeOf(lbryschema.Claim_ClaimType(0)):
-		val, err := getEnumVal(lbryschema.Claim_ClaimType_value, data)
-		return lbryschema.Claim_ClaimType(val), err
-
-	case reflect.TypeOf(lbryschema.Fee_Version(0)):
-		val, err := getEnumVal(lbryschema.Fee_Version_value, data)
-		return lbryschema.Fee_Version(val), err
 	case reflect.TypeOf(lbryschema.Fee_Currency(0)):
 		val, err := getEnumVal(lbryschema.Fee_Currency_value, data)
 		return lbryschema.Fee_Currency(val), err
 
-	case reflect.TypeOf(lbryschema.Source_Version(0)):
-		val, err := getEnumVal(lbryschema.Source_Version_value, data)
-		return lbryschema.Source_Version(val), err
-	case reflect.TypeOf(lbryschema.Source_SourceTypes(0)):
-		val, err := getEnumVal(lbryschema.Source_SourceTypes_value, data)
-		return lbryschema.Source_SourceTypes(val), err
-
-	case reflect.TypeOf(lbryschema.KeyType(0)):
-		val, err := getEnumVal(lbryschema.KeyType_value, data)
-		return lbryschema.KeyType(val), err
-
-	case reflect.TypeOf(lbryschema.Signature_Version(0)):
-		val, err := getEnumVal(lbryschema.Signature_Version_value, data)
-		return lbryschema.Signature_Version(val), err
-
-	case reflect.TypeOf(lbryschema.Certificate_Version(0)):
-		val, err := getEnumVal(lbryschema.Certificate_Version_value, data)
-		return lbryschema.Certificate_Version(val), err
+	case reflect.TypeOf(lbryschema.Claim_Type_name):
+		val, err := getEnumVal(lbryschema.Claim_Type_value, data)
+		return lbryschema.Claim_Type_name[val], err
 	}
 
 	return data, nil
@@ -296,33 +260,34 @@ type Support struct {
 }
 
 type Claim struct {
-	Address          string           `json:"address"`
-	Amount           string           `json:"amount"`
-	ChannelName      *string          `json:"channel_name,omitempty"`
-	ClaimID          string           `json:"claim_id"`
-	ClaimSequence    int64            `json:"claim_sequence"`
-	DecodedClaim     bool             `json:"decoded_claim"`
-	Depth            int64            `json:"depth"`
-	EffectiveAmount  string           `json:"effective_amount"`
-	HasSignature     *bool            `json:"has_signature,omitempty"`
-	Height           int              `json:"height"`
-	Hex              string           `json:"hex"`
-	Name             string           `json:"name"`
-	Nout             uint64           `json:"nout"`
-	PermanentUrl     string           `json:"permanent_url"`
-	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
-	Supports         []Support        `json:"supports"`
-	Txid             string           `json:"txid"`
-	Type             string           `json:"type"`
-	ValidAtHeight    int              `json:"valid_at_height"`
-	Value            lbryschema.Claim `json:"value"`
+	Address          string    `json:"address"`
+	Amount           string    `json:"amount"`
+	ChannelName      *string   `json:"channel_name,omitempty"`
+	ClaimID          string    `json:"claim_id"`
+	ClaimSequence    int64     `json:"claim_sequence"`
+	DecodedClaim     bool      `json:"decoded_claim"`
+	Depth            int64     `json:"depth"`
+	EffectiveAmount  string    `json:"effective_amount"`
+	HasSignature     *bool     `json:"has_signature,omitempty"`
+	Height           int       `json:"height"`
+	Hex              string    `json:"hex"`
+	Name             string    `json:"name"`
+	NormalizedName   string    `json:"normalized_name"`
+	Nout             uint64    `json:"nout"`
+	PermanentUrl     string    `json:"permanent_url"`
+	SignatureIsValid *bool     `json:"signature_is_valid,omitempty"`
+	Supports         []Support `json:"supports"`
+	Txid             string    `json:"txid"`
+	//Type             string           `json:"type"`
+	ValidAtHeight int              `json:"valid_at_height"`
+	Value         lbryschema.Claim `json:"value"`
 }
 
-type ClaimListResponse struct {
+type ClaimListResponse []Claim /* {
 	Claims                []Claim   `json:"claims"`
 	LastTakeoverHeight    int       `json:"last_takeover_height"`
 	SupportsWithoutClaims []Support `json:"supports_without_claims"`
-}
+}*/
 
 type ClaimListMineResponse struct {
 	Claims     []Claim `json:"items"`
@@ -330,6 +295,7 @@ type ClaimListMineResponse struct {
 	PageSize   uint64  `json:"page_size"`
 	TotalPages uint64  `json:"total_pages"`
 }
+type ClaimSearchResponse ClaimListMineResponse
 
 type StatusResponse struct {
 	BlobManager struct {

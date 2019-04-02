@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/util"
 	"github.com/shopspring/decimal"
+
+	"github.com/lbryio/lbry.go/extras/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -55,29 +56,46 @@ func TestClient_Publish(t *testing.T) {
 		t.Error(err)
 	}
 	address := string(*addressResponse)
-	got, err := d.Publish("test", "/home/niko/work/allClaims.txt", 14.37, PublishOptions{
-		Metadata: &Metadata{
-			Fee: &Fee{
-				Currency: "LBC",
-				Amount:   decimal.NewFromFloat(1.0),
-				Address:  &address,
-			},
-			Title:       "This is a Test Title",
+	got, err := d.StreamCreate("test"+string(time.Now().Unix()), "/home/niko/work/allClaims.txt", 14.37, StreamCreateOptions{
+		ClaimCreateOptions: &ClaimCreateOptions{
+			Title:       "This is a Test Title" + time.Now().String(),
 			Description: "My Special Description",
-			Author:      "Niko",
-			Language:    "en",
-			License:     "FREEEEE",
-			LicenseURL:  nil,
-			Thumbnail:   util.PtrToString("https://scrn.storni.info/2019-01-18_16-37-39-098537783.png"),
-			Preview:     nil,
-			NSFW:        false,
+			Tags:        []string{"nsfw", "test"},
+			Languages:   []string{"en-US", "fr-CH"},
+			Locations: &Locations{
+				Country:    util.PtrToString("CH"),
+				State:      util.PtrToString("Ticino"),
+				City:       util.PtrToString("Lugano"),
+				PostalCode: util.PtrToString("6900"),
+				Latitude:   nil,
+				Longitude:  nil,
+			},
+			ThumbnailURL:  util.PtrToString("https://scrn.storni.info/2019-01-18_16-37-39-098537783.png"),
+			AccountID:     nil,
+			ClaimAddress:  &address,
+			ChangeAddress: &address,
+			Preview:       nil,
 		},
-		ChannelName:      nil,
-		ChannelID:        util.PtrToString("bda0520bff61e4a70c966d7298e6b89107cf8bed"),
-		ChannelAccountID: nil,
-		AccountID:        nil,
-		ClaimAddress:     &address,
-		ChangeAddress:    &address,
+		Fee: &Fee{
+			Currency: "LBC",
+			Amount:   decimal.NewFromFloat(1.0),
+			Address:  &address,
+		},
+		Author:             util.PtrToString("Niko"),
+		License:            util.PtrToString("FREE"),
+		LicenseURL:         nil,
+		StreamType:         &StreamTypeImage,
+		ReleaseTime:        nil,
+		Duration:           nil,
+		ImageWidth:         nil,
+		ImageHeigth:        nil,
+		VideoWidth:         nil,
+		VideoHeight:        nil,
+		Preview:            nil,
+		AllowDuplicateName: nil,
+		ChannelName:        nil,
+		ChannelID:          util.PtrToString("bda0520bff61e4a70c966d7298e6b89107cf8bed"),
+		ChannelAccountID:   nil,
 	})
 	if err != nil {
 		t.Error(err)
@@ -85,25 +103,25 @@ func TestClient_Publish(t *testing.T) {
 	log.Infof("%+v", *got)
 }
 
-func TestClient_ChannelNew(t *testing.T) {
+func TestClient_ChannelCreate(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelNew("@Test", 13.37, nil)
+	got, err := d.ChannelCreate("@Test", 13.37, nil)
 	if err != nil {
 		t.Error(err)
 	}
 	log.Infof("%+v", *got)
 }
 
-func TestClient_ClaimAbandon(t *testing.T) {
+func TestClient_ChannelAbandon(t *testing.T) {
 	d := NewClient("")
-	channelResponse, err := d.ChannelNew("@TestToDelete", 13.37, nil)
+	channelResponse, err := d.ChannelCreate("@TestToDelete", 13.37, nil)
 	if err != nil {
 		t.Error(err)
 	}
 	txID := channelResponse.Output.Txid
 	nout := channelResponse.Output.Nout
 	time.Sleep(10 * time.Second)
-	got, err := d.ClaimAbandon(txID, nout, nil, false)
+	got, err := d.ChannelAbandon(txID, nout, nil, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -121,16 +139,16 @@ func TestClient_AddressList(t *testing.T) {
 
 func TestClient_ClaimList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimList("test")
+	got, err := d.ClaimList(nil, 1, 10)
 	if err != nil {
 		t.Error(err)
 	}
 	log.Infof("%+v", *got)
 }
 
-func TestClient_ClaimListMine(t *testing.T) {
+func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimListMine(nil, 1, 50)
+	got, err := d.ClaimSearch(nil, util.PtrToString("4742f25e6d51b4b0483d5b8cd82e3ea121dacde9"), nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -175,24 +193,6 @@ func TestClient_Resolve(t *testing.T) {
 		t.Error(err)
 	}
 	log.Infof("%s", b)
-}
-
-func TestClient_NumClaimsInChannel(t *testing.T) {
-	d := NewClient("")
-	got, err := d.NumClaimsInChannel("@Test#bda0520bff61e4a70c966d7298e6b89107cf8bed")
-	if err != nil {
-		t.Error(err)
-	}
-	log.Infof("%d", got)
-}
-
-func TestClient_ClaimShow(t *testing.T) {
-	d := NewClient("")
-	got, err := d.ClaimShow(util.PtrToString("4742f25e6d51b4b0483d5b8cd82e3ea121dacde9"), nil, nil)
-	if err != nil {
-		t.Error(err)
-	}
-	log.Infof("%+v", *got)
 }
 
 func TestClient_AccountFund(t *testing.T) {
