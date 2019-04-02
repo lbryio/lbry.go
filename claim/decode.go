@@ -3,7 +3,7 @@ package claim
 import (
 	"bytes"
 
-	types "github.com/lbryio/types/v1/go"
+	types "github.com/lbryio/types/v2/go"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
