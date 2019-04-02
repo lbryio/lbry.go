@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/structs"
+
 	"github.com/lbryio/lbry.go/extras/errors"
 
-	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -180,55 +181,137 @@ func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*Ch
 	})
 }
 
-type Metadata struct {
-	Fee         *Fee    `json:"fee,omitempty"`
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Author      string  `json:"author"`
-	Language    string  `json:"language"`
-	License     string  `json:"license"`
-	LicenseURL  *string `json:"license_url,omitempty"`
-	Thumbnail   *string `json:"thumbnail,omitempty"`
-	Preview     *string `json:"preview,omitempty"`
-	NSFW        bool    `json:"nsfw"`
+type streamType string
+
+var (
+	StreamTypeVideo = streamType("video")
+	StreamTypeAudio = streamType("audio")
+	StreamTypeImage = streamType("image")
+)
+
+type Locations struct {
+	Country    *string `json:"country,omitempty"`
+	State      *string `json:"state,omitempty"`
+	City       *string `json:"city,omitempty"`
+	PostalCode *string `json:"code,omitempty"`
+	Latitude   *string `json:"latitude,omitempty"`
+	Longitude  *string `json:"longitude,omitempty"`
 }
-type PublishOptions struct {
-	*Metadata        `json:"metadata"`
-	ChannelName      *string `json:"channel_name,omitempty"`
-	ChannelID        *string `json:"channel_id,omitempty"`
-	ChannelAccountID *string `json:"channel_account_id,omitempty"`
-	AccountID        *string `json:"account_id,omitempty"`
-	ClaimAddress     *string `json:"claim_address,omitempty"`
-	ChangeAddress    *string `json:"change_address,omitempty"`
+type ClaimCreateOptions struct {
+	Title         string     `json:"title"`
+	Description   string     `json:"description"`
+	Tags          []string   `json:"tags,omitempty"`
+	Languages     []string   `json:"language"`
+	Locations     *Locations `json:"locations,omitempty"`
+	ThumbnailURL  *string    `json:"thumbnail_url,omitempty"`
+	AccountID     *string    `json:"account_id,omitempty"`
+	ClaimAddress  *string    `json:"claim_address,omitempty"`
+	ChangeAddress *string    `json:"change_address,omitempty"`
+	Preview       *bool      `json:"preview,omitempty"`
 }
 
-func (d *Client) Publish(name, filePath string, bid float64, options PublishOptions) (*PublishResponse, error) {
+type ChannelCreateOptions struct {
+	*ClaimCreateOptions `json:",flatten"`
+	ContactEmail        *string `json:"contact_email,omitempty"`
+	HomepageURL         *string `json:"homepage_url,omitempty"`
+	CoverURL            *string `json:"cover_url,omitempty"`
+}
+
+func (d *Client) ChannelCreate(name string, bid float64, options *ChannelCreateOptions) (*PublishResponse, error) {
 	response := new(PublishResponse)
 	args := struct {
-		Name            string `json:"name"`
-		FilePath        string `json:"file_path,omitempty"`
-		Bid             string `json:"bid"`
-		*PublishOptions `json:",flatten"`
+		Name                  string `json:"name"`
+		Bid                   string `json:"bid"`
+		FilePath              string `json:"file_path,omitempty"`
+		*ChannelCreateOptions `json:",flatten"`
 	}{
-		Name:           name,
-		FilePath:       filePath,
-		Bid:            fmt.Sprintf("%.6f", bid),
-		PublishOptions: &options,
+		Name:                 name,
+		Bid:                  fmt.Sprintf("%.6f", bid),
+		ChannelCreateOptions: options,
 	}
 	structs.DefaultTagName = "json"
-	return response, d.call(response, "publish", structs.Map(args))
+	return response, d.call(response, "channel_create", structs.Map(args))
 }
 
-func (d *Client) ChannelNew(name string, amount float64, accountID *string) (*ChannelNewResponse, error) {
-	response := new(ChannelNewResponse)
-	return response, d.call(response, "channel_new", map[string]interface{}{
-		"channel_name": name,
-		"amount":       fmt.Sprintf("%.6f", amount),
-		"account_id":   accountID,
+type StreamCreateOptions struct {
+	*ClaimCreateOptions `json:",flatten"`
+	Fee                 *Fee        `json:"fee,omitempty"`
+	Author              *string     `json:"author"`
+	License             *string     `json:"license"`
+	LicenseURL          *string     `json:"license_url,omitempty"`
+	StreamType          *streamType `json:"stream_type,omitempty"`
+	ReleaseTime         *int        `json:"release_time,omitempty"`
+	Duration            *int        `json:"duration,omitempty"`
+	ImageWidth          *int        `json:"image_width,omitempty"`
+	ImageHeigth         *int        `json:"image_heigth,omitempty"`
+	VideoWidth          *int        `json:"video_width,omitempty"`
+	VideoHeight         *int        `json:"video_height,omitempty"`
+	Preview             *string     `json:"preview,omitempty"`
+	AllowDuplicateName  *bool       `json:"allow_duplicate_name,omitempty"`
+	ChannelName         *string     `json:"channel_name,omitempty"`
+	ChannelID           *string     `json:"channel_id,omitempty"`
+	ChannelAccountID    *string     `json:"channel_account_id,omitempty"`
+}
+
+func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*PublishResponse, error) {
+	response := new(PublishResponse)
+	args := struct {
+		Name                 string `json:"name"`
+		Bid                  string `json:"bid"`
+		FilePath             string `json:"file_path,omitempty"`
+		*StreamCreateOptions `json:",flatten"`
+	}{
+		Name:                name,
+		FilePath:            filePath,
+		Bid:                 fmt.Sprintf("%.6f", bid),
+		StreamCreateOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "stream_create", structs.Map(args))
+}
+
+func (d *Client) StreamAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
+	response := new(ClaimAbandonResponse)
+	err := d.call(response, "claim_abandon", map[string]interface{}{
+		"txid":       txID,
+		"nout":       nOut,
+		"account_id": accountID,
 	})
+	if err != nil {
+		return nil, err
+	} else if response == nil {
+		return nil, errors.Err("no response")
+	}
+
+	return response, nil
 }
 
-func (d *Client) ClaimAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
+type StreamUpdateOptions struct {
+	ClearTags            *bool   `json:"clear_tags,omitempty"`
+	ClearLanguages       *bool   `json:"clear_languages,omitempty"`
+	ClearLocations       *bool   `json:"clear_locations,omitempty"`
+	Name                 *string `json:"name"`
+	FilePath             *string `json:"file_path,omitempty"`
+	Bid                  *string `json:"bid"`
+	*StreamCreateOptions `json:",flatten"`
+}
+
+func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*PublishResponse, error) {
+	response := new(PublishResponse)
+	args := struct {
+		ClaimID              string `json:"claim_id"`
+		FilePath             string `json:"file_path,omitempty"`
+		Bid                  string `json:"bid"`
+		*StreamUpdateOptions `json:",flatten"`
+	}{
+		ClaimID:             claimID,
+		StreamUpdateOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "stream_create", structs.Map(args))
+}
+
+func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
 	response := new(ClaimAbandonResponse)
 	err := d.call(response, "claim_abandon", map[string]interface{}{
 		"txid":       txID,
@@ -251,19 +334,12 @@ func (d *Client) AddressList(account *string) (*AddressListResponse, error) {
 	})
 }
 
-func (d *Client) ClaimList(name string) (*ClaimListResponse, error) {
-	response := new(ClaimListResponse)
-	return response, d.call(response, "claim_list", map[string]interface{}{
-		"name": name,
-	})
-}
-
-func (d *Client) ClaimListMine(account *string, page uint64, pageSize uint64) (*ClaimListMineResponse, error) {
+func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListMineResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")
 	}
 	response := new(ClaimListMineResponse)
-	err := d.call(response, "claim_list_mine", map[string]interface{}{
+	err := d.call(response, "claim_list", map[string]interface{}{
 		"account_id": account,
 		"page":       page,
 		"page_size":  pageSize,
@@ -301,10 +377,12 @@ func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	})
 }
 
-func (d *Client) NumClaimsInChannel(uri string) (uint64, error) {
+/*
+// use resolve?
+func (d *Client) NumClaimsInChannel(channelClaimID string) (uint64, error) {
 	response := new(NumClaimsInChannelResponse)
-	err := d.call(response, "claim_list_by_channel", map[string]interface{}{
-		"uri": uri,
+	err := d.call(response, "claim_search", map[string]interface{}{
+		"channel_id": channelClaimID,
 	})
 	if err != nil {
 		return 0, err
@@ -324,12 +402,13 @@ func (d *Client) NumClaimsInChannel(uri string) (uint64, error) {
 	}
 	return *channel.ClaimsInChannel, nil
 }
-
-func (d *Client) ClaimShow(claimID *string, txid *string, nout *uint) (*ClaimShowResponse, error) {
-	response := new(ClaimShowResponse)
-	return response, d.call(response, "claim_show", map[string]interface{}{
+*/
+func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*ClaimSearchResponse, error) {
+	response := new(ClaimSearchResponse)
+	return response, d.call(response, "claim_search", map[string]interface{}{
 		"claim_id": claimID,
 		"txid":     txid,
 		"nout":     nout,
+		"name":     claimName,
 	})
 }
