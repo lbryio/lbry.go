@@ -1,11 +1,15 @@
 package claim
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"testing"
 
+	"github.com/lbryio/lbryschema.go/address"
+
 	"github.com/btcsuite/btcutil/base58"
+	"gotest.tools/assert"
 )
 
 type valueTestPair struct {
@@ -51,7 +55,7 @@ var jsonVersionTests = []valueTestPair{
 			"LBC",
 			"bPwGA9h7uijoy5uAvzVPQw9QyLoYZehHJo",
 			"application/octet-stream",
-			"UNKNOWN_LANGUAGE", //"English" is not supported for conversion.
+			"", //"English" is not supported for conversion.
 			"bd94033d13f4f3908708701caf565bfa09cfadf2f34fadf4a73fb86b295d1b21a7e64805994e45b5fbc650f30bac4874",
 			"/homerobert/lbry/speed.jpg",
 			false,
@@ -68,7 +72,7 @@ var jsonVersionTests = []valueTestPair{
 			"LBC",
 			"bLVs3ifPruyZnpYmFfT2TLAmhqZvgjpQDa",
 			"video/quicktime",
-			"en",
+			"language:en ",
 			"dcc1bf28893a5037eab9e4a9cd7a4bfe6f76ad6c21970ea4ceee0122f502ef079657d4dca456b4be3249849c4e1868b8",
 			"http://ia.media-imdb.com/images/M/MV5BMTQwNjYzMTQ0Ml5BMl5BanBnXkFtZTcwNDUzODM5Nw@@._V1_SY1000_CR0,0,673,1000_AL_.jpg",
 			false,
@@ -85,7 +89,7 @@ var jsonVersionTests = []valueTestPair{
 			"UNKNOWN_CURRENCY",
 			"",
 			"video/mp4",
-			"en",
+			"language:en ",
 			"799a1de93b8e556d7f668103a6ffc48ac5fd6801dd4d89cae6773c80d81c283710fd4fd25ed68d0dbeee268f82914145",
 			"http://ia.media-imdb.com/images/M/MV5BMTQwNjYzMTQ0Ml5BMl5BanBnXkFtZTcwNDUzODM5Nw@@._V1_SY1000_CR0,0,673,1000_AL_.jpg",
 			false,
@@ -102,7 +106,7 @@ var jsonVersionTests = []valueTestPair{
 			"USD",
 			"bMHmZKZbPq6bPBEQFc8MXpiDhF9f7MVxMR",
 			"video/mp4",
-			"en",
+			"language:en ",
 			"2bd8d9dd1a218c7f56717e53fa510efd5a8c089ed1f2675a0f8d0b5b8bb3c1ed383cb9f3aeb9b891789761305293979a",
 			"",
 			false,
@@ -119,7 +123,7 @@ var jsonVersionTests = []valueTestPair{
 			"LBC",
 			"bVPqWwYfvjBHYBouuvknbQMXUZFvLdEs5M",
 			"text/plain",
-			"en",
+			"language:en ",
 			"7c21ee237324e5a50a3425620fe6cc400d3cccc05519867cda1b9c10a977194e31200414d87146bff470bab7f7d75478",
 			"",
 			false,
@@ -136,7 +140,7 @@ var jsonVersionTests = []valueTestPair{
 			"USD",
 			"bHSe3KAvtVSR4m6S11zduuF9XHtwscDjoE",
 			"audio/mpeg",
-			"en",
+			"language:en ",
 			"340e1dda0e8414c21fafbb1f28f2c8b384821fe0d1e2a7143a4810545e64e26a4105042d4d47dc9754b618ecdfe0d191",
 			"http://i.imgur.com/lyKEHZc.jpg",
 			false,
@@ -153,7 +157,7 @@ var jsonVersionTests = []valueTestPair{
 			"LBC",
 			"bRTxtCUpj6TvJHgWcRsGcHaFyrRLkkiXgG",
 			"video/mp4",
-			"en",
+			"language:en ",
 			"fc0dac5cfc526354963ff1769f6e739c4e42a0790420ffab9fa3b6401e93ae5a0515eff960f8c9c272907eda6fcba254",
 			"",
 			true,
@@ -184,40 +188,95 @@ func TestMigrationFromJSON(t *testing.T) {
 		if err != nil {
 			t.Error("Decode error: ", err)
 		}
-		if helper.Claim.GetStream().GetMetadata().GetAuthor() != pair.Claim.Author {
-			t.Error("Author mismatch: expected", pair.Claim.Author, "got", helper.Claim.GetStream().GetMetadata().GetAuthor())
+		if helper.Claim.GetStream().GetAuthor() != pair.Claim.Author {
+			t.Error("Author mismatch: expected", pair.Claim.Author, "got", helper.Claim.GetStream().GetAuthor())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetTitle() != pair.Claim.Title {
-			t.Error("Title mismatch: expected", pair.Claim.Title, "got", helper.Claim.GetStream().GetMetadata().GetTitle())
+		if helper.Claim.GetStream().GetTitle() != pair.Claim.Title {
+			t.Error("Title mismatch: expected", pair.Claim.Title, "got", helper.Claim.GetStream().GetTitle())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetDescription() != pair.Claim.Description {
-			t.Error("Description mismatch: expected", pair.Claim.Description, "got", helper.Claim.GetStream().GetMetadata().GetDescription())
+		if helper.Claim.GetStream().GetDescription() != pair.Claim.Description {
+			t.Error("Description mismatch: expected", pair.Claim.Description, "got", helper.Claim.GetStream().GetDescription())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetLicense() != pair.Claim.License {
-			t.Error("License mismatch: expected", pair.Claim.License, "got", helper.Claim.GetStream().GetMetadata().GetLicense())
+		if helper.Claim.GetStream().GetLicense() != pair.Claim.License {
+			t.Error("License mismatch: expected", pair.Claim.License, "got", helper.Claim.GetStream().GetLicense())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetLicenseUrl() != pair.Claim.LicenseURL {
-			t.Error("LicenseURL mismatch: expected", pair.Claim.LicenseURL, "got", helper.Claim.GetStream().GetMetadata().GetLicenseUrl())
+		if helper.Claim.GetStream().GetLicenseUrl() != pair.Claim.LicenseURL {
+			t.Error("LicenseURL mismatch: expected", pair.Claim.LicenseURL, "got", helper.Claim.GetStream().GetLicenseUrl())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetFee().GetAmount() != pair.Claim.FeeAmount {
-			t.Error("Fee Amount mismatch: expected", pair.Claim.FeeAmount, "got", helper.Claim.GetStream().GetMetadata().GetFee().GetAmount())
+		if helper.Claim.GetStream().GetFee().GetAmount() != uint64(pair.Claim.FeeAmount*100000000) {
+			t.Error("Fee Amount mismatch: expected", pair.Claim.FeeAmount, "got", helper.Claim.GetStream().GetFee().GetAmount())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetFee().GetCurrency().String() != pair.Claim.FeeCurrency {
-			t.Error("Fee Currency mismatch: expected", pair.Claim.FeeCurrency, "got", helper.Claim.GetStream().GetMetadata().GetFee().GetCurrency())
+		if helper.Claim.GetStream().GetFee().GetCurrency().String() != pair.Claim.FeeCurrency {
+			t.Error("Fee Currency mismatch: expected", pair.Claim.FeeCurrency, "got", helper.Claim.GetStream().GetFee().GetCurrency())
 		}
-		hexaddress := base58.Encode(helper.Claim.GetStream().GetMetadata().GetFee().GetAddress())
+		hexaddress := base58.Encode(helper.Claim.GetStream().GetFee().GetAddress())
 		if hexaddress != pair.Claim.FeeAddress {
 			t.Error("Fee Address mismatch: expected", pair.Claim.FeeAddress, "got", hexaddress)
 		}
-		if helper.Claim.GetStream().GetSource().GetContentType() != pair.Claim.ContentType {
-			t.Error("ContentType mismatch: expected", pair.Claim.ContentType, "got", helper.Claim.GetStream().GetSource().GetContentType())
+		if helper.Claim.GetStream().GetMediaType() != pair.Claim.ContentType {
+			t.Error("ContentType mismatch: expected", pair.Claim.ContentType, "got", helper.Claim.GetStream().GetMediaType())
 		}
-		if helper.Claim.GetStream().GetMetadata().GetLanguage().String() != pair.Claim.Language {
-			t.Error("Language mismatch: expected ", pair.Claim.Language, " got ", helper.Claim.GetStream().GetMetadata().GetLanguage().String())
+		if helper.Claim.GetStream().GetLanguages()[0].String() != pair.Claim.Language {
+			t.Error("Language mismatch: expected ", pair.Claim.Language, " got ", helper.Claim.GetStream().GetLanguages()[0].String())
 		}
-		content := hex.EncodeToString(helper.Claim.GetStream().GetSource().GetSource())
+		content := hex.EncodeToString(helper.Claim.GetStream().GetSdHash())
 		if content != pair.Claim.LbrySDHash {
 			t.Error("Source mismatch: expected", pair.Claim.LbrySDHash, "got", content)
 		}
 	}
+}
+
+func TestMigrationFromV1YTSync(t *testing.T) {
+	claimHex := "080110011aee04080112a604080410011a2b4865726520617265203520526561736f6e73204920e29da4efb88f204e657874636c6f7564207c20544c4722920346696e64206f7574206d6f72652061626f7574204e657874636c6f75643a2068747470733a2f2f6e657874636c6f75642e636f6d2f0a0a596f752063616e2066696e64206d65206f6e20746865736520736f6369616c733a0a202a20466f72756d733a2068747470733a2f2f666f72756d2e6865617679656c656d656e742e696f2f0a202a20506f64636173743a2068747470733a2f2f6f6666746f706963616c2e6e65740a202a2050617472656f6e3a2068747470733a2f2f70617472656f6e2e636f6d2f7468656c696e757867616d65720a202a204d657263683a2068747470733a2f2f746565737072696e672e636f6d2f73746f7265732f6f6666696369616c2d6c696e75782d67616d65720a202a205477697463683a2068747470733a2f2f7477697463682e74762f786f6e64616b0a202a20547769747465723a2068747470733a2f2f747769747465722e636f6d2f7468656c696e757867616d65720a0a2e2e2e0a68747470733a2f2f7777772e796f75747562652e636f6d2f77617463683f763d4672546442434f535f66632a0f546865204c696e75782047616d6572321c436f7079726967687465642028636f6e7461637420617574686f722938004a2968747470733a2f2f6265726b2e6e696e6a612f7468756d626e61696c732f4672546442434f535f666352005a001a41080110011a30040e8ac6e89c061f982528c23ad33829fd7146435bf7a4cc22f0bff70c4fe0b91fd36da9a375e3e1c171db825bf5d1f32209766964656f2f6d70342a5c080110031a4062b2dd4c45e364030fbfad1a6fefff695ebf20ea33a5381b947753e2a0ca359989a5cc7d15e5392a0d354c0b68498382b2701b22c03beb8dcb91089031b871e72214feb61536c007cdf4faeeaab4876cb397feaf6b51"
+	claim, err := DecodeClaimHex(claimHex, "lbrycrd_main")
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Assert(t, claim.GetStream().GetTitle() == "Here are 5 Reasons I ❤️ Nextcloud | TLG")
+	assert.Assert(t, claim.GetStream().GetDescription() == "Find out more about Nextcloud: https://nextcloud.com/\n\nYou can find me on these socials:\n * Forums: https://forum.heavyelement.io/\n * Podcast: https://offtopical.net\n * Patreon: https://patreon.com/thelinuxgamer\n * Merch: https://teespring.com/stores/official-linux-gamer\n * Twitch: https://twitch.tv/xondak\n * Twitter: https://twitter.com/thelinuxgamer\n\n...\nhttps://www.youtube.com/watch?v=FrTdBCOS_fc")
+	assert.Assert(t, claim.GetStream().GetLicense() == "Copyrighted (contact author)")
+	assert.Assert(t, claim.GetStream().GetAuthor() == "The Linux Gamer")
+	//?assert.Assert(t, claim.GetStream().GetLanguages()[0])
+	assert.Assert(t, claim.GetStream().GetMediaType() == "video/mp4")
+	assert.Assert(t, claim.GetStream().GetThumbnailUrl() == "https://berk.ninja/thumbnails/FrTdBCOS_fc")
+	sdHashBytes, err := hex.DecodeString("040e8ac6e89c061f982528c23ad33829fd7146435bf7a4cc22f0bff70c4fe0b91fd36da9a375e3e1c171db825bf5d1f3")
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Assert(t, bytes.Equal(claim.GetStream().GetSdHash(), sdHashBytes))
+
+	channelHex := "08011002225e0801100322583056301006072a8648ce3d020106052b8104000a034200043878b1edd4a1373149909ef03f4339f6da9c2bd2214c040fd2e530463ffe66098eca14fc70b50ff3aefd106049a815f595ed5a13eda7419ad78d9ed7ae473f17"
+	channel, err := DecodeClaimHex(channelHex, "lbrycrd_main")
+	if err != nil {
+		t.Error(err)
+	}
+	pubKeyBytes, err := hex.DecodeString("3056301006072a8648ce3d020106052b8104000a034200043878b1edd4a1373149909ef03f4339f6da9c2bd2214c040fd2e530463ffe66098eca14fc70b50ff3aefd106049a815f595ed5a13eda7419ad78d9ed7ae473f17")
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Assert(t, bytes.Equal(pubKeyBytes, channel.GetChannel().GetPublicKey()))
+}
+
+func TestMigrationFromV1UnsignedWithFee(t *testing.T) {
+	claimHex := "080110011ad6010801127c080410011a08727067206d69646922046d6964692a08727067206d696469322e437265617469766520436f6d6d6f6e73204174747269627574696f6e20342e3020496e7465726e6174696f6e616c38004224080110011a19553f00bc139bbf40de425f94d51fffb34c1bea6d9171cd374c25000070414a0052005a001a54080110011a301f41eb0312aa7e8a5ce49349bc77d811da975833719d751523b19f123fc3d528d6a94e3446ccddb7b9329f27a9cad7e3221c6170706c69636174696f6e2f782d7a69702d636f6d70726573736564"
+	claim, err := DecodeClaimHex(claimHex, "lbrycrd_main")
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Assert(t, claim.GetStream().GetTitle() == "rpg midi")
+	assert.Assert(t, claim.GetStream().GetDescription() == "midi")
+	assert.Assert(t, claim.GetStream().GetLicense() == "Creative Commons Attribution 4.0 International")
+	assert.Assert(t, claim.GetStream().GetAuthor() == "rpg midi")
+	//assert.Assert(t, claim.GetStream().GetLanguage() == "en")
+	assert.Assert(t, claim.GetStream().GetMediaType() == "application/x-zip-compressed")
+	sdHashBytes, err := hex.DecodeString("1f41eb0312aa7e8a5ce49349bc77d811da975833719d751523b19f123fc3d528d6a94e3446ccddb7b9329f27a9cad7e3")
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Assert(t, bytes.Equal(claim.GetStream().GetSdHash(), sdHashBytes))
+	feeAddressBytes, err := address.DecodeAddress("bJUQ9MxS9N6M29zsA5GTpVSDzsnPjMBBX9", "lbrycrd_main")
+	assert.Assert(t, bytes.Equal(claim.GetStream().GetFee().GetAddress(), feeAddressBytes[:]))
+	assert.Assert(t, claim.GetStream().GetFee().GetAmount() == 1500000000)
+	assert.Assert(t, claim.GetStream().GetFee().GetCurrency().String() == "LBC")
+
 }

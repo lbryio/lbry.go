@@ -2,43 +2,50 @@ package claim
 
 import (
 	"encoding/hex"
-	"errors"
+
+	"github.com/lbryio/lbry.go/extras/errors"
+	legacy "github.com/lbryio/types/v1/go"
+	pb "github.com/lbryio/types/v2/go"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lbryio/types/go"
 )
 
-func (c *ClaimHelper) Serialized() ([]byte, error) {
+func (c *ClaimHelper) serialized() ([]byte, error) {
 	serialized := c.String()
 	if serialized == "" {
-		return nil, errors.New("not initialized")
+		return nil, errors.Err("not initialized")
 	}
-	v := c.GetVersion()
-	t := c.GetClaimType()
 
-	return proto.Marshal(
-		&pb.Claim{
-			Version:            &v,
-			ClaimType:          &t,
-			Stream:             c.GetStream(),
-			Certificate:        c.GetCertificate(),
-			PublisherSignature: c.GetPublisherSignature()})
+	if c.LegacyClaim != nil {
+		return proto.Marshal(c.getLegacyProtobuf())
+	}
+
+	return proto.Marshal(c.getProtobuf())
 }
 
-func (c *ClaimHelper) GetProtobuf() *pb.Claim {
-	v := c.GetVersion()
-	t := c.GetClaimType()
+func (c *ClaimHelper) getProtobuf() *pb.Claim {
+	if c.GetChannel() != nil {
+		return &pb.Claim{Type: &pb.Claim_Channel{Channel: c.GetChannel()}}
+	} else if c.GetStream() != nil {
+		return &pb.Claim{Type: &pb.Claim_Stream{Stream: c.GetStream()}}
+	}
 
-	return &pb.Claim{
+	return nil
+}
+
+func (c *ClaimHelper) getLegacyProtobuf() *legacy.Claim {
+	v := c.LegacyClaim.GetVersion()
+	t := c.LegacyClaim.GetClaimType()
+	return &legacy.Claim{
 		Version:            &v,
 		ClaimType:          &t,
-		Stream:             c.GetStream(),
-		Certificate:        c.GetCertificate(),
-		PublisherSignature: c.GetPublisherSignature()}
+		Stream:             c.LegacyClaim.GetStream(),
+		Certificate:        c.LegacyClaim.GetCertificate(),
+		PublisherSignature: c.LegacyClaim.GetPublisherSignature()}
 }
 
-func (c *ClaimHelper) SerializedHexString() (string, error) {
-	serialized, err := c.Serialized()
+func (c *ClaimHelper) serializedHexString() (string, error) {
+	serialized, err := c.serialized()
 	if err != nil {
 		return "", err
 	}
@@ -46,21 +53,26 @@ func (c *ClaimHelper) SerializedHexString() (string, error) {
 	return serialized_hex, nil
 }
 
-func (c *ClaimHelper) SerializedNoSignature() ([]byte, error) {
+func (c *ClaimHelper) serializedNoSignature() ([]byte, error) {
 	if c.String() == "" {
-		return nil, errors.New("not initialized")
+		return nil, errors.Err("not initialized")
 	}
-	if c.GetPublisherSignature() == nil {
-		serialized, err := c.Serialized()
+	if c.Signature == nil {
+		serialized, err := c.serialized()
 		if err != nil {
 			return nil, err
 		}
 		return serialized, nil
 	} else {
+		if c.LegacyClaim != nil {
+			clone := &legacy.Claim{}
+			proto.Merge(clone, c.getLegacyProtobuf())
+			proto.ClearAllExtensions(clone.PublisherSignature)
+			clone.PublisherSignature = nil
+			return proto.Marshal(clone)
+		}
 		clone := &pb.Claim{}
-		proto.Merge(clone, c.GetProtobuf())
-		proto.ClearAllExtensions(clone.PublisherSignature)
-		clone.PublisherSignature = nil
+		proto.Merge(clone, c.getProtobuf())
 		return proto.Marshal(clone)
 	}
 }

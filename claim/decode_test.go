@@ -3,7 +3,16 @@ package claim
 import (
 	"encoding/hex"
 	"testing"
+
+	pb "github.com/lbryio/types/v2/go"
+
+	"github.com/btcsuite/btcd/btcec"
 )
+
+type rawClaim struct {
+	Hex     string
+	ClaimID string
+}
 
 var raw_claims = []string{
 	"08011002225e0801100322583056301006072a8648ce3d020106052b8104000a03420004d015365a40f3e5c03c87227168e5851f44659837bcf6a3398ae633bc37d04ee19baeb26dc888003bd728146dbea39f5344bf8c52cedaf1a3a1623a0166f4a367",
@@ -23,7 +32,7 @@ func TestDecodeClaims(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		serializedHex, err := claim.SerializedHexString()
+		serializedHex, err := claim.serializedHexString()
 		if err != nil {
 			t.Error(err)
 		}
@@ -40,11 +49,48 @@ func TestStripSignature(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	noSig, err := claim.SerializedNoSignature()
+	noSig, err := claim.serializedNoSignature()
 	if err != nil {
 		t.Error(err)
 	}
 	if hex.EncodeToString(noSig) != raw_claims[2] {
 		t.Error("failed to remove signature")
 	}
+}
+
+func TestCreateChannelClaim(t *testing.T) {
+	private, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Error(err)
+	}
+	pubKeyBytes, err := PublicKeyToDER(private.PubKey())
+	if err != nil {
+		t.Error(err)
+	}
+	claim := &ClaimHelper{Claim: newChannelClaim(), Version: NoSig}
+	claim.GetChannel().PublicKey = pubKeyBytes
+	claim.GetChannel().Title = "Test Channel Title"
+	claim.GetChannel().Description = "Test Channel Description"
+	claim.GetChannel().CoverUrl = "http://testcoverurl.com"
+	claim.GetChannel().Tags = []string{"TagA", "TagB", "TagC"}
+	claim.GetChannel().Languages = []*pb.Language{{Language: pb.Language_en}, {Language: pb.Language_es}}
+	claim.GetChannel().ThumbnailUrl = "http://thumbnailurl.com"
+	claim.GetChannel().ContactEmail = "test@test.com"
+	claim.GetChannel().HomepageUrl = "http://homepageurl.com"
+	claim.GetChannel().Locations = []*pb.Location{{Country: pb.Location_AD}, {Country: pb.Location_US, State: "NJ", City: "some city"}}
+
+	rawClaim, err := claim.CompileValue()
+	if err != nil {
+		t.Error(err)
+	}
+
+	claim, err = DecodeClaimBytes(rawClaim, "lbrycrd_main")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if bytes, err := claim.CompileValue(); err != nil || len(bytes) != len(rawClaim) {
+		t.Error("decoded claim does not match original")
+	}
+
 }
