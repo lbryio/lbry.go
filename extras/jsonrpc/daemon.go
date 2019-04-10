@@ -162,6 +162,14 @@ func (d *Client) AccountFund(fromAccount string, toAccount string, amount string
 	})
 }
 
+func (d *Client) AccountCreate(accountName string, singleKey bool) (*AccountCreateResponse, error) {
+	response := new(AccountCreateResponse)
+	return response, d.call(response, "account_create", map[string]interface{}{
+		"account_name": accountName,
+		"single_key":   singleKey,
+	})
+}
+
 func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) {
 	response := new(AddressUnusedResponse)
 	return response, d.call(response, "address_unused", map[string]interface{}{
