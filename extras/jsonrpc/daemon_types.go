@@ -200,6 +200,12 @@ type AccountListResponse struct {
 }
 type AccountBalanceResponse string
 
+type AccountCreateResponse struct {
+	Account
+	Seed   string `json:"seed"`
+	Status string `json:"status"`
+}
+
 type Transaction struct {
 	Address       string            `json:"address"`
 	Amount        string            `json:"amount"`
