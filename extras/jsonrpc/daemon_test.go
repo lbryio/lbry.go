@@ -216,3 +216,14 @@ func TestClient_AccountFund(t *testing.T) {
 	}
 	log.Infof("%+v", *got)
 }
+
+func TestClient_AccountCreate(t *testing.T) {
+	d := NewClient("")
+	account, err := d.AccountCreate("test@lbry.com", false)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Status != "created" {
+		t.Fail()
+	}
+}
