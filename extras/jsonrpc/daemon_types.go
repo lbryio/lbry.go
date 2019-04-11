@@ -96,10 +96,6 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 	case reflect.TypeOf(lbryschema.Fee_Currency(0)):
 		val, err := getEnumVal(lbryschema.Fee_Currency_value, data)
 		return lbryschema.Fee_Currency(val), err
-
-	case reflect.TypeOf(lbryschema.Claim_Type_name):
-		val, err := getEnumVal(lbryschema.Claim_Type_value, data)
-		return lbryschema.Claim_Type_name[val], err
 	}
 
 	return data, nil
