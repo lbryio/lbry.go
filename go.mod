@@ -20,7 +20,7 @@ require (
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
-	github.com/lbryio/types v0.0.0-20190304154608-a6f2fd6d5f38
+	github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
