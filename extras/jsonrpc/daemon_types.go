@@ -19,9 +19,9 @@ const (
 )
 
 type Fee struct {
-	Currency Currency        `json:"currency"`
-	Amount   decimal.Decimal `json:"amount"`
-	Address  *string         `json:"address"`
+	FeeCurrency Currency        `json:"fee_currency"`
+	FeeAmount   decimal.Decimal `json:"fee_amount"`
+	FeeAddress  *string         `json:"fee_address"`
 }
 
 type File struct {

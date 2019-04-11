@@ -206,23 +206,23 @@ type Locations struct {
 	Longitude  *string `json:"longitude,omitempty"`
 }
 type ClaimCreateOptions struct {
-	Title         string     `json:"title"`
-	Description   string     `json:"description"`
-	Tags          []string   `json:"tags,omitempty"`
-	Languages     []string   `json:"language"`
-	Locations     *Locations `json:"locations,omitempty"`
-	ThumbnailURL  *string    `json:"thumbnail_url,omitempty"`
-	AccountID     *string    `json:"account_id,omitempty"`
-	ClaimAddress  *string    `json:"claim_address,omitempty"`
-	ChangeAddress *string    `json:"change_address,omitempty"`
-	Preview       *bool      `json:"preview,omitempty"`
+	Title         string      `json:"title"`
+	Description   string      `json:"description"`
+	Tags          []string    `json:"tags,omitempty"`
+	Languages     []string    `json:"languages"`
+	Locations     []Locations `json:"locations,omitempty"`
+	ThumbnailURL  *string     `json:"thumbnail_url,omitempty"`
+	AccountID     *string     `json:"account_id,omitempty"`
+	ClaimAddress  *string     `json:"claim_address,omitempty"`
+	ChangeAddress *string     `json:"change_address,omitempty"`
+	Preview       *bool       `json:"preview,omitempty"`
 }
 
 type ChannelCreateOptions struct {
-	*ClaimCreateOptions `json:",flatten"`
-	ContactEmail        *string `json:"contact_email,omitempty"`
-	HomepageURL         *string `json:"homepage_url,omitempty"`
-	CoverURL            *string `json:"cover_url,omitempty"`
+	ClaimCreateOptions `json:",flatten"`
+	ContactEmail       *string `json:"contact_email,omitempty"`
+	HomepageURL        *string `json:"homepage_url,omitempty"`
+	CoverURL           *string `json:"cover_url,omitempty"`
 }
 
 func (d *Client) ChannelCreate(name string, bid float64, options *ChannelCreateOptions) (*PublishResponse, error) {
@@ -242,27 +242,27 @@ func (d *Client) ChannelCreate(name string, bid float64, options *ChannelCreateO
 }
 
 type StreamCreateOptions struct {
-	*ClaimCreateOptions `json:",flatten"`
-	Fee                 *Fee        `json:"fee,omitempty"`
-	Author              *string     `json:"author"`
-	License             *string     `json:"license"`
-	LicenseURL          *string     `json:"license_url,omitempty"`
-	StreamType          *streamType `json:"stream_type,omitempty"`
-	ReleaseTime         *int        `json:"release_time,omitempty"`
-	Duration            *int        `json:"duration,omitempty"`
-	ImageWidth          *int        `json:"image_width,omitempty"`
-	ImageHeigth         *int        `json:"image_heigth,omitempty"`
-	VideoWidth          *int        `json:"video_width,omitempty"`
-	VideoHeight         *int        `json:"video_height,omitempty"`
-	Preview             *string     `json:"preview,omitempty"`
-	AllowDuplicateName  *bool       `json:"allow_duplicate_name,omitempty"`
-	ChannelName         *string     `json:"channel_name,omitempty"`
-	ChannelID           *string     `json:"channel_id,omitempty"`
-	ChannelAccountID    *string     `json:"channel_account_id,omitempty"`
+	ClaimCreateOptions `json:",flatten"`
+	Fee                *Fee        `json:",omitempty,flatten"`
+	Author             *string     `json:"author,omitempty"`
+	License            *string     `json:"license,omitempty"`
+	LicenseURL         *string     `json:"license_url,omitempty"`
+	StreamType         *streamType `json:"stream_type,omitempty"`
+	ReleaseTime        *int        `json:"release_time,omitempty"`
+	Duration           *int        `json:"duration,omitempty"`
+	ImageWidth         *int        `json:"image_width,omitempty"`
+	ImageHeight        *int        `json:"image_height,omitempty"`
+	VideoWidth         *int        `json:"video_width,omitempty"`
+	VideoHeight        *int        `json:"video_height,omitempty"`
+	Preview            *string     `json:"preview,omitempty"`
+	AllowDuplicateName *bool       `json:"allow_duplicate_name,omitempty"`
+	ChannelName        *string     `json:"channel_name,omitempty"`
+	ChannelID          *string     `json:"channel_id,omitempty"`
+	ChannelAccountID   *string     `json:"channel_account_id,omitempty"`
 }
 
-func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
+func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
 	args := struct {
 		Name                 string `json:"name"`
 		Bid                  string `json:"bid"`
@@ -287,8 +287,6 @@ func (d *Client) StreamAbandon(txID string, nOut uint64, accountID *string, bloc
 	})
 	if err != nil {
 		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
 	}
 
 	return response, nil
@@ -328,10 +326,7 @@ func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blo
 	})
 	if err != nil {
 		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
 	}
-
 	return response, nil
 }
 
@@ -354,10 +349,7 @@ func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*Clai
 	})
 	if err != nil {
 		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
 	}
-
 	return response, nil
 }
 
