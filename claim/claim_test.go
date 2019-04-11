@@ -13,15 +13,15 @@ func TestClaimHelper(t *testing.T) {
 			t.Error(err)
 		}
 
-		_, err = helper.Serialized()
+		_, err = helper.serialized()
 		if err != nil {
 			t.Error(err)
 		}
-		_, err = helper.SerializedHexString()
+		_, err = helper.serializedHexString()
 		if err != nil {
 			t.Error(err)
 		}
-		_, err = helper.SerializedNoSignature()
+		_, err = helper.serializedNoSignature()
 		if err != nil {
 			t.Error(err)
 		}

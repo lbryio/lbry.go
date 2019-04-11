@@ -1,15 +1,16 @@
 package address
 
 import (
-	"errors"
-
+	"github.com/lbryio/lbry.go/extras/errors"
 	"github.com/lbryio/lbryschema.go/address/base58"
 )
 
 const lbrycrdMainPubkeyPrefix = byte(85)
 const lbrycrdMainScriptPrefix = byte(122)
+
 const lbrycrdTestnetPubkeyPrefix = byte(111)
 const lbrycrdTestnetScriptPrefix = byte(196)
+
 const lbrycrdRegtestPubkeyPrefix = byte(111)
 const lbrycrdRegtestScriptPrefix = byte(196)
 
@@ -17,6 +18,7 @@ const prefixLength = 1
 const pubkeyLength = 20
 const checksumLength = 4
 const addressLength = prefixLength + pubkeyLength + checksumLength
+
 const lbrycrdMain = "lbrycrd_main"
 const lbrycrdTestnet = "lbrycrd_testnet"
 const lbrycrdRegtest = "lbrycrd_regtest"
@@ -52,16 +54,16 @@ func ChecksumIsValid(address [addressLength]byte) bool {
 
 func ValidateAddress(address [addressLength]byte, blockchainName string) ([addressLength]byte, error) {
 	if blockchainName != lbrycrdMain && blockchainName != lbrycrdTestnet && blockchainName != lbrycrdRegtest {
-		return address, errors.New("invalid blockchain name")
+		return address, errors.Err("invalid blockchain name")
 	}
 	if !PrefixIsValid(address, blockchainName) {
-		return address, errors.New("invalid prefix")
+		return address, errors.Err("invalid prefix")
 	}
 	if !PubKeyIsValid(address) {
-		return address, errors.New("invalid pubkey")
+		return address, errors.Err("invalid pubkey")
 	}
 	if !ChecksumIsValid(address) {
-		return address, errors.New("invalid address checksum")
+		return address, errors.Err("invalid address checksum")
 	}
 	return address, nil
 }
