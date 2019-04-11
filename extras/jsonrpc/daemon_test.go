@@ -56,30 +56,31 @@ func TestClient_Publish(t *testing.T) {
 		t.Error(err)
 	}
 	address := string(*addressResponse)
-	got, err := d.StreamCreate("test"+string(time.Now().Unix()), "/home/niko/work/allClaims.txt", 14.37, StreamCreateOptions{
-		ClaimCreateOptions: &ClaimCreateOptions{
-			Title:       "This is a Test Title" + time.Now().String(),
+	got, err := d.StreamCreate("test"+fmt.Sprintf("%d", time.Now().Unix()), "/home/niko/work2/2019-04-11_17-36-25-925698088.png", 14.37, StreamCreateOptions{
+		ClaimCreateOptions: ClaimCreateOptions{
+			Title:       "This is a Test Title" + fmt.Sprintf("%d", time.Now().Unix()),
 			Description: "My Special Description",
 			Tags:        []string{"nsfw", "test"},
 			Languages:   []string{"en-US", "fr-CH"},
-			Locations: &Locations{
+			Locations: []Locations{{
 				Country:    util.PtrToString("CH"),
 				State:      util.PtrToString("Ticino"),
 				City:       util.PtrToString("Lugano"),
 				PostalCode: util.PtrToString("6900"),
 				Latitude:   nil,
 				Longitude:  nil,
-			},
-			ThumbnailURL:  util.PtrToString("https://scrn.storni.info/2019-01-18_16-37-39-098537783.png"),
-			AccountID:     nil,
-			ClaimAddress:  &address,
-			ChangeAddress: &address,
-			Preview:       nil,
+			}},
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-01-18_16-37-39-098537783.png"),
+			AccountID:    nil,
+			ClaimAddress: &address,
+			//ChangeAddress: &address,
+			Preview: nil,
 		},
+
 		Fee: &Fee{
-			Currency: "LBC",
-			Amount:   decimal.NewFromFloat(1.0),
-			Address:  &address,
+			FeeCurrency: "LBC",
+			FeeAmount:   decimal.NewFromFloat(1.0),
+			FeeAddress:  &address,
 		},
 		Author:             util.PtrToString("Niko"),
 		License:            util.PtrToString("FREE"),
@@ -88,13 +89,13 @@ func TestClient_Publish(t *testing.T) {
 		ReleaseTime:        nil,
 		Duration:           nil,
 		ImageWidth:         nil,
-		ImageHeigth:        nil,
+		ImageHeight:        nil,
 		VideoWidth:         nil,
 		VideoHeight:        nil,
 		Preview:            nil,
 		AllowDuplicateName: nil,
 		ChannelName:        nil,
-		ChannelID:          util.PtrToString("bda0520bff61e4a70c966d7298e6b89107cf8bed"),
+		ChannelID:          util.PtrToString("5205b93465014f9f8ae3e7b1e5a7ad46f925163d"),
 		ChannelAccountID:   nil,
 	})
 	if err != nil {
