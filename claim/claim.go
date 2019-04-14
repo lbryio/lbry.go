@@ -126,6 +126,7 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 			}
 			if legacy_claim_pb.GetPublisherSignature() != nil {
 				version = WithSig
+				claimID = legacy_claim_pb.GetPublisherSignature().GetCertificateId()
 				signature = legacy_claim_pb.GetPublisherSignature().GetSignature()
 			}
 			if legacy_claim_pb.GetCertificate() != nil {
