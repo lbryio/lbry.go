@@ -144,6 +144,20 @@ func (d *Client) AccountList() (*AccountListResponse, error) {
 	return response, d.call(response, "account_list", map[string]interface{}{})
 }
 
+type AccountSettings struct {
+	Default          bool   `json:"default"`
+	NewName          string `json:"new_name"`
+	ReceivingGap     int    `json:"receiving_gap"`
+	ReceivingMaxUses int    `json:"receiving_max_uses"`
+	ChangeGap        int    `json:"change_gap"`
+	ChangeMaxUses    int    `json:"change_max_uses"`
+}
+
+func (d *Client) AccountSet(accountID string, settings AccountSettings) (*Account, error) {
+	response := new(Account)
+	return response, d.call(response, "account_list", map[string]interface{}{})
+}
+
 func (d *Client) AccountBalance(account *string) (*AccountBalanceResponse, error) {
 	response := new(AccountBalanceResponse)
 	return response, d.call(response, "account_balance", map[string]interface{}{
@@ -197,7 +211,7 @@ var (
 	StreamTypeImage = streamType("image")
 )
 
-type Locations struct {
+type Location struct {
 	Country    *string `json:"country,omitempty"`
 	State      *string `json:"state,omitempty"`
 	City       *string `json:"city,omitempty"`
@@ -206,16 +220,15 @@ type Locations struct {
 	Longitude  *string `json:"longitude,omitempty"`
 }
 type ClaimCreateOptions struct {
-	Title         string      `json:"title"`
-	Description   string      `json:"description"`
-	Tags          []string    `json:"tags,omitempty"`
-	Languages     []string    `json:"languages"`
-	Locations     []Locations `json:"locations,omitempty"`
-	ThumbnailURL  *string     `json:"thumbnail_url,omitempty"`
-	AccountID     *string     `json:"account_id,omitempty"`
-	ClaimAddress  *string     `json:"claim_address,omitempty"`
-	ChangeAddress *string     `json:"change_address,omitempty"`
-	Preview       *bool       `json:"preview,omitempty"`
+	Title        string     `json:"title"`
+	Description  string     `json:"description"`
+	Tags         []string   `json:"tags,omitempty"`
+	Languages    []string   `json:"languages"`
+	Locations    []Location `json:"locations,omitempty"`
+	ThumbnailURL *string    `json:"thumbnail_url,omitempty"`
+	AccountID    *string    `json:"account_id,omitempty"`
+	ClaimAddress *string    `json:"claim_address,omitempty"`
+	Preview      *bool      `json:"preview,omitempty"`
 }
 
 type ChannelCreateOptions struct {
@@ -225,13 +238,13 @@ type ChannelCreateOptions struct {
 	CoverURL           *string `json:"cover_url,omitempty"`
 }
 
-func (d *Client) ChannelCreate(name string, bid float64, options *ChannelCreateOptions) (*PublishResponse, error) {
+func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*PublishResponse, error) {
 	response := new(PublishResponse)
 	args := struct {
-		Name                  string `json:"name"`
-		Bid                   string `json:"bid"`
-		FilePath              string `json:"file_path,omitempty"`
-		*ChannelCreateOptions `json:",flatten"`
+		Name                 string `json:"name"`
+		Bid                  string `json:"bid"`
+		FilePath             string `json:"file_path,omitempty"`
+		ChannelCreateOptions `json:",flatten"`
 	}{
 		Name:                 name,
 		Bid:                  fmt.Sprintf("%.6f", bid),
