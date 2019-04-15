@@ -62,7 +62,7 @@ func TestClient_Publish(t *testing.T) {
 			Description: "My Special Description",
 			Tags:        []string{"nsfw", "test"},
 			Languages:   []string{"en-US", "fr-CH"},
-			Locations: []Locations{{
+			Locations: []Location{{
 				Country:    util.PtrToString("CH"),
 				State:      util.PtrToString("Ticino"),
 				City:       util.PtrToString("Lugano"),
@@ -73,8 +73,7 @@ func TestClient_Publish(t *testing.T) {
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-01-18_16-37-39-098537783.png"),
 			AccountID:    nil,
 			ClaimAddress: &address,
-			//ChangeAddress: &address,
-			Preview: nil,
+			Preview:      nil,
 		},
 
 		Fee: &Fee{
@@ -106,7 +105,23 @@ func TestClient_Publish(t *testing.T) {
 
 func TestClient_ChannelCreate(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelCreate("@Test", 13.37, nil)
+	got, err := d.ChannelCreate("@Test", 13.37, ChannelCreateOptions{
+		ClaimCreateOptions: ClaimCreateOptions{
+			Title:       "Mess with the channels",
+			Description: "And you'll get what you deserve",
+			Tags:        []string{"we", "got", "tags"},
+			Languages:   []string{"en-US"},
+			Locations: []Location{{
+				Country: util.PtrToString("CH"),
+				State:   util.PtrToString("Ticino"),
+				City:    util.PtrToString("Lugano"),
+			}},
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		},
+		ContactEmail: util.PtrToString("niko@lbry.com"),
+		HomepageURL:  util.PtrToString("https://lbry.com"),
+		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+	})
 	if err != nil {
 		t.Error(err)
 	}
@@ -115,7 +130,23 @@ func TestClient_ChannelCreate(t *testing.T) {
 
 func TestClient_ChannelAbandon(t *testing.T) {
 	d := NewClient("")
-	channelResponse, err := d.ChannelCreate("@TestToDelete", 13.37, nil)
+	channelResponse, err := d.ChannelCreate("@TestToDelete", 13.37, ChannelCreateOptions{
+		ClaimCreateOptions: ClaimCreateOptions{
+			Title:       "Mess with the channels",
+			Description: "And you'll get what you deserve",
+			Tags:        []string{"we", "got", "tags"},
+			Languages:   []string{"en-US"},
+			Locations: []Location{{
+				Country: util.PtrToString("CH"),
+				State:   util.PtrToString("Ticino"),
+				City:    util.PtrToString("Lugano"),
+			}},
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		},
+		ContactEmail: util.PtrToString("niko@lbry.com"),
+		HomepageURL:  util.PtrToString("https://lbry.com"),
+		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+	})
 	if err != nil {
 		t.Error(err)
 	}
@@ -149,7 +180,7 @@ func TestClient_ClaimList(t *testing.T) {
 
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimSearch(nil, util.PtrToString("4742f25e6d51b4b0483d5b8cd82e3ea121dacde9"), nil, nil)
+	got, err := d.ClaimSearch(nil, util.PtrToString("d3d84b191b05b1915db3f78150c5d42d172f4c5f"), nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,7 +216,7 @@ func TestClient_Version(t *testing.T) {
 
 func TestClient_Resolve(t *testing.T) {
 	d := NewClient("")
-	got, err := d.Resolve("test")
+	got, err := d.Resolve("crashtest")
 	if err != nil {
 		t.Error(err)
 	}
@@ -218,6 +249,20 @@ func TestClient_AccountFund(t *testing.T) {
 	log.Infof("%+v", *got)
 }
 
+func TestClient_AccountSet(t *testing.T) {
+	d := NewClient("")
+	accounts, err := d.AccountList()
+	if err != nil {
+		t.Error(err)
+	}
+	account := (accounts.LBCRegtest)[0].ID
+
+	got, err := d.AccountSet(account, AccountSettings{ChangeMaxUses: 10000})
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
 func TestClient_AccountCreate(t *testing.T) {
 	d := NewClient("")
 	account, err := d.AccountCreate("test@lbry.com", false)
