@@ -238,8 +238,8 @@ type ChannelCreateOptions struct {
 	CoverURL           *string `json:"cover_url,omitempty"`
 }
 
-func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
+func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
 	args := struct {
 		Name                 string `json:"name"`
 		Bid                  string `json:"bid"`
