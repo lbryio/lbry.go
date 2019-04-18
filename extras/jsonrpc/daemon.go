@@ -238,8 +238,8 @@ type ChannelCreateOptions struct {
 	CoverURL           *string `json:"cover_url,omitempty"`
 }
 
-func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
+func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
 	args := struct {
 		Name                 string `json:"name"`
 		Bid                  string `json:"bid"`
@@ -261,12 +261,13 @@ type StreamCreateOptions struct {
 	License            *string     `json:"license,omitempty"`
 	LicenseURL         *string     `json:"license_url,omitempty"`
 	StreamType         *streamType `json:"stream_type,omitempty"`
-	ReleaseTime        *int        `json:"release_time,omitempty"`
-	Duration           *int        `json:"duration,omitempty"`
-	ImageWidth         *int        `json:"image_width,omitempty"`
-	ImageHeight        *int        `json:"image_height,omitempty"`
-	VideoWidth         *int        `json:"video_width,omitempty"`
-	VideoHeight        *int        `json:"video_height,omitempty"`
+	ReleaseTime        *int64      `json:"release_time,omitempty"`
+	Duration           *uint64     `json:"duration,omitempty"`
+	VideoDuration      *uint64     `json:"video_duration,omitempty"` //TODO: this shouldn't exist
+	ImageWidth         *uint       `json:"image_width,omitempty"`
+	ImageHeight        *uint       `json:"image_height,omitempty"`
+	VideoWidth         *uint       `json:"video_width,omitempty"`
+	VideoHeight        *uint       `json:"video_height,omitempty"`
 	Preview            *string     `json:"preview,omitempty"`
 	AllowDuplicateName *bool       `json:"allow_duplicate_name,omitempty"`
 	ChannelName        *string     `json:"channel_name,omitempty"`

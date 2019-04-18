@@ -262,34 +262,30 @@ type Support struct {
 }
 
 type Claim struct {
-	Address          string    `json:"address"`
-	Amount           string    `json:"amount"`
-	ChannelName      *string   `json:"channel_name,omitempty"`
-	ClaimID          string    `json:"claim_id"`
-	ClaimSequence    int64     `json:"claim_sequence"`
-	DecodedClaim     bool      `json:"decoded_claim"`
-	Depth            int64     `json:"depth"`
-	EffectiveAmount  string    `json:"effective_amount"`
-	HasSignature     *bool     `json:"has_signature,omitempty"`
-	Height           int       `json:"height"`
-	Hex              string    `json:"hex"`
-	Name             string    `json:"name"`
-	NormalizedName   string    `json:"normalized_name"`
-	Nout             uint64    `json:"nout"`
-	PermanentUrl     string    `json:"permanent_url"`
-	SignatureIsValid *bool     `json:"signature_is_valid,omitempty"`
-	Supports         []Support `json:"supports"`
-	Txid             string    `json:"txid"`
-	//Type             string           `json:"type"`
-	ValidAtHeight int              `json:"valid_at_height"`
-	Value         lbryschema.Claim `json:"value"`
+	Address          string           `json:"address"`
+	Amount           string           `json:"amount"`
+	ChannelName      *string          `json:"channel_name,omitempty"`
+	ClaimID          string           `json:"claim_id"`
+	ClaimSequence    int64            `json:"claim_sequence"`
+	DecodedClaim     bool             `json:"decoded_claim"`
+	Depth            int64            `json:"depth"`
+	EffectiveAmount  string           `json:"effective_amount"`
+	HasSignature     *bool            `json:"has_signature,omitempty"`
+	Height           int              `json:"height"`
+	Hex              string           `json:"hex"`
+	Name             string           `json:"name"`
+	NormalizedName   string           `json:"normalized_name"`
+	Nout             uint64           `json:"nout"`
+	PermanentUrl     string           `json:"permanent_url"`
+	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
+	Supports         []Support        `json:"supports"`
+	Txid             string           `json:"txid"`
+	Type             string           `json:"type"`
+	ValidAtHeight    int              `json:"valid_at_height"`
+	Value            lbryschema.Claim `json:"value"`
 }
 
-type ClaimListResponse []Claim /* {
-	Claims                []Claim   `json:"claims"`
-	LastTakeoverHeight    int       `json:"last_takeover_height"`
-	SupportsWithoutClaims []Support `json:"supports_without_claims"`
-}*/
+type ClaimListResponse []Claim
 
 type ClaimListMineResponse struct {
 	Claims     []Claim `json:"items"`
