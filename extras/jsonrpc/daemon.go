@@ -261,12 +261,12 @@ type StreamCreateOptions struct {
 	License            *string     `json:"license,omitempty"`
 	LicenseURL         *string     `json:"license_url,omitempty"`
 	StreamType         *streamType `json:"stream_type,omitempty"`
-	ReleaseTime        *int        `json:"release_time,omitempty"`
-	Duration           *int        `json:"duration,omitempty"`
-	ImageWidth         *int        `json:"image_width,omitempty"`
-	ImageHeight        *int        `json:"image_height,omitempty"`
-	VideoWidth         *int        `json:"video_width,omitempty"`
-	VideoHeight        *int        `json:"video_height,omitempty"`
+	ReleaseTime        *int64      `json:"release_time,omitempty"`
+	Duration           *uint64     `json:"duration,omitempty"`
+	ImageWidth         *uint       `json:"image_width,omitempty"`
+	ImageHeight        *uint       `json:"image_height,omitempty"`
+	VideoWidth         *uint       `json:"video_width,omitempty"`
+	VideoHeight        *uint       `json:"video_height,omitempty"`
 	Preview            *string     `json:"preview,omitempty"`
 	AllowDuplicateName *bool       `json:"allow_duplicate_name,omitempty"`
 	ChannelName        *string     `json:"channel_name,omitempty"`
