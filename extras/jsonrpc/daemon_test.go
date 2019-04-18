@@ -150,8 +150,8 @@ func TestClient_ChannelAbandon(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	txID := channelResponse.Output.Txid
-	nout := channelResponse.Output.Nout
+	txID := channelResponse.Outputs[0].Txid
+	nout := channelResponse.Outputs[0].Nout
 	time.Sleep(10 * time.Second)
 	got, err := d.ChannelAbandon(txID, nout, nil, false)
 	if err != nil {
