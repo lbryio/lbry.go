@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/lbryio/lbry.go/extras/errors"
+	schema "github.com/lbryio/lbryschema.go/claim"
 	lbryschema "github.com/lbryio/types/v2/go"
 
 	"github.com/shopspring/decimal"
@@ -32,7 +33,7 @@ type File struct {
 	FileName          string            `json:"file_name"`
 	Key               string            `json:"key"`
 	Message           string            `json:"message"`
-	Metadata          *lbryschema.Claim `json:"metadata"`
+	Metadata          *lbryschema.Claim `json:"protobuf"`
 	MimeType          string            `json:"mime_type"`
 	Name              string            `json:"name"`
 	Outpoint          string            `json:"outpoint"`
@@ -96,6 +97,12 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 	case reflect.TypeOf(lbryschema.Fee_Currency(0)):
 		val, err := getEnumVal(lbryschema.Fee_Currency_value, data)
 		return lbryschema.Fee_Currency(val), err
+	case reflect.TypeOf(lbryschema.Claim{}):
+		claim, err := schema.DecodeClaimHex(data.(string), "lbrycrd_main")
+		if err != nil {
+			return nil, err
+		}
+		return claim.Claim, nil
 	}
 
 	return data, nil
@@ -215,7 +222,7 @@ type Transaction struct {
 	PermanentUrl  string            `json:"permanent_url"`
 	Txid          string            `json:"txid"`
 	Type          string            `json:"type"`
-	Value         *lbryschema.Claim `json:"value"`
+	Value         *lbryschema.Claim `json:"protobuf"`
 }
 
 type TransactionSummary struct {
@@ -282,7 +289,7 @@ type Claim struct {
 	Txid             string           `json:"txid"`
 	Type             string           `json:"type"`
 	ValidAtHeight    int              `json:"valid_at_height"`
-	Value            lbryschema.Claim `json:"value"`
+	Value            lbryschema.Claim `json:"protobuf"`
 }
 
 type ClaimListResponse []Claim
