@@ -197,9 +197,10 @@ func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*Ch
 	}
 	response := new(ChannelListResponse)
 	return response, d.call(response, "channel_list", map[string]interface{}{
-		"account_id": account,
-		"page":       page,
-		"page_size":  pageSize,
+		"account_id":       account,
+		"page":             page,
+		"page_size":        pageSize,
+		"include_protobuf": true,
 	})
 }
 
@@ -233,8 +234,8 @@ type ClaimCreateOptions struct {
 
 type ChannelCreateOptions struct {
 	ClaimCreateOptions `json:",flatten"`
-	ContactEmail       *string `json:"contact_email,omitempty"`
-	HomepageURL        *string `json:"homepage_url,omitempty"`
+	Email              *string `json:"email,omitempty"`
+	WebsiteURL         *string `json:"website_url,omitempty"`
 	CoverURL           *string `json:"cover_url,omitempty"`
 }
 
@@ -244,10 +245,12 @@ func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOp
 		Name                 string `json:"name"`
 		Bid                  string `json:"bid"`
 		FilePath             string `json:"file_path,omitempty"`
+		IncludeProtoBuf      bool   `json:"include_protobuf"`
 		ChannelCreateOptions `json:",flatten"`
 	}{
 		Name:                 name,
 		Bid:                  fmt.Sprintf("%.6f", bid),
+		IncludeProtoBuf:      true,
 		ChannelCreateOptions: options,
 	}
 	structs.DefaultTagName = "json"
@@ -256,23 +259,19 @@ func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOp
 
 type StreamCreateOptions struct {
 	ClaimCreateOptions `json:",flatten"`
-	Fee                *Fee        `json:",omitempty,flatten"`
-	Author             *string     `json:"author,omitempty"`
-	License            *string     `json:"license,omitempty"`
-	LicenseURL         *string     `json:"license_url,omitempty"`
-	StreamType         *streamType `json:"stream_type,omitempty"`
-	ReleaseTime        *int64      `json:"release_time,omitempty"`
-	Duration           *uint64     `json:"duration,omitempty"`
-	VideoDuration      *uint64     `json:"video_duration,omitempty"` //TODO: this shouldn't exist
-	ImageWidth         *uint       `json:"image_width,omitempty"`
-	ImageHeight        *uint       `json:"image_height,omitempty"`
-	VideoWidth         *uint       `json:"video_width,omitempty"`
-	VideoHeight        *uint       `json:"video_height,omitempty"`
-	Preview            *string     `json:"preview,omitempty"`
-	AllowDuplicateName *bool       `json:"allow_duplicate_name,omitempty"`
-	ChannelName        *string     `json:"channel_name,omitempty"`
-	ChannelID          *string     `json:"channel_id,omitempty"`
-	ChannelAccountID   *string     `json:"channel_account_id,omitempty"`
+	Fee                *Fee    `json:",omitempty,flatten"`
+	Author             *string `json:"author,omitempty"`
+	License            *string `json:"license,omitempty"`
+	LicenseURL         *string `json:"license_url,omitempty"`
+	ReleaseTime        *int64  `json:"release_time,omitempty"`
+	Duration           *uint64 `json:"duration,omitempty"`
+	Width              *uint   `json:"width,omitempty"`
+	Height             *uint   `json:"height,omitempty"`
+	Preview            *string `json:"preview,omitempty"`
+	AllowDuplicateName *bool   `json:"allow_duplicate_name,omitempty"`
+	ChannelName        *string `json:"channel_name,omitempty"`
+	ChannelID          *string `json:"channel_id,omitempty"`
+	ChannelAccountID   *string `json:"channel_account_id,omitempty"`
 }
 
 func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*TransactionSummary, error) {
@@ -281,11 +280,13 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 		Name                 string `json:"name"`
 		Bid                  string `json:"bid"`
 		FilePath             string `json:"file_path,omitempty"`
+		IncludeProtobuf      bool   `json:"include_protobuf"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
 		FilePath:            filePath,
 		Bid:                 fmt.Sprintf("%.6f", bid),
+		IncludeProtobuf:     true,
 		StreamCreateOptions: &options,
 	}
 	structs.DefaultTagName = "json"
@@ -295,9 +296,10 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 func (d *Client) StreamAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
 	response := new(ClaimAbandonResponse)
 	err := d.call(response, "claim_abandon", map[string]interface{}{
-		"txid":       txID,
-		"nout":       nOut,
-		"account_id": accountID,
+		"txid":             txID,
+		"nout":             nOut,
+		"account_id":       accountID,
+		"include_protobuf": true,
 	})
 	if err != nil {
 		return nil, err
@@ -322,9 +324,11 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Pub
 		ClaimID              string `json:"claim_id"`
 		FilePath             string `json:"file_path,omitempty"`
 		Bid                  string `json:"bid"`
+		IncludeProtoBuf      bool   `json:"include_protobuf"`
 		*StreamUpdateOptions `json:",flatten"`
 	}{
 		ClaimID:             claimID,
+		IncludeProtoBuf:     true,
 		StreamUpdateOptions: &options,
 	}
 	structs.DefaultTagName = "json"
@@ -333,10 +337,11 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Pub
 
 func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
 	response := new(ClaimAbandonResponse)
-	err := d.call(response, "claim_abandon", map[string]interface{}{
-		"txid":       txID,
-		"nout":       nOut,
-		"account_id": accountID,
+	err := d.call(response, "channel_abandon", map[string]interface{}{
+		"txid":             txID,
+		"nout":             nOut,
+		"account_id":       accountID,
+		"include_protobuf": true,
 	})
 	if err != nil {
 		return nil, err
@@ -379,6 +384,21 @@ func (d *Client) UTXOList(account *string) (*UTXOListResponse, error) {
 	})
 }
 
+func (d *Client) Get(uri string) (*GetResponse, error) {
+	response := new(GetResponse)
+	return response, d.call(response, "get", map[string]interface{}{
+		"uri":              uri,
+		"include_protobuf": true,
+	})
+}
+
+func (d *Client) FileList() (*FileListResponse, error) {
+	response := new(FileListResponse)
+	return response, d.call(response, "file_list", map[string]interface{}{
+		"include_protobuf": true,
+	})
+}
+
 func (d *Client) Version() (*VersionResponse, error) {
 	response := new(VersionResponse)
 	return response, d.call(response, "version", map[string]interface{}{})
@@ -387,7 +407,8 @@ func (d *Client) Version() (*VersionResponse, error) {
 func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	response := new(ResolveResponse)
 	return response, d.call(response, "resolve", map[string]interface{}{
-		"urls": urls,
+		"urls":             urls,
+		"include_protobuf": true,
 	})
 }
 

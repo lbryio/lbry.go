@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/lbryio/lbry.go/extras/errors"
+	schema "github.com/lbryio/lbryschema.go/claim"
 	lbryschema "github.com/lbryio/types/v2/go"
 
 	"github.com/shopspring/decimal"
@@ -32,7 +33,7 @@ type File struct {
 	FileName          string            `json:"file_name"`
 	Key               string            `json:"key"`
 	Message           string            `json:"message"`
-	Metadata          *lbryschema.Claim `json:"metadata"`
+	Metadata          *lbryschema.Claim `json:"protobuf"`
 	MimeType          string            `json:"mime_type"`
 	Name              string            `json:"name"`
 	Outpoint          string            `json:"outpoint"`
@@ -96,6 +97,12 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 	case reflect.TypeOf(lbryschema.Fee_Currency(0)):
 		val, err := getEnumVal(lbryschema.Fee_Currency_value, data)
 		return lbryschema.Fee_Currency(val), err
+	case reflect.TypeOf(lbryschema.Claim{}):
+		claim, err := schema.DecodeClaimHex(data.(string), "lbrycrd_main")
+		if err != nil {
+			return nil, err
+		}
+		return claim.Claim, nil
 	}
 
 	return data, nil
@@ -179,14 +186,14 @@ type Account struct {
 			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
 		} `json:"receiving"`
 	} `json:"address_generator"`
-	Certificates     uint64  `json:"certificates"`
-	Coins            float64 `json:"coins"`
-	Encrypted        bool    `json:"encrypted"`
-	ID               string  `json:"id"`
-	IsDefaultAccount bool    `json:"is_default_account"`
-	Name             string  `json:"name"`
-	PublicKey        string  `json:"public_key"`
-	Satoshis         uint64  `json:"satoshis"`
+	Certificates uint64  `json:"certificates"`
+	Coins        float64 `json:"coins"`
+	Encrypted    bool    `json:"encrypted"`
+	ID           string  `json:"id"`
+	IsDefault    bool    `json:"is_default"`
+	Name         string  `json:"name"`
+	PublicKey    string  `json:"public_key"`
+	Satoshis     uint64  `json:"satoshis"`
 }
 
 type AccountListResponse struct {
@@ -198,8 +205,11 @@ type AccountBalanceResponse string
 
 type AccountCreateResponse struct {
 	Account
-	Seed   string `json:"seed"`
-	Status string `json:"status"`
+	PrivateKey string  `json:"private_key,omitempty"`
+	PublicKey  string  `json:"public_key"`
+	Seed       string  `json:"seed"`
+	Ledger     string  `json:"ledger"`
+	ModifiedOn float64 `json:"modified_on"`
 }
 
 type Transaction struct {
@@ -213,9 +223,10 @@ type Transaction struct {
 	Name          string            `json:"name"`
 	Nout          uint64            `json:"nout"`
 	PermanentUrl  string            `json:"permanent_url"`
+	Protobuf      string            `json:"protobuf,omitempty"`
 	Txid          string            `json:"txid"`
 	Type          string            `json:"type"`
-	Value         *lbryschema.Claim `json:"value"`
+	Value         *lbryschema.Claim `json:"protobuf"`
 }
 
 type TransactionSummary struct {
@@ -282,7 +293,7 @@ type Claim struct {
 	Txid             string           `json:"txid"`
 	Type             string           `json:"type"`
 	ValidAtHeight    int              `json:"valid_at_height"`
-	Value            lbryschema.Claim `json:"value"`
+	Value            lbryschema.Claim `json:"protobuf"`
 }
 
 type ClaimListResponse []Claim
