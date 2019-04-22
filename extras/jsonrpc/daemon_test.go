@@ -214,9 +214,27 @@ func TestClient_Version(t *testing.T) {
 	log.Infof("%+v", *got)
 }
 
+func TestClient_GetFile(t *testing.T) {
+	d := NewClient("")
+	got, err := d.Get("lbry://one")
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
+func TestClient_FileList(t *testing.T) {
+	d := NewClient("")
+	got, err := d.FileList()
+	if err != nil {
+		t.Error(err)
+	}
+	log.Infof("%+v", *got)
+}
+
 func TestClient_Resolve(t *testing.T) {
 	d := NewClient("")
-	got, err := d.Resolve("crashtest")
+	got, err := d.Resolve("one")
 	if err != nil {
 		t.Error(err)
 	}
