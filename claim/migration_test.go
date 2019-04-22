@@ -191,11 +191,11 @@ func TestMigrationFromJSON(t *testing.T) {
 		if helper.Claim.GetStream().GetAuthor() != pair.Claim.Author {
 			t.Error("Author mismatch: expected", pair.Claim.Author, "got", helper.Claim.GetStream().GetAuthor())
 		}
-		if helper.Claim.GetStream().GetTitle() != pair.Claim.Title {
-			t.Error("Title mismatch: expected", pair.Claim.Title, "got", helper.Claim.GetStream().GetTitle())
+		if helper.Claim.GetTitle() != pair.Claim.Title {
+			t.Error("Title mismatch: expected", pair.Claim.Title, "got '", helper.Claim.GetTitle(), "'")
 		}
-		if helper.Claim.GetStream().GetDescription() != pair.Claim.Description {
-			t.Error("Description mismatch: expected", pair.Claim.Description, "got", helper.Claim.GetStream().GetDescription())
+		if helper.Claim.GetDescription() != pair.Claim.Description {
+			t.Error("Description mismatch: expected", pair.Claim.Description, "got '", helper.Claim.GetDescription(), "'")
 		}
 		if helper.Claim.GetStream().GetLicense() != pair.Claim.License {
 			t.Error("License mismatch: expected", pair.Claim.License, "got", helper.Claim.GetStream().GetLicense())
@@ -213,13 +213,13 @@ func TestMigrationFromJSON(t *testing.T) {
 		if hexaddress != pair.Claim.FeeAddress {
 			t.Error("Fee Address mismatch: expected", pair.Claim.FeeAddress, "got", hexaddress)
 		}
-		if helper.Claim.GetStream().GetMediaType() != pair.Claim.ContentType {
-			t.Error("ContentType mismatch: expected", pair.Claim.ContentType, "got", helper.Claim.GetStream().GetMediaType())
+		if helper.Claim.GetStream().GetSource().GetMediaType() != pair.Claim.ContentType {
+			t.Error("ContentType mismatch: expected", pair.Claim.ContentType, "got", helper.Claim.GetStream().GetSource().GetMediaType())
 		}
-		if helper.Claim.GetStream().GetLanguages()[0].String() != pair.Claim.Language {
-			t.Error("Language mismatch: expected ", pair.Claim.Language, " got ", helper.Claim.GetStream().GetLanguages()[0].String())
+		if helper.Claim.GetLanguages()[0].String() != pair.Claim.Language {
+			t.Error("Language mismatch: expected ", pair.Claim.Language, " got ", helper.Claim.GetLanguages()[0].String())
 		}
-		content := hex.EncodeToString(helper.Claim.GetStream().GetSdHash())
+		content := hex.EncodeToString(helper.Claim.GetStream().GetSource().GetSdHash())
 		if content != pair.Claim.LbrySDHash {
 			t.Error("Source mismatch: expected", pair.Claim.LbrySDHash, "got", content)
 		}
@@ -232,18 +232,18 @@ func TestMigrationFromV1YTSync(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, claim.GetStream().GetTitle() == "Here are 5 Reasons I ❤️ Nextcloud | TLG")
-	assert.Assert(t, claim.GetStream().GetDescription() == "Find out more about Nextcloud: https://nextcloud.com/\n\nYou can find me on these socials:\n * Forums: https://forum.heavyelement.io/\n * Podcast: https://offtopical.net\n * Patreon: https://patreon.com/thelinuxgamer\n * Merch: https://teespring.com/stores/official-linux-gamer\n * Twitch: https://twitch.tv/xondak\n * Twitter: https://twitter.com/thelinuxgamer\n\n...\nhttps://www.youtube.com/watch?v=FrTdBCOS_fc")
+	assert.Assert(t, claim.GetTitle() == "Here are 5 Reasons I ❤️ Nextcloud | TLG")
+	assert.Assert(t, claim.GetDescription() == "Find out more about Nextcloud: https://nextcloud.com/\n\nYou can find me on these socials:\n * Forums: https://forum.heavyelement.io/\n * Podcast: https://offtopical.net\n * Patreon: https://patreon.com/thelinuxgamer\n * Merch: https://teespring.com/stores/official-linux-gamer\n * Twitch: https://twitch.tv/xondak\n * Twitter: https://twitter.com/thelinuxgamer\n\n...\nhttps://www.youtube.com/watch?v=FrTdBCOS_fc")
 	assert.Assert(t, claim.GetStream().GetLicense() == "Copyrighted (contact author)")
 	assert.Assert(t, claim.GetStream().GetAuthor() == "The Linux Gamer")
 	//?assert.Assert(t, claim.GetStream().GetLanguages()[0])
-	assert.Assert(t, claim.GetStream().GetMediaType() == "video/mp4")
-	assert.Assert(t, claim.GetStream().GetThumbnailUrl() == "https://berk.ninja/thumbnails/FrTdBCOS_fc")
+	assert.Assert(t, claim.GetStream().GetSource().GetMediaType() == "video/mp4")
+	assert.Assert(t, claim.GetThumbnail().GetUrl() == "https://berk.ninja/thumbnails/FrTdBCOS_fc")
 	sdHashBytes, err := hex.DecodeString("040e8ac6e89c061f982528c23ad33829fd7146435bf7a4cc22f0bff70c4fe0b91fd36da9a375e3e1c171db825bf5d1f3")
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, bytes.Equal(claim.GetStream().GetSdHash(), sdHashBytes))
+	assert.Assert(t, bytes.Equal(claim.GetStream().GetSource().GetSdHash(), sdHashBytes))
 
 	channelHex := "08011002225e0801100322583056301006072a8648ce3d020106052b8104000a034200043878b1edd4a1373149909ef03f4339f6da9c2bd2214c040fd2e530463ffe66098eca14fc70b50ff3aefd106049a815f595ed5a13eda7419ad78d9ed7ae473f17"
 	channel, err := DecodeClaimHex(channelHex, "lbrycrd_main")
@@ -263,17 +263,17 @@ func TestMigrationFromV1UnsignedWithFee(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, claim.GetStream().GetTitle() == "rpg midi")
-	assert.Assert(t, claim.GetStream().GetDescription() == "midi")
+	assert.Assert(t, claim.GetTitle() == "rpg midi")
+	assert.Assert(t, claim.GetDescription() == "midi")
 	assert.Assert(t, claim.GetStream().GetLicense() == "Creative Commons Attribution 4.0 International")
 	assert.Assert(t, claim.GetStream().GetAuthor() == "rpg midi")
 	//assert.Assert(t, claim.GetStream().GetLanguage() == "en")
-	assert.Assert(t, claim.GetStream().GetMediaType() == "application/x-zip-compressed")
+	assert.Assert(t, claim.GetStream().GetSource().GetMediaType() == "application/x-zip-compressed")
 	sdHashBytes, err := hex.DecodeString("1f41eb0312aa7e8a5ce49349bc77d811da975833719d751523b19f123fc3d528d6a94e3446ccddb7b9329f27a9cad7e3")
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, bytes.Equal(claim.GetStream().GetSdHash(), sdHashBytes))
+	assert.Assert(t, bytes.Equal(claim.GetStream().GetSource().GetSdHash(), sdHashBytes))
 	feeAddressBytes, err := address.DecodeAddress("bJUQ9MxS9N6M29zsA5GTpVSDzsnPjMBBX9", "lbrycrd_main")
 	assert.Assert(t, bytes.Equal(claim.GetStream().GetFee().GetAddress(), feeAddressBytes[:]))
 	assert.Assert(t, claim.GetStream().GetFee().GetAmount() == 1500000000)

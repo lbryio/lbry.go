@@ -30,8 +30,8 @@ func TestSign(t *testing.T) {
 	}
 
 	claim := &ClaimHelper{newStreamClaim(), nil, reverseBytes(claimIDHexBytes), WithSig, nil}
-	claim.Claim.GetStream().Title = "Test title"
-	claim.Claim.GetStream().Description = "Test description"
+	claim.Claim.Title = "Test title"
+	claim.Claim.Description = "Test description"
 	sig, err := Sign(*privateKey, *channel, *claim, txid)
 	if err != nil {
 		t.Error(err)
@@ -105,8 +105,8 @@ func TestSignWithV1Channel(t *testing.T) {
 	}
 
 	claim := &ClaimHelper{newStreamClaim(), nil, reverseBytes(claimIDHexBytes), WithSig, nil}
-	claim.Claim.GetStream().Title = "Test title"
-	claim.Claim.GetStream().Description = "Test description"
+	claim.Claim.Title = "Test title"
+	claim.Claim.Description = "Test description"
 	sig, err := Sign(*privateKey, *channel, *claim, txid)
 	if err != nil {
 		t.Error(err)

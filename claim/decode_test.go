@@ -69,15 +69,14 @@ func TestCreateChannelClaim(t *testing.T) {
 	}
 	claim := &ClaimHelper{Claim: newChannelClaim(), Version: NoSig}
 	claim.GetChannel().PublicKey = pubKeyBytes
-	claim.GetChannel().Title = "Test Channel Title"
-	claim.GetChannel().Description = "Test Channel Description"
-	claim.GetChannel().CoverUrl = "http://testcoverurl.com"
-	claim.GetChannel().Tags = []string{"TagA", "TagB", "TagC"}
-	claim.GetChannel().Languages = []*pb.Language{{Language: pb.Language_en}, {Language: pb.Language_es}}
-	claim.GetChannel().ThumbnailUrl = "http://thumbnailurl.com"
-	claim.GetChannel().ContactEmail = "test@test.com"
-	claim.GetChannel().HomepageUrl = "http://homepageurl.com"
-	claim.GetChannel().Locations = []*pb.Location{{Country: pb.Location_AD}, {Country: pb.Location_US, State: "NJ", City: "some city"}}
+	claim.Title = "Test Channel Title"
+	claim.Description = "Test Channel Description"
+	claim.GetChannel().Cover = &pb.Source{Url: "http://testcoverurl.com"}
+	claim.Tags = []string{"TagA", "TagB", "TagC"}
+	claim.Languages = []*pb.Language{{Language: pb.Language_en}, {Language: pb.Language_es}}
+	claim.Thumbnail = &pb.Source{Url: "http://thumbnailurl.com"}
+	claim.GetChannel().WebsiteUrl = "http://homepageurl.com"
+	claim.Locations = []*pb.Location{{Country: pb.Location_AD}, {Country: pb.Location_US, State: "NJ", City: "some city"}}
 
 	rawClaim, err := claim.CompileValue()
 	if err != nil {

@@ -15,7 +15,6 @@ const lbrySDHash = "lbry_sd_hash"
 func newStreamClaim() *pb.Claim {
 	claimStream := new(pb.Claim_Stream)
 	stream := new(pb.Stream)
-	stream.File = new(pb.File)
 
 	pbClaim := new(pb.Claim)
 	pbClaim.Type = claimStream
@@ -35,16 +34,22 @@ func newChannelClaim() *pb.Claim {
 	return pbClaim
 }
 
-func setMetaData(claim pb.Claim, author string, description string, language pb.Language_Language, license string,
+func setMetaData(claim *pb.Claim, author string, description string, language pb.Language_Language, license string,
 	licenseURL *string, title string, thumbnail *string, nsfw bool) {
+	claim.Title = title
+	claim.Description = description
+
 	claim.GetStream().Author = author
-	claim.GetStream().Description = description
-	claim.GetStream().Languages = []*pb.Language{{Language: language}}
-	claim.GetStream().Title = title
+	claim.Languages = []*pb.Language{{Language: language}}
+
 	if thumbnail != nil {
-		claim.GetStream().ThumbnailUrl = *thumbnail
+		source := new(pb.Source)
+		source.Url = *thumbnail
+		claim.Thumbnail = source
 	}
-	claim.GetStream().Tags = []string{"mature"}
+	if nsfw {
+		claim.Tags = []string{"mature"}
+	}
 	claim.GetStream().License = license
 	if licenseURL != nil {
 		claim.GetStream().LicenseUrl = *licenseURL
@@ -63,7 +68,10 @@ func migrateV1PBClaim(vClaim v1pb.Claim) (*pb.Claim, error) {
 
 func migrateV1PBStream(vClaim v1pb.Claim) (*pb.Claim, error) {
 	claim := newStreamClaim()
-	claim.GetStream().MediaType = vClaim.GetStream().GetSource().GetContentType()
+	source := new(pb.Source)
+	source.MediaType = vClaim.GetStream().GetSource().GetContentType()
+	source.SdHash = vClaim.GetStream().GetSource().GetSource()
+	claim.GetStream().Source = source
 	md := vClaim.GetStream().GetMetadata()
 	if md.GetFee() != nil {
 		claim.GetStream().Fee = new(pb.Fee)
@@ -71,17 +79,18 @@ func migrateV1PBStream(vClaim v1pb.Claim) (*pb.Claim, error) {
 		claim.GetStream().GetFee().Address = md.GetFee().GetAddress()
 		claim.GetStream().GetFee().Currency = pb.Fee_Currency(pb.Fee_Currency_value[md.GetFee().GetCurrency().String()])
 	}
-	claim.GetStream().SdHash = vClaim.GetStream().GetSource().GetSource()
 	if vClaim.GetStream().GetMetadata().GetNsfw() {
-		claim.GetStream().Tags = []string{"mature"}
+		claim.Tags = []string{"mature"}
 	}
-	claim.GetStream().ThumbnailUrl = md.GetThumbnail()
+	thumbnailSource := new(pb.Source)
+	thumbnailSource.Url = md.GetThumbnail()
+	claim.Thumbnail = thumbnailSource
 	language := pb.Language_Language(pb.Language_Language_value[md.GetLanguage().String()])
-	claim.GetStream().Languages = []*pb.Language{{Language: language}}
+	claim.Languages = []*pb.Language{{Language: language}}
 	claim.GetStream().LicenseUrl = md.GetLicenseUrl()
 	claim.GetStream().License = md.GetLicense()
-	claim.GetStream().Title = md.GetTitle()
-	claim.GetStream().Description = md.GetDescription()
+	claim.Title = md.GetTitle()
+	claim.Description = md.GetDescription()
 	claim.GetStream().Author = md.GetAuthor()
 
 	return claim, nil
@@ -101,15 +110,18 @@ func migrateV1Claim(vClaim V1Claim) (*pb.Claim, error) {
 	setFee(vClaim.Fee, pbClaim)
 	// -->MetaData
 	language := pb.Language_Language(pb.Language_Language_value[vClaim.Language])
-	setMetaData(*pbClaim, vClaim.Author, vClaim.Description, language,
+	setMetaData(pbClaim, vClaim.Author, vClaim.Description, language,
 		vClaim.License, nil, vClaim.Title, vClaim.Thumbnail, false)
 	// -->Source
-	pbClaim.GetStream().MediaType = vClaim.ContentType
+	source := new(pb.Source)
+	source.MediaType = vClaim.ContentType
+
 	src, err := hex.DecodeString(vClaim.Sources.LbrySDHash)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
-	pbClaim.GetStream().SdHash = src
+	source.SdHash = src
+	pbClaim.GetStream().Source = source
 
 	return pbClaim, nil
 }
@@ -121,15 +133,17 @@ func migrateV2Claim(vClaim V2Claim) (*pb.Claim, error) {
 	setFee(vClaim.Fee, pbClaim)
 	// -->MetaData
 	language := pb.Language_Language(pb.Language_Language_value[vClaim.Language])
-	setMetaData(*pbClaim, vClaim.Author, vClaim.Description, language,
+	setMetaData(pbClaim, vClaim.Author, vClaim.Description, language,
 		vClaim.License, vClaim.LicenseURL, vClaim.Title, vClaim.Thumbnail, vClaim.NSFW)
 	// -->Source
-	pbClaim.GetStream().MediaType = vClaim.ContentType
+	source := new(pb.Source)
+	source.MediaType = vClaim.ContentType
 	src, err := hex.DecodeString(vClaim.Sources.LbrySDHash)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
-	pbClaim.GetStream().SdHash = src
+	source.SdHash = src
+	pbClaim.GetStream().Source = source
 
 	return pbClaim, nil
 }
@@ -141,15 +155,17 @@ func migrateV3Claim(vClaim V3Claim) (*pb.Claim, error) {
 	setFee(vClaim.Fee, pbClaim)
 	// -->MetaData
 	language := pb.Language_Language(pb.Language_Language_value[vClaim.Language])
-	setMetaData(*pbClaim, vClaim.Author, vClaim.Description, language,
+	setMetaData(pbClaim, vClaim.Author, vClaim.Description, language,
 		vClaim.License, vClaim.LicenseURL, vClaim.Title, vClaim.Thumbnail, vClaim.NSFW)
 	// -->Source
-	pbClaim.GetStream().MediaType = vClaim.ContentType
+	source := new(pb.Source)
+	source.MediaType = vClaim.ContentType
 	src, err := hex.DecodeString(vClaim.Sources.LbrySDHash)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
-	pbClaim.GetStream().SdHash = src
+	source.SdHash = src
+	pbClaim.GetStream().Source = source
 
 	return pbClaim, nil
 }
