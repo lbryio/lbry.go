@@ -10,8 +10,34 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/lbryio/lbry.go/extras/util"
-	log "github.com/sirupsen/logrus"
 )
+
+func prettyPrint(i interface{}) {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	fmt.Println(string(s))
+}
+
+func TestClient_AccountFund(t *testing.T) {
+	d := NewClient("")
+	accounts, err := d.AccountList()
+	if err != nil {
+		t.Error(err)
+	}
+	account := (accounts.LBCRegtest)[0].ID
+	balanceString, err := d.AccountBalance(&account)
+	if err != nil {
+		t.Error(err)
+	}
+	balance, err := strconv.ParseFloat(string(*balanceString), 64)
+	if err != nil {
+		t.Error(err)
+	}
+	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance/2.0), 40)
+	if err != nil {
+		t.Error(err)
+	}
+	prettyPrint(*got)
+}
 
 func TestClient_AccountList(t *testing.T) {
 	d := NewClient("")
@@ -19,7 +45,7 @@ func TestClient_AccountList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_AccountBalance(t *testing.T) {
@@ -28,7 +54,7 @@ func TestClient_AccountBalance(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%s", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_AddressUnused(t *testing.T) {
@@ -37,7 +63,7 @@ func TestClient_AddressUnused(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%s", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_ChannelList(t *testing.T) {
@@ -46,10 +72,10 @@ func TestClient_ChannelList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
-func TestClient_Publish(t *testing.T) {
+func TestClient_StreamCreate(t *testing.T) {
 	d := NewClient("")
 	addressResponse, err := d.AddressUnused(nil)
 	if err != nil {
@@ -84,7 +110,6 @@ func TestClient_Publish(t *testing.T) {
 		Author:             util.PtrToString("Niko"),
 		License:            util.PtrToString("FREE"),
 		LicenseURL:         nil,
-		StreamType:         &StreamTypeImage,
 		ReleaseTime:        nil,
 		Duration:           nil,
 		ImageWidth:         nil,
@@ -94,18 +119,18 @@ func TestClient_Publish(t *testing.T) {
 		Preview:            nil,
 		AllowDuplicateName: nil,
 		ChannelName:        nil,
-		ChannelID:          util.PtrToString("5205b93465014f9f8ae3e7b1e5a7ad46f925163d"),
+		ChannelID:          util.PtrToString("2e28aa6dbd41f959893907841f4e40d0ecb0ede9"),
 		ChannelAccountID:   nil,
 	})
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_ChannelCreate(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelCreate("@Test", 13.37, ChannelCreateOptions{
+	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
 			Title:       "Mess with the channels",
 			Description: "And you'll get what you deserve",
@@ -118,19 +143,20 @@ func TestClient_ChannelCreate(t *testing.T) {
 			}},
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 		},
-		ContactEmail: util.PtrToString("niko@lbry.com"),
-		HomepageURL:  util.PtrToString("https://lbry.com"),
-		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_ChannelAbandon(t *testing.T) {
 	d := NewClient("")
-	channelResponse, err := d.ChannelCreate("@TestToDelete", 13.37, ChannelCreateOptions{
+	channelName := "@TestToDelete" + fmt.Sprintf("%d", time.Now().Unix())
+	channelResponse, err := d.ChannelCreate(channelName, 13.37, ChannelCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
 			Title:       "Mess with the channels",
 			Description: "And you'll get what you deserve",
@@ -143,9 +169,9 @@ func TestClient_ChannelAbandon(t *testing.T) {
 			}},
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 		},
-		ContactEmail: util.PtrToString("niko@lbry.com"),
-		HomepageURL:  util.PtrToString("https://lbry.com"),
-		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
 	if err != nil {
 		t.Error(err)
@@ -157,7 +183,7 @@ func TestClient_ChannelAbandon(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_AddressList(t *testing.T) {
@@ -166,7 +192,7 @@ func TestClient_AddressList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_ClaimList(t *testing.T) {
@@ -175,16 +201,16 @@ func TestClient_ClaimList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimSearch(nil, util.PtrToString("d3d84b191b05b1915db3f78150c5d42d172f4c5f"), nil, nil)
+	got, err := d.ClaimSearch(nil, util.PtrToString("1b2b530dfcef9885354f8f41190c8f678da5414e"), nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_Status(t *testing.T) {
@@ -193,7 +219,7 @@ func TestClient_Status(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_UTXOList(t *testing.T) {
@@ -202,7 +228,7 @@ func TestClient_UTXOList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_Version(t *testing.T) {
@@ -211,16 +237,16 @@ func TestClient_Version(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_GetFile(t *testing.T) {
 	d := NewClient("")
-	got, err := d.Get("lbry://one")
+	got, err := d.Get("lbry://test1555965264")
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_FileList(t *testing.T) {
@@ -229,42 +255,19 @@ func TestClient_FileList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_Resolve(t *testing.T) {
 	d := NewClient("")
-	got, err := d.Resolve("one")
+	got, err := d.Resolve("test1555965264")
 	if err != nil {
 		t.Error(err)
 	}
-	b, err := json.Marshal(*got)
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%s", b)
-}
-
-func TestClient_AccountFund(t *testing.T) {
-	d := NewClient("")
-	accounts, err := d.AccountList()
-	if err != nil {
-		t.Error(err)
-	}
-	account := (accounts.LBCRegtest)[0].ID
-	balanceString, err := d.AccountBalance(&account)
-	if err != nil {
-		t.Error(err)
-	}
-	balance, err := strconv.ParseFloat(string(*balanceString), 64)
-	if err != nil {
-		t.Error(err)
-	}
-	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance-0.1), 40)
-	if err != nil {
-		t.Error(err)
-	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 
 func TestClient_AccountSet(t *testing.T) {
@@ -279,15 +282,13 @@ func TestClient_AccountSet(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	log.Infof("%+v", *got)
+	prettyPrint(*got)
 }
 func TestClient_AccountCreate(t *testing.T) {
 	d := NewClient("")
-	account, err := d.AccountCreate("test@lbry.com", false)
+	account, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Status != "created" {
-		t.Fail()
-	}
+	prettyPrint(*account)
 }

@@ -186,14 +186,14 @@ type Account struct {
 			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
 		} `json:"receiving"`
 	} `json:"address_generator"`
-	Certificates     uint64  `json:"certificates"`
-	Coins            float64 `json:"coins"`
-	Encrypted        bool    `json:"encrypted"`
-	ID               string  `json:"id"`
-	IsDefaultAccount bool    `json:"is_default_account"`
-	Name             string  `json:"name"`
-	PublicKey        string  `json:"public_key"`
-	Satoshis         uint64  `json:"satoshis"`
+	Certificates uint64  `json:"certificates"`
+	Coins        float64 `json:"coins"`
+	Encrypted    bool    `json:"encrypted"`
+	ID           string  `json:"id"`
+	IsDefault    bool    `json:"is_default"`
+	Name         string  `json:"name"`
+	PublicKey    string  `json:"public_key"`
+	Satoshis     uint64  `json:"satoshis"`
 }
 
 type AccountListResponse struct {
@@ -205,8 +205,11 @@ type AccountBalanceResponse string
 
 type AccountCreateResponse struct {
 	Account
-	Seed   string `json:"seed"`
-	Status string `json:"status"`
+	PrivateKey string  `json:"private_key,omitempty"`
+	PublicKey  string  `json:"public_key"`
+	Seed       string  `json:"seed"`
+	Ledger     string  `json:"ledger"`
+	ModifiedOn float64 `json:"modified_on"`
 }
 
 type Transaction struct {
@@ -220,6 +223,7 @@ type Transaction struct {
 	Name          string            `json:"name"`
 	Nout          uint64            `json:"nout"`
 	PermanentUrl  string            `json:"permanent_url"`
+	Protobuf      string            `json:"protobuf,omitempty"`
 	Txid          string            `json:"txid"`
 	Type          string            `json:"type"`
 	Value         *lbryschema.Claim `json:"protobuf"`
