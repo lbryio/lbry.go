@@ -24,13 +24,26 @@ func (c *ClaimHelper) serialized() ([]byte, error) {
 }
 
 func (c *ClaimHelper) getProtobuf() *pb.Claim {
+	claim := &pb.Claim{
+		Title:       c.Title,
+		Description: c.Description,
+		Thumbnail:   c.Thumbnail,
+		Tags:        c.Tags,
+		Languages:   c.Languages,
+		Locations:   c.Locations,
+	}
+	return c.Claim
 	if c.GetChannel() != nil {
-		return &pb.Claim{Type: &pb.Claim_Channel{Channel: c.GetChannel()}}
+		claim.Type = &pb.Claim_Channel{Channel: c.GetChannel()}
 	} else if c.GetStream() != nil {
-		return &pb.Claim{Type: &pb.Claim_Stream{Stream: c.GetStream()}}
+		claim.Type = &pb.Claim_Stream{Stream: c.GetStream()}
+	} else if c.GetCollection() != nil {
+		claim.Type = &pb.Claim_Collection{Collection: c.GetCollection()}
+	} else if c.GetRepost() != nil {
+		claim.Type = &pb.Claim_Repost{Repost: c.GetRepost()}
 	}
 
-	return nil
+	return claim
 }
 
 func (c *ClaimHelper) getLegacyProtobuf() *legacy.Claim {
