@@ -234,8 +234,8 @@ type ClaimCreateOptions struct {
 
 type ChannelCreateOptions struct {
 	ClaimCreateOptions `json:",flatten"`
-	Email              *string `json:"email,omitempty"`
-	WebsiteURL         *string `json:"website_url,omitempty"`
+	ContactEmail       *string `json:"contact_email,omitempty"`
+	HomepageURL        *string `json:"homepage_url,omitempty"`
 	CoverURL           *string `json:"cover_url,omitempty"`
 }
 
@@ -259,34 +259,39 @@ func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOp
 
 type StreamCreateOptions struct {
 	ClaimCreateOptions `json:",flatten"`
-	Fee                *Fee    `json:",omitempty,flatten"`
-	Author             *string `json:"author,omitempty"`
-	License            *string `json:"license,omitempty"`
-	LicenseURL         *string `json:"license_url,omitempty"`
-	ReleaseTime        *int64  `json:"release_time,omitempty"`
-	Duration           *uint64 `json:"duration,omitempty"`
-	Width              *uint   `json:"width,omitempty"`
-	Height             *uint   `json:"height,omitempty"`
-	Preview            *string `json:"preview,omitempty"`
-	AllowDuplicateName *bool   `json:"allow_duplicate_name,omitempty"`
-	ChannelName        *string `json:"channel_name,omitempty"`
-	ChannelID          *string `json:"channel_id,omitempty"`
-	ChannelAccountID   *string `json:"channel_account_id,omitempty"`
+	Fee                *Fee        `json:",omitempty,flatten"`
+	Author             *string     `json:"author,omitempty"`
+	License            *string     `json:"license,omitempty"`
+	LicenseURL         *string     `json:"license_url,omitempty"`
+	StreamType         *streamType `json:"stream_type,omitempty"`
+	ReleaseTime        *int64      `json:"release_time,omitempty"`
+	Duration           *uint64     `json:"duration,omitempty"`
+	VideoDuration      *uint64     `json:"video_duration,omitempty"` //TODO: this shouldn't exist
+	ImageWidth         *uint       `json:"image_width,omitempty"`
+	ImageHeight        *uint       `json:"image_height,omitempty"`
+	VideoWidth         *uint       `json:"video_width,omitempty"`
+	VideoHeight        *uint       `json:"video_height,omitempty"`
+	Preview            *string     `json:"preview,omitempty"`
+	AllowDuplicateName *bool       `json:"allow_duplicate_name,omitempty"`
+	ChannelName        *string     `json:"channel_name,omitempty"`
+	ChannelID          *string     `json:"channel_id,omitempty"`
+	ChannelAccountID   *string     `json:"channel_account_id,omitempty"`
 }
 
 func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*TransactionSummary, error) {
 	response := new(TransactionSummary)
 	args := struct {
-		Name                 string `json:"name"`
-		Bid                  string `json:"bid"`
-		FilePath             string `json:"file_path,omitempty"`
-		IncludeProtobuf      bool   `json:"include_protobuf"`
+		Name                 string  `json:"name"`
+		Bid                  string  `json:"bid"`
+		FilePath             string  `json:"file_path,omitempty"`
+		FileSize             *string `json:"file_size,omitempty"`
+		IncludeProtoBuf      bool    `json:"include_protobuf"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
 		FilePath:            filePath,
 		Bid:                 fmt.Sprintf("%.6f", bid),
-		IncludeProtobuf:     true,
+		IncludeProtoBuf:     true,
 		StreamCreateOptions: &options,
 	}
 	structs.DefaultTagName = "json"
@@ -337,7 +342,7 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Pub
 
 func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
 	response := new(ClaimAbandonResponse)
-	err := d.call(response, "channel_abandon", map[string]interface{}{
+	err := d.call(response, "claim_abandon", map[string]interface{}{
 		"txid":             txID,
 		"nout":             nOut,
 		"account_id":       accountID,
