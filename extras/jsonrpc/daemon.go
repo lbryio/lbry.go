@@ -281,10 +281,11 @@ type StreamCreateOptions struct {
 func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*TransactionSummary, error) {
 	response := new(TransactionSummary)
 	args := struct {
-		Name                 string `json:"name"`
-		Bid                  string `json:"bid"`
-		FilePath             string `json:"file_path,omitempty"`
-		IncludeProtoBuf      bool   `json:"include_protobuf"`
+		Name                 string  `json:"name"`
+		Bid                  string  `json:"bid"`
+		FilePath             string  `json:"file_path,omitempty"`
+		FileSize             *string `json:"file_size,omitempty"`
+		IncludeProtoBuf      bool    `json:"include_protobuf"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
