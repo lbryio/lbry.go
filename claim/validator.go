@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/binary"
 	"encoding/hex"
 	"math/big"
 
@@ -57,13 +58,13 @@ func (c *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, k string,
 	return c.validateClaimSignature(certificate, k, certificateId, blockchainName)
 }
 
-func (c *ClaimHelper) validateClaimSignature(certificate *ClaimHelper, firstInputTxID, certificateId string, blockchainName string) (bool, error) {
+func (c *ClaimHelper) validateClaimSignature(certificate *ClaimHelper, firstInputTxHash, certificateId string, blockchainName string) (bool, error) {
 	certificateIdSlice, err := hex.DecodeString(certificateId)
 	if err != nil {
 		return false, errors.Err(err)
 	}
 	certificateIdSlice = reverseBytes(certificateIdSlice)
-	firstInputTxIDBytes, err := hex.DecodeString(firstInputTxID)
+	firstInputTxIDBytes, err := hex.DecodeString(firstInputTxHash)
 	if err != nil {
 		return false, errors.Err(err)
 	}
@@ -77,12 +78,7 @@ func (c *ClaimHelper) validateClaimSignature(certificate *ClaimHelper, firstInpu
 		signatureBytes[i] = b
 	}
 
-	serialized, err := c.serialized()
-	if err != nil {
-		return false, errors.Err("serialization error")
-	}
-
-	claimDigest := getClaimSignatureDigest(firstInputTxIDBytes, certificateIdSlice, serialized)
+	claimDigest := getClaimSignatureDigest(firstInputTxIDBytes, certificateIdSlice, c.Payload)
 	return c.VerifyDigest(certificate, signatureBytes, claimDigest), nil
 }
 
@@ -119,4 +115,14 @@ func (c *ClaimHelper) validateV1ClaimSignature(certificate *ClaimHelper, claimAd
 
 	claimDigest := getClaimSignatureDigest(claimAddress[:], serializedNoSig, certificateIdSlice)
 	return c.VerifyDigest(certificate, signatureBytes, claimDigest), nil
+}
+
+func GetOutpointHash(txid string, vout uint32) (string, error) {
+	txidBytes, err := hex.DecodeString(txid)
+	if err != nil {
+		return "", errors.Err(err)
+	}
+	var voutBytes = make([]byte, 4)
+	binary.LittleEndian.PutUint32(voutBytes, vout)
+	return hex.EncodeToString(append(reverseBytes(txidBytes), voutBytes...)), nil
 }

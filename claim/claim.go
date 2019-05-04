@@ -31,6 +31,7 @@ type ClaimHelper struct {
 	ClaimID     []byte
 	Version     version
 	Signature   []byte
+	Payload     []byte
 }
 
 const migrationErrorMessage = "migration from v1 to v2 protobuf failed with: "
@@ -143,6 +144,7 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 		ClaimID:     claimID,
 		Version:     version,
 		Signature:   signature,
+		Payload:     pbPayload,
 	}
 
 	err = c.ValidateAddresses(blockchainName)
@@ -166,7 +168,7 @@ func (c *ClaimHelper) LoadFromHexString(claim_hex string, blockchainName string)
 }
 
 func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
-	claim := &ClaimHelper{&pb.Claim{}, nil, nil, NoSig, nil}
+	claim := &ClaimHelper{&pb.Claim{}, nil, nil, NoSig, nil, nil}
 	err := claim.LoadFromBytes(serialized, blockchainName)
 	if err != nil {
 		return nil, err

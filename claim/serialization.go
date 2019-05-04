@@ -25,14 +25,13 @@ func (c *ClaimHelper) serialized() ([]byte, error) {
 
 func (c *ClaimHelper) getProtobuf() *pb.Claim {
 	claim := &pb.Claim{
-		Title:       c.Title,
-		Description: c.Description,
-		Thumbnail:   c.Thumbnail,
-		Tags:        c.Tags,
-		Languages:   c.Languages,
-		Locations:   c.Locations,
+		Title:       c.GetTitle(),
+		Description: c.GetDescription(),
+		Thumbnail:   c.GetThumbnail(),
+		Tags:        c.GetTags(),
+		Languages:   c.GetLanguages(),
+		Locations:   c.GetLocations(),
 	}
-	return c.Claim
 	if c.GetChannel() != nil {
 		claim.Type = &pb.Claim_Channel{Channel: c.GetChannel()}
 	} else if c.GetStream() != nil {
