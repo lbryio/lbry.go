@@ -266,7 +266,6 @@ type StreamCreateOptions struct {
 	StreamType         *streamType `json:"stream_type,omitempty"`
 	ReleaseTime        *int64      `json:"release_time,omitempty"`
 	Duration           *uint64     `json:"duration,omitempty"`
-	VideoDuration      *uint64     `json:"video_duration,omitempty"` //TODO: this shouldn't exist
 	ImageWidth         *uint       `json:"image_width,omitempty"`
 	ImageHeight        *uint       `json:"image_height,omitempty"`
 	VideoWidth         *uint       `json:"video_width,omitempty"`
