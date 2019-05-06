@@ -318,6 +318,7 @@ type StreamUpdateOptions struct {
 	ClearLocations       *bool   `json:"clear_locations,omitempty"`
 	Name                 *string `json:"name"`
 	FilePath             *string `json:"file_path,omitempty"`
+	FileSize             *string `json:"file_size,omitempty"`
 	Bid                  *string `json:"bid"`
 	*StreamCreateOptions `json:",flatten"`
 }
