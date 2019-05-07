@@ -284,7 +284,7 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 		Bid                  string  `json:"bid"`
 		FilePath             string  `json:"file_path,omitempty"`
 		FileSize             *string `json:"file_size,omitempty"`
-		IncludeProtoBuf      bool    `json:"include_protobuf"`
+		IncludeProtobuf      bool    `json:"include_protobuf"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
