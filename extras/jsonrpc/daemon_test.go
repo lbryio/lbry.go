@@ -112,10 +112,6 @@ func TestClient_StreamCreate(t *testing.T) {
 		LicenseURL:         nil,
 		ReleaseTime:        nil,
 		Duration:           nil,
-		ImageWidth:         nil,
-		ImageHeight:        nil,
-		VideoWidth:         nil,
-		VideoHeight:        nil,
 		Preview:            nil,
 		AllowDuplicateName: nil,
 		ChannelName:        nil,
@@ -143,9 +139,9 @@ func TestClient_ChannelCreate(t *testing.T) {
 			}},
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 		},
-		Email:      util.PtrToString("niko@lbry.com"),
-		WebsiteURL: util.PtrToString("https://lbry.com"),
-		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		ContactEmail: util.PtrToString("niko@lbry.com"),
+		HomepageURL:  util.PtrToString("https://lbry.com"),
+		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
 	if err != nil {
 		t.Error(err)
@@ -169,9 +165,9 @@ func TestClient_ChannelAbandon(t *testing.T) {
 			}},
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 		},
-		Email:      util.PtrToString("niko@lbry.com"),
-		WebsiteURL: util.PtrToString("https://lbry.com"),
-		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		ContactEmail: util.PtrToString("niko@lbry.com"),
+		HomepageURL:  util.PtrToString("https://lbry.com"),
+		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
 	if err != nil {
 		t.Error(err)

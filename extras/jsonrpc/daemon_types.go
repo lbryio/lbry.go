@@ -256,16 +256,6 @@ type Address string
 type AddressUnusedResponse Address
 type AddressListResponse []Address
 
-type PublishResponse struct {
-	ClaimAddress string             `json:"claim_address"`
-	ClaimID      string             `json:"claim_id"`
-	Output       Transaction        `json:"output"`
-	Success      bool               `json:"success"`
-	Tx           TransactionSummary `json:"tx"`
-}
-
-type ChannelNewResponse PublishResponse
-
 type ChannelListResponse struct {
 	Items      []Transaction `json:"items"`
 	Page       uint64        `json:"page"`
@@ -284,27 +274,40 @@ type Support struct {
 }
 
 type Claim struct {
-	Address          string           `json:"address"`
-	Amount           string           `json:"amount"`
-	ChannelName      *string          `json:"channel_name,omitempty"`
-	ClaimID          string           `json:"claim_id"`
-	ClaimSequence    int64            `json:"claim_sequence"`
-	DecodedClaim     bool             `json:"decoded_claim"`
-	Depth            int64            `json:"depth"`
-	EffectiveAmount  string           `json:"effective_amount"`
-	HasSignature     *bool            `json:"has_signature,omitempty"`
-	Height           int              `json:"height"`
-	Hex              string           `json:"hex"`
-	Name             string           `json:"name"`
-	NormalizedName   string           `json:"normalized_name"`
-	Nout             uint64           `json:"nout"`
-	PermanentUrl     string           `json:"permanent_url"`
-	SignatureIsValid *bool            `json:"signature_is_valid,omitempty"`
-	Supports         []Support        `json:"supports"`
-	Txid             string           `json:"txid"`
-	Type             string           `json:"type"`
-	ValidAtHeight    int              `json:"valid_at_height"`
-	Value            lbryschema.Claim `json:"protobuf"`
+	Address                 string `json:"address"`
+	Amount                  string `json:"amount"`
+	ClaimID                 string `json:"claim_id"`
+	ClaimOp                 string `json:"claim_op,omitempty"`
+	Confirmations           int    `json:"confirmations"`
+	Height                  int    `json:"height"`
+	IsChange                bool   `json:"is_change,omitempty"`
+	IsChannelSignatureValid bool   `json:"is_channel_signature_valid,omitempty"`
+	IsMine                  bool   `json:"is_mine,omitempty"`
+	Name                    string `json:"name"`
+	Nout                    uint64 `json:"nout"`
+	PermanentURL            string `json:"permanent_url"`
+	SigningChannel          struct {
+		ClaimID string `json:"claim_id"`
+		Name    string `json:"name"`
+		Value   struct {
+			PublicKey string `json:"public_key"`
+			Title     string `json:"title"`
+		} `json:"value"`
+	} `json:"signing_channel,omitempty"`
+	Timestamp               int              `json:"timestamp"`
+	Txid                    string           `json:"txid"`
+	Type                    string           `json:"type,omitempty"`
+	ValueType               string           `json:"value_type,omitempty"`
+	Value                   lbryschema.Claim `json:"protobuf,omitempty"`
+	AbsoluteChannelPosition int              `json:"absolute_channel_position,omitempty"`
+	ChannelName             string           `json:"channel_name,omitempty"`
+	ClaimSequence           int64            `json:"claim_sequence,omitempty"`
+	DecodedClaim            bool             `json:"decoded_claim,omitempty"`
+	EffectiveAmount         string           `json:"effective_amount,omitempty"`
+	HasSignature            *bool            `json:"has_signature,omitempty"`
+	SignatureIsValid        *bool            `json:"signature_is_valid,omitempty"`
+	Supports                []Support        `json:"supports,omitempty"`
+	ValidAtHeight           int              `json:"valid_at_height,omitempty"`
 }
 
 const reflectorURL = "http://blobs.lbry.io/"
@@ -361,15 +364,13 @@ func (c *Claim) GetStreamSizeByMagic() (uint64, error) {
 	return streamSize, nil
 }
 
-type ClaimListResponse []Claim
-
-type ClaimListMineResponse struct {
+type ClaimListResponse struct {
 	Claims     []Claim `json:"items"`
 	Page       uint64  `json:"page"`
 	PageSize   uint64  `json:"page_size"`
 	TotalPages uint64  `json:"total_pages"`
 }
-type ClaimSearchResponse ClaimListMineResponse
+type ClaimSearchResponse ClaimListResponse
 
 type StatusResponse struct {
 	BlobManager struct {

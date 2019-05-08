@@ -284,7 +284,7 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 		Bid                  string  `json:"bid"`
 		FilePath             string  `json:"file_path,omitempty"`
 		FileSize             *string `json:"file_size,omitempty"`
-		IncludeProtobuf      bool    `json:"include_protobuf"`
+		IncludeProtoBuf      bool    `json:"include_protobuf"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
@@ -316,19 +316,17 @@ type StreamUpdateOptions struct {
 	ClearTags            *bool   `json:"clear_tags,omitempty"`
 	ClearLanguages       *bool   `json:"clear_languages,omitempty"`
 	ClearLocations       *bool   `json:"clear_locations,omitempty"`
-	Name                 *string `json:"name"`
+	Name                 *string `json:"name,omitempty"`
 	FilePath             *string `json:"file_path,omitempty"`
-	FileSize             *string `json:"file_size,omitempty"`
-	Bid                  *string `json:"bid"`
+	FileSize             *uint64 `json:"file_size,omitempty"`
+	Bid                  *string `json:"bid,omitempty"`
 	*StreamCreateOptions `json:",flatten"`
 }
 
-func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
+func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
 	args := struct {
 		ClaimID              string `json:"claim_id"`
-		FilePath             string `json:"file_path,omitempty"`
-		Bid                  string `json:"bid"`
 		IncludeProtoBuf      bool   `json:"include_protobuf"`
 		*StreamUpdateOptions `json:",flatten"`
 	}{
@@ -337,7 +335,7 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Pub
 		StreamUpdateOptions: &options,
 	}
 	structs.DefaultTagName = "json"
-	return response, d.call(response, "stream_create", structs.Map(args))
+	return response, d.call(response, "stream_update", structs.Map(args))
 }
 
 func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
@@ -361,15 +359,16 @@ func (d *Client) AddressList(account *string) (*AddressListResponse, error) {
 	})
 }
 
-func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListMineResponse, error) {
+func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")
 	}
-	response := new(ClaimListMineResponse)
+	response := new(ClaimListResponse)
 	err := d.call(response, "claim_list", map[string]interface{}{
-		"account_id": account,
-		"page":       page,
-		"page_size":  pageSize,
+		"account_id":       account,
+		"page":             page,
+		"page_size":        pageSize,
+		"include_protobuf": true,
 	})
 	if err != nil {
 		return nil, err
