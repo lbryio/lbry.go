@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 
 	"github.com/lbryio/lbry.go/extras/errors"
@@ -103,7 +104,12 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 		val, err := getEnumVal(lbryschema.Fee_Currency_value, data)
 		return lbryschema.Fee_Currency(val), err
 	case reflect.TypeOf(lbryschema.Claim{}):
-		claim, err := schema.DecodeClaimHex(data.(string), "lbrycrd_main")
+		blockChainName := os.Getenv("BLOCKCHAIN_NAME")
+		if blockChainName == "" {
+			blockChainName = "lbrycrd_main"
+		}
+
+		claim, err := schema.DecodeClaimHex(data.(string), blockChainName)
 		if err != nil {
 			return nil, err
 		}
