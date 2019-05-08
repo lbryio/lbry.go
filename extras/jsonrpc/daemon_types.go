@@ -256,16 +256,6 @@ type Address string
 type AddressUnusedResponse Address
 type AddressListResponse []Address
 
-type PublishResponse struct {
-	ClaimAddress string             `json:"claim_address"`
-	ClaimID      string             `json:"claim_id"`
-	Output       Transaction        `json:"output"`
-	Success      bool               `json:"success"`
-	Tx           TransactionSummary `json:"tx"`
-}
-
-type ChannelNewResponse PublishResponse
-
 type ChannelListResponse struct {
 	Items      []Transaction `json:"items"`
 	Page       uint64        `json:"page"`

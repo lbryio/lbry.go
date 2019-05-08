@@ -316,19 +316,17 @@ type StreamUpdateOptions struct {
 	ClearTags            *bool   `json:"clear_tags,omitempty"`
 	ClearLanguages       *bool   `json:"clear_languages,omitempty"`
 	ClearLocations       *bool   `json:"clear_locations,omitempty"`
-	Name                 *string `json:"name"`
+	Name                 *string `json:"name,omitempty"`
 	FilePath             *string `json:"file_path,omitempty"`
-	FileSize             *string `json:"file_size,omitempty"`
-	Bid                  *string `json:"bid"`
+	FileSize             *uint64 `json:"file_size,omitempty"`
+	Bid                  *string `json:"bid,omitempty"`
 	*StreamCreateOptions `json:",flatten"`
 }
 
-func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
+func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
 	args := struct {
 		ClaimID              string `json:"claim_id"`
-		FilePath             string `json:"file_path,omitempty"`
-		Bid                  string `json:"bid"`
 		IncludeProtoBuf      bool   `json:"include_protobuf"`
 		*StreamUpdateOptions `json:",flatten"`
 	}{
@@ -337,7 +335,7 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Pub
 		StreamUpdateOptions: &options,
 	}
 	structs.DefaultTagName = "json"
-	return response, d.call(response, "stream_create", structs.Map(args))
+	return response, d.call(response, "stream_update", structs.Map(args))
 }
 
 func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
