@@ -284,7 +284,7 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 		Bid                  string  `json:"bid"`
 		FilePath             string  `json:"file_path,omitempty"`
 		FileSize             *string `json:"file_size,omitempty"`
-		IncludeProtobuf      bool    `json:"include_protobuf"`
+		IncludeProtoBuf      bool    `json:"include_protobuf"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
@@ -361,15 +361,16 @@ func (d *Client) AddressList(account *string) (*AddressListResponse, error) {
 	})
 }
 
-func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListMineResponse, error) {
+func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")
 	}
-	response := new(ClaimListMineResponse)
+	response := new(ClaimListResponse)
 	err := d.call(response, "claim_list", map[string]interface{}{
-		"account_id": account,
-		"page":       page,
-		"page_size":  pageSize,
+		"account_id":       account,
+		"page":             page,
+		"page_size":        pageSize,
+		"include_protobuf": true,
 	})
 	if err != nil {
 		return nil, err
