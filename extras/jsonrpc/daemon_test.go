@@ -139,10 +139,39 @@ func TestClient_ChannelCreate(t *testing.T) {
 			}},
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 		},
-		ContactEmail: util.PtrToString("niko@lbry.com"),
-		HomepageURL:  util.PtrToString("https://lbry.com"),
-		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
+	if err != nil {
+		t.Error(err)
+	}
+	prettyPrint(*got)
+}
+
+func TestClient_ChannelUpdate(t *testing.T) {
+	d := NewClient("")
+	got, err := d.ChannelUpdate("709868122fe3560a3929d6d63bdbc792d8306a6c", ChannelUpdateOptions{
+		ClearLanguages: util.PtrToBool(true),
+		ClearLocations: util.PtrToBool(true),
+		ClearTags:      util.PtrToBool(true),
+		ChannelCreateOptions: ChannelCreateOptions{
+			ClaimCreateOptions: ClaimCreateOptions{
+				Title:       "Mess with the channels",
+				Description: "And you'll get what you deserve",
+				Tags:        []string{"we", "got", "more", "tags"},
+				Languages:   []string{"en-US"},
+				Locations: []Location{{
+					Country: util.PtrToString("CH"),
+					State:   util.PtrToString("Ticino"),
+					City:    util.PtrToString("Lugano"),
+				}},
+				ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+			},
+			Email:      util.PtrToString("niko@lbry.com"),
+			WebsiteURL: util.PtrToString("https://lbry.com"),
+			CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		}})
 	if err != nil {
 		t.Error(err)
 	}
@@ -165,9 +194,9 @@ func TestClient_ChannelAbandon(t *testing.T) {
 			}},
 			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 		},
-		ContactEmail: util.PtrToString("niko@lbry.com"),
-		HomepageURL:  util.PtrToString("https://lbry.com"),
-		CoverURL:     util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
 	if err != nil {
 		t.Error(err)

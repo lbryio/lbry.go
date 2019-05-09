@@ -224,7 +224,7 @@ type ClaimCreateOptions struct {
 	Title        string     `json:"title"`
 	Description  string     `json:"description"`
 	Tags         []string   `json:"tags,omitempty"`
-	Languages    []string   `json:"languages"`
+	Languages    []string   `json:"languages,omitempty"`
 	Locations    []Location `json:"locations,omitempty"`
 	ThumbnailURL *string    `json:"thumbnail_url,omitempty"`
 	AccountID    *string    `json:"account_id,omitempty"`
@@ -234,9 +234,10 @@ type ClaimCreateOptions struct {
 
 type ChannelCreateOptions struct {
 	ClaimCreateOptions `json:",flatten"`
-	ContactEmail       *string `json:"contact_email,omitempty"`
-	HomepageURL        *string `json:"homepage_url,omitempty"`
-	CoverURL           *string `json:"cover_url,omitempty"`
+	Email              *string  `json:"email,omitempty"`
+	WebsiteURL         *string  `json:"website_url,omitempty"`
+	CoverURL           *string  `json:"cover_url,omitempty"`
+	Featured           []string `json:"featured,omitempty"`
 }
 
 func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*TransactionSummary, error) {
@@ -255,6 +256,30 @@ func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOp
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "channel_create", structs.Map(args))
+}
+
+type ChannelUpdateOptions struct {
+	ChannelCreateOptions `json:",flatten"`
+	NewSigningKey        *bool `json:"new_signing_key,omitempty"`
+	ClearFeatured        *bool `json:"clear_featured,omitempty"`
+	ClearTags            *bool `json:"clear_tags,omitempty"`
+	ClearLanguages       *bool `json:"clear_languages,omitempty"`
+	ClearLocations       *bool `json:"clear_locations,omitempty"`
+}
+
+func (d *Client) ChannelUpdate(claimID string, options ChannelUpdateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		ClaimID               string `json:"claim_id"`
+		IncludeProtoBuf       bool   `json:"include_protobuf"`
+		*ChannelUpdateOptions `json:",flatten"`
+	}{
+		ClaimID:              claimID,
+		IncludeProtoBuf:      true,
+		ChannelUpdateOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "channel_update", structs.Map(args))
 }
 
 type StreamCreateOptions struct {
