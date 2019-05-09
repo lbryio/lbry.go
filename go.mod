@@ -38,7 +38,7 @@ require (
 	github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d // indirect
 	github.com/smartystreets/goconvey v0.0.0-20181108003508-044398e4856c // indirect
 	github.com/spf13/cast v1.2.0
-	github.com/stretchr/testify v1.3.0 // indirect
+	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.3.2
 	github.com/ybbus/jsonrpc v0.0.0-20180411222309-2a548b7d822d
 	go.uber.org/atomic v1.3.2 // indirect
