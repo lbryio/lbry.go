@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/structs"
+
 	"github.com/lbryio/lbry.go/extras/errors"
 
 	"github.com/mitchellh/mapstructure"
@@ -41,7 +43,7 @@ func NewClient(address string) *Client {
 func NewClientAndWait(address string) *Client {
 	d := NewClient(address)
 	for {
-		_, err := d.WalletBalance()
+		_, err := d.AccountBalance(nil)
 		if err == nil {
 			return d
 		}
@@ -49,7 +51,7 @@ func NewClientAndWait(address string) *Client {
 	}
 }
 
-func decode(data interface{}, targetStruct interface{}) error {
+func Decode(data interface{}, targetStruct interface{}) error {
 	config := &mapstructure.DecoderConfig{
 		Metadata: nil,
 		Result:   targetStruct,
@@ -125,7 +127,7 @@ func (d *Client) call(response interface{}, command string, params map[string]in
 	if err != nil {
 		return err
 	}
-	return decode(result, response)
+	return Decode(result, response)
 }
 
 func (d *Client) SetRPCTimeout(timeout time.Duration) {
@@ -134,9 +136,269 @@ func (d *Client) SetRPCTimeout(timeout time.Duration) {
 	})
 }
 
-func (d *Client) Commands() (*CommandsResponse, error) {
-	response := new(CommandsResponse)
-	return response, d.call(response, "commands", map[string]interface{}{})
+//============================================
+//				NEW SDK
+//============================================
+func (d *Client) AccountList() (*AccountListResponse, error) {
+	response := new(AccountListResponse)
+	return response, d.call(response, "account_list", map[string]interface{}{})
+}
+
+type AccountSettings struct {
+	Default          bool   `json:"default"`
+	NewName          string `json:"new_name"`
+	ReceivingGap     int    `json:"receiving_gap"`
+	ReceivingMaxUses int    `json:"receiving_max_uses"`
+	ChangeGap        int    `json:"change_gap"`
+	ChangeMaxUses    int    `json:"change_max_uses"`
+}
+
+func (d *Client) AccountSet(accountID string, settings AccountSettings) (*Account, error) {
+	response := new(Account)
+	return response, d.call(response, "account_list", map[string]interface{}{})
+}
+
+func (d *Client) AccountBalance(account *string) (*AccountBalanceResponse, error) {
+	response := new(AccountBalanceResponse)
+	return response, d.call(response, "account_balance", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) AccountFund(fromAccount string, toAccount string, amount string, outputs uint64) (*AccountFundResponse, error) {
+	response := new(AccountFundResponse)
+	return response, d.call(response, "account_fund", map[string]interface{}{
+		"from_account": fromAccount,
+		"to_account":   toAccount,
+		"amount":       amount,
+		"outputs":      outputs,
+		"broadcast":    true,
+	})
+}
+
+func (d *Client) AccountCreate(accountName string, singleKey bool) (*AccountCreateResponse, error) {
+	response := new(AccountCreateResponse)
+	return response, d.call(response, "account_create", map[string]interface{}{
+		"account_name": accountName,
+		"single_key":   singleKey,
+	})
+}
+
+func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) {
+	response := new(AddressUnusedResponse)
+	return response, d.call(response, "address_unused", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*ChannelListResponse, error) {
+	if page == 0 {
+		return nil, errors.Err("pages start from 1")
+	}
+	response := new(ChannelListResponse)
+	return response, d.call(response, "channel_list", map[string]interface{}{
+		"account_id":       account,
+		"page":             page,
+		"page_size":        pageSize,
+		"include_protobuf": true,
+	})
+}
+
+type streamType string
+
+var (
+	StreamTypeVideo = streamType("video")
+	StreamTypeAudio = streamType("audio")
+	StreamTypeImage = streamType("image")
+)
+
+type Location struct {
+	Country    *string `json:"country,omitempty"`
+	State      *string `json:"state,omitempty"`
+	City       *string `json:"city,omitempty"`
+	PostalCode *string `json:"code,omitempty"`
+	Latitude   *string `json:"latitude,omitempty"`
+	Longitude  *string `json:"longitude,omitempty"`
+}
+type ClaimCreateOptions struct {
+	Title        string     `json:"title"`
+	Description  string     `json:"description"`
+	Tags         []string   `json:"tags,omitempty"`
+	Languages    []string   `json:"languages,omitempty"`
+	Locations    []Location `json:"locations,omitempty"`
+	ThumbnailURL *string    `json:"thumbnail_url,omitempty"`
+	AccountID    *string    `json:"account_id,omitempty"`
+	ClaimAddress *string    `json:"claim_address,omitempty"`
+	Preview      *bool      `json:"preview,omitempty"`
+}
+
+type ChannelCreateOptions struct {
+	ClaimCreateOptions `json:",flatten"`
+	Email              *string  `json:"email,omitempty"`
+	WebsiteURL         *string  `json:"website_url,omitempty"`
+	CoverURL           *string  `json:"cover_url,omitempty"`
+	Featured           []string `json:"featured,omitempty"`
+}
+
+func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		Name                 string `json:"name"`
+		Bid                  string `json:"bid"`
+		FilePath             string `json:"file_path,omitempty"`
+		IncludeProtoBuf      bool   `json:"include_protobuf"`
+		ChannelCreateOptions `json:",flatten"`
+	}{
+		Name:                 name,
+		Bid:                  fmt.Sprintf("%.6f", bid),
+		IncludeProtoBuf:      true,
+		ChannelCreateOptions: options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "channel_create", structs.Map(args))
+}
+
+type ChannelUpdateOptions struct {
+	ChannelCreateOptions `json:",flatten"`
+	NewSigningKey        *bool `json:"new_signing_key,omitempty"`
+	ClearFeatured        *bool `json:"clear_featured,omitempty"`
+	ClearTags            *bool `json:"clear_tags,omitempty"`
+	ClearLanguages       *bool `json:"clear_languages,omitempty"`
+	ClearLocations       *bool `json:"clear_locations,omitempty"`
+}
+
+func (d *Client) ChannelUpdate(claimID string, options ChannelUpdateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		ClaimID               string `json:"claim_id"`
+		IncludeProtoBuf       bool   `json:"include_protobuf"`
+		*ChannelUpdateOptions `json:",flatten"`
+	}{
+		ClaimID:              claimID,
+		IncludeProtoBuf:      true,
+		ChannelUpdateOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "channel_update", structs.Map(args))
+}
+
+type StreamCreateOptions struct {
+	ClaimCreateOptions `json:",flatten"`
+	Fee                *Fee        `json:",omitempty,flatten"`
+	Author             *string     `json:"author,omitempty"`
+	License            *string     `json:"license,omitempty"`
+	LicenseURL         *string     `json:"license_url,omitempty"`
+	StreamType         *streamType `json:"stream_type,omitempty"`
+	ReleaseTime        *int64      `json:"release_time,omitempty"`
+	Duration           *uint64     `json:"duration,omitempty"`
+	ImageWidth         *uint       `json:"image_width,omitempty"`
+	ImageHeight        *uint       `json:"image_height,omitempty"`
+	VideoWidth         *uint       `json:"video_width,omitempty"`
+	VideoHeight        *uint       `json:"video_height,omitempty"`
+	Preview            *string     `json:"preview,omitempty"`
+	AllowDuplicateName *bool       `json:"allow_duplicate_name,omitempty"`
+	ChannelName        *string     `json:"channel_name,omitempty"`
+	ChannelID          *string     `json:"channel_id,omitempty"`
+	ChannelAccountID   *string     `json:"channel_account_id,omitempty"`
+}
+
+func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		Name                 string  `json:"name"`
+		Bid                  string  `json:"bid"`
+		FilePath             string  `json:"file_path,omitempty"`
+		FileSize             *string `json:"file_size,omitempty"`
+		IncludeProtoBuf      bool    `json:"include_protobuf"`
+		*StreamCreateOptions `json:",flatten"`
+	}{
+		Name:                name,
+		FilePath:            filePath,
+		Bid:                 fmt.Sprintf("%.6f", bid),
+		IncludeProtoBuf:     true,
+		StreamCreateOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "stream_create", structs.Map(args))
+}
+
+func (d *Client) StreamAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
+	response := new(ClaimAbandonResponse)
+	err := d.call(response, "claim_abandon", map[string]interface{}{
+		"txid":             txID,
+		"nout":             nOut,
+		"account_id":       accountID,
+		"include_protobuf": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+type StreamUpdateOptions struct {
+	ClearTags            *bool   `json:"clear_tags,omitempty"`
+	ClearLanguages       *bool   `json:"clear_languages,omitempty"`
+	ClearLocations       *bool   `json:"clear_locations,omitempty"`
+	Name                 *string `json:"name,omitempty"`
+	FilePath             *string `json:"file_path,omitempty"`
+	FileSize             *uint64 `json:"file_size,omitempty"`
+	Bid                  *string `json:"bid,omitempty"`
+	*StreamCreateOptions `json:",flatten"`
+}
+
+func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		ClaimID              string `json:"claim_id"`
+		IncludeProtoBuf      bool   `json:"include_protobuf"`
+		*StreamUpdateOptions `json:",flatten"`
+	}{
+		ClaimID:             claimID,
+		IncludeProtoBuf:     true,
+		StreamUpdateOptions: &options,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "stream_update", structs.Map(args))
+}
+
+func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
+	response := new(ClaimAbandonResponse)
+	err := d.call(response, "claim_abandon", map[string]interface{}{
+		"txid":             txID,
+		"nout":             nOut,
+		"account_id":       accountID,
+		"include_protobuf": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func (d *Client) AddressList(account *string) (*AddressListResponse, error) {
+	response := new(AddressListResponse)
+	return response, d.call(response, "address_list", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListResponse, error) {
+	if page == 0 {
+		return nil, errors.Err("pages start from 1")
+	}
+	response := new(ClaimListResponse)
+	err := d.call(response, "claim_list", map[string]interface{}{
+		"account_id":       account,
+		"page":             page,
+		"page_size":        pageSize,
+		"include_protobuf": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
 }
 
 func (d *Client) Status() (*StatusResponse, error) {
@@ -144,29 +406,26 @@ func (d *Client) Status() (*StatusResponse, error) {
 	return response, d.call(response, "status", map[string]interface{}{})
 }
 
-func (d *Client) WalletBalance() (*WalletBalanceResponse, error) {
-	rawResponse, err := d.callNoDecode("wallet_balance", map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	}
-
-	dec, err := decodeNumber(rawResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	response := WalletBalanceResponse(dec)
-	return &response, nil
-}
-
-func (d *Client) WalletList() (*WalletListResponse, error) {
-	response := new(WalletListResponse)
-	return response, d.call(response, "wallet_list", map[string]interface{}{})
-}
-
-func (d *Client) UTXOList() (*UTXOListResponse, error) {
+func (d *Client) UTXOList(account *string) (*UTXOListResponse, error) {
 	response := new(UTXOListResponse)
-	return response, d.call(response, "utxo_list", map[string]interface{}{})
+	return response, d.call(response, "utxo_list", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) Get(uri string) (*GetResponse, error) {
+	response := new(GetResponse)
+	return response, d.call(response, "get", map[string]interface{}{
+		"uri":              uri,
+		"include_protobuf": true,
+	})
+}
+
+func (d *Client) FileList() (*FileListResponse, error) {
+	response := new(FileListResponse)
+	return response, d.call(response, "file_list", map[string]interface{}{
+		"include_protobuf": true,
+	})
 }
 
 func (d *Client) Version() (*VersionResponse, error) {
@@ -174,269 +433,20 @@ func (d *Client) Version() (*VersionResponse, error) {
 	return response, d.call(response, "version", map[string]interface{}{})
 }
 
-func (d *Client) Get(url string, filename *string, timeout *uint) (*GetResponse, error) {
-	response := new(GetResponse)
-	return response, d.call(response, "get", map[string]interface{}{
-		"uri":       url,
-		"file_name": filename,
-		"timeout":   timeout,
-	})
-}
-
-func (d *Client) ClaimList(name string) (*ClaimListResponse, error) {
-	response := new(ClaimListResponse)
-	return response, d.call(response, "claim_list", map[string]interface{}{
-		"name": name,
-	})
-}
-
-func (d *Client) ClaimShow(claimID *string, txid *string, nout *uint) (*ClaimShowResponse, error) {
-	response := new(ClaimShowResponse)
-	return response, d.call(response, "claim_show", map[string]interface{}{
-		"claim_id": claimID,
-		"txid":     txid,
-		"nout":     nout,
-	})
-}
-
-func (d *Client) PeerList(blobHash string, timeout *uint) (*PeerListResponse, error) {
-	rawResponse, err := d.callNoDecode("peer_list", map[string]interface{}{
-		"blob_hash": blobHash,
-		"timeout":   timeout,
-	})
-	if err != nil {
-		return nil, err
-	}
-	castResponse, ok := rawResponse.([]interface{})
-	if !ok {
-		return nil, errors.Err("invalid peer_list response")
-	}
-
-	peers := []PeerListResponsePeer{}
-	for _, peer := range castResponse {
-		t, ok := peer.(map[string]interface{})
-		if !ok {
-			return nil, errors.Err("invalid peer_list response")
-		}
-
-		if len(t) != 3 {
-			return nil, errors.Err("invalid triplet in peer_list response")
-		}
-
-		ip, ok := t["host"].(string)
-		if !ok {
-			return nil, errors.Err("invalid ip in peer_list response")
-		}
-		port, ok := t["port"].(json.Number)
-		if !ok {
-			return nil, errors.Err("invalid port in peer_list response")
-		}
-		nodeid, ok := t["node_id"].(string)
-		if !ok {
-			return nil, errors.Err("invalid nodeid in peer_list response")
-		}
-
-		portNum, err := port.Int64()
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
-		} else if portNum < 0 {
-			return nil, errors.Err("invalid port in peer_list response")
-		}
-
-		peers = append(peers, PeerListResponsePeer{
-			IP:     ip,
-			Port:   uint(portNum),
-			NodeId: nodeid,
-		})
-	}
-
-	response := PeerListResponse(peers)
-	return &response, nil
-}
-
-func (d *Client) BlobGet(blobHash string, encoding *string, timeout *uint) (*BlobGetResponse, error) {
-	rawResponse, err := d.callNoDecode("blob_get", map[string]interface{}{
-		"blob_hash": blobHash,
-		"timeout":   timeout,
-		"encoding":  encoding,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if _, ok := rawResponse.(string); ok {
-		return nil, nil // blob was downloaded, nothing to return
-	}
-
-	response := new(BlobGetResponse)
-	return response, decode(rawResponse, response)
-}
-
-func (d *Client) StreamAvailability(url string, search_timeout *uint64, blob_timeout *uint64) (*StreamAvailabilityResponse, error) {
-	response := new(StreamAvailabilityResponse)
-	return response, d.call(response, "stream_availability", map[string]interface{}{
-		"uri":            url,
-		"search_timeout": search_timeout,
-		"blob_timeout":   blob_timeout,
-	})
-}
-
-func (d *Client) StreamCostEstimate(url string, size *uint64) (*StreamCostEstimateResponse, error) {
-	rawResponse, err := d.callNoDecode("stream_cost_estimate", map[string]interface{}{
-		"uri":  url,
-		"size": size,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	dec, err := decodeNumber(rawResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	response := StreamCostEstimateResponse(dec)
-	return &response, nil
-}
-
-type FileListOptions struct {
-	SDHash     *string
-	StreamHash *string
-	FileName   *string
-	ClaimID    *string
-	Outpoint   *string
-	RowID      *string
-	Name       *string
-}
-
-func (d *Client) FileList(options FileListOptions) (*FileListResponse, error) {
-	response := new(FileListResponse)
-	return response, d.call(response, "file_list", map[string]interface{}{
-		"sd_hash":     options.SDHash,
-		"stream_hash": options.StreamHash,
-		"file_name":   options.FileName,
-		"claim_id":    options.ClaimID,
-		"outpoint":    options.Outpoint,
-		"rowid":       options.RowID,
-		"name":        options.Name,
-	})
-}
-
-func (d *Client) Resolve(url string) (*ResolveResponse, error) {
+func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	response := new(ResolveResponse)
 	return response, d.call(response, "resolve", map[string]interface{}{
-		"uri": url,
+		"urls":             urls,
+		"include_protobuf": true,
 	})
 }
 
-func (d *Client) ChannelNew(name string, amount float64) (*ChannelNewResponse, error) {
-	response := new(ChannelNewResponse)
-	return response, d.call(response, "channel_new", map[string]interface{}{
-		"channel_name": name,
-		"amount":       amount,
-	})
-}
-
-func (d *Client) ChannelList() (*ChannelListResponse, error) {
-	response := new(ChannelListResponse)
-	return response, d.call(response, "channel_list", map[string]interface{}{})
-}
-
-type PublishOptions struct {
-	Fee           *Fee
-	Title         *string
-	Description   *string
-	Author        *string
-	Language      *string
-	License       *string
-	LicenseURL    *string
-	Thumbnail     *string
-	Preview       *string
-	NSFW          *bool
-	ChannelName   *string
-	ChannelID     *string
-	ClaimAddress  *string
-	ChangeAddress *string
-}
-
-func (d *Client) Publish(name, filePath string, bid float64, options PublishOptions) (*PublishResponse, error) {
-	response := new(PublishResponse)
-	return response, d.call(response, "publish", map[string]interface{}{
-		"name":           name,
-		"file_path":      filePath,
-		"bid":            bid,
-		"fee":            options.Fee,
-		"title":          options.Title,
-		"description":    options.Description,
-		"author":         options.Author,
-		"language":       options.Language,
-		"license":        options.License,
-		"license_url":    options.LicenseURL,
-		"thumbnail":      options.Thumbnail,
-		"preview":        options.Preview,
-		"nsfw":           options.NSFW,
-		"channel_name":   options.ChannelName,
-		"channel_id":     options.ChannelID,
-		"claim_address":  options.ClaimAddress,
-		"change_address": options.ChangeAddress,
-	})
-}
-
-func (d *Client) BlobAnnounce(blobHash, sdHash, streamHash *string) (*BlobAnnounceResponse, error) {
-	response := new(BlobAnnounceResponse)
-	return response, d.call(response, "blob_announce", map[string]interface{}{
-		"blob_hash":   blobHash,
-		"stream_hash": streamHash,
-		"sd_hash":     sdHash,
-	})
-}
-
-func (d *Client) WalletPrefillAddresses(numAddresses int, amount decimal.Decimal, broadcast bool) (*WalletPrefillAddressesResponse, error) {
-	if numAddresses < 1 {
-		return nil, errors.Err("must create at least 1 address")
-	}
-	response := new(WalletPrefillAddressesResponse)
-	return response, d.call(response, "wallet_prefill_addresses", map[string]interface{}{
-		"num_addresses": numAddresses,
-		"amount":        amount,
-		"no_broadcast":  !broadcast,
-	})
-}
-
-func (d *Client) WalletNewAddress() (*WalletNewAddressResponse, error) {
-	rawResponse, err := d.callNoDecode("wallet_new_address", map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	}
-
-	address, ok := rawResponse.(string)
-	if !ok {
-		return nil, errors.Err("unexpected response")
-	}
-
-	response := WalletNewAddressResponse(address)
-	return &response, nil
-}
-
-func (d *Client) WalletUnusedAddress() (*WalletUnusedAddressResponse, error) {
-	rawResponse, err := d.callNoDecode("wallet_unused_address", map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	}
-
-	address, ok := rawResponse.(string)
-	if !ok {
-		return nil, errors.Err("unexpected response")
-	}
-
-	response := WalletUnusedAddressResponse(address)
-	return &response, nil
-}
-
-func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
+/*
+// use resolve?
+func (d *Client) NumClaimsInChannel(channelClaimID string) (uint64, error) {
 	response := new(NumClaimsInChannelResponse)
-	err := d.call(response, "claim_list_by_channel", map[string]interface{}{
-		"uri": url,
+	err := d.call(response, "claim_search", map[string]interface{}{
+		"channel_id": channelClaimID,
 	})
 	if err != nil {
 		return 0, err
@@ -444,42 +454,25 @@ func (d *Client) NumClaimsInChannel(url string) (uint64, error) {
 		return 0, errors.Err("no response")
 	}
 
-	channel, ok := (*response)[url]
+	channel, ok := (*response)[uri]
 	if !ok {
 		return 0, errors.Err("url not in response")
 	}
-	if channel.Error != "" {
-		if strings.Contains(channel.Error, "cannot be resolved") {
+	if channel.Error != nil {
+		if strings.Contains(*channel.Error, "cannot be resolved") {
 			return 0, nil
 		}
-		return 0, errors.Err(channel.Error)
+		return 0, errors.Err(*channel.Error)
 	}
-	return channel.ClaimsInChannel, nil
+	return *channel.ClaimsInChannel, nil
 }
-
-func (d *Client) ClaimListMine() (*ClaimListMineResponse, error) {
-	response := new(ClaimListMineResponse)
-	err := d.call(response, "claim_list_mine", map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
-	}
-
-	return response, nil
-}
-
-func (d *Client) ClaimAbandon(txID string, nOut int) (*ClaimAbandonResponse, error) {
-	response := new(ClaimAbandonResponse)
-	err := d.call(response, "claim_abandon", map[string]interface{}{
-		"txid": txID,
-		"nout": nOut,
+*/
+func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*ClaimSearchResponse, error) {
+	response := new(ClaimSearchResponse)
+	return response, d.call(response, "claim_search", map[string]interface{}{
+		"claim_id": claimID,
+		"txid":     txid,
+		"nout":     nout,
+		"name":     claimName,
 	})
-	if err != nil {
-		return nil, err
-	} else if response == nil {
-		return nil, errors.Err("no response")
-	}
-
-	return response, nil
 }

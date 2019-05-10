@@ -1,11 +1,18 @@
 package jsonrpc
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"os"
 	"reflect"
 
 	"github.com/lbryio/lbry.go/extras/errors"
-	lbryschema "github.com/lbryio/types/v1/go"
+	"github.com/lbryio/lbry.go/stream"
+
+	schema "github.com/lbryio/lbryschema.go/claim"
+	lbryschema "github.com/lbryio/types/v2/go"
 
 	"github.com/shopspring/decimal"
 )
@@ -19,44 +26,9 @@ const (
 )
 
 type Fee struct {
-	Currency Currency        `json:"currency"`
-	Amount   decimal.Decimal `json:"amount"`
-	Address  *string         `json:"address"`
-}
-
-type Support struct {
-	Amount decimal.Decimal `json:"amount"`
-	Nout   int             `json:"nout"`
-	Txid   string          `json:"txid"`
-}
-
-type Claim struct {
-	Address            string           `json:"address"`
-	Amount             decimal.Decimal  `json:"amount"`
-	BlocksToExpiration int              `json:"blocks_to_expiration"`
-	Category           string           `json:"category"`
-	ClaimID            string           `json:"claim_id"`
-	ClaimSequence      int              `json:"claim_sequence"`
-	Confirmations      int              `json:"confirmations"`
-	DecodedClaim       bool             `json:"decoded_claim"`
-	Depth              int              `json:"depth"`
-	EffectiveAmount    decimal.Decimal  `json:"effective_amount"`
-	ExpirationHeight   int              `json:"expiration_height"`
-	Expired            bool             `json:"expired"`
-	Height             int              `json:"height"`
-	Hex                string           `json:"hex"`
-	IsSpent            bool             `json:"is_spent"`
-	Name               string           `json:"name"`
-	Nout               int              `json:"nout"`
-	PermanentUrl       string           `json:"permanent_url"`
-	Supports           []Support        `json:"supports"`
-	Txid               string           `json:"txid"`
-	ValidAtHeight      int              `json:"valid_at_height"`
-	Value              lbryschema.Claim `json:"value"`
-	Error              *string          `json:"error,omitempty"`
-	ChannelName        *string          `json:"channel_name,omitempty"`
-	HasSignature       *bool            `json:"has_signature,omitempty"`
-	SignatureIsValid   *bool            `json:"signature_is_valid,omitempty"`
+	FeeCurrency Currency        `json:"fee_currency"`
+	FeeAmount   decimal.Decimal `json:"fee_amount"`
+	FeeAddress  *string         `json:"fee_address"`
 }
 
 type File struct {
@@ -67,7 +39,7 @@ type File struct {
 	FileName          string            `json:"file_name"`
 	Key               string            `json:"key"`
 	Message           string            `json:"message"`
-	Metadata          *lbryschema.Claim `json:"metadata"`
+	Metadata          *lbryschema.Claim `json:"protobuf"`
 	MimeType          string            `json:"mime_type"`
 	Name              string            `json:"name"`
 	Outpoint          string            `json:"outpoint"`
@@ -128,125 +100,26 @@ func fixDecodeProto(src, dest reflect.Type, data interface{}) (interface{}, erro
 			return d, nil
 		}
 
-	case reflect.TypeOf(lbryschema.Metadata_Version(0)):
-		val, err := getEnumVal(lbryschema.Metadata_Version_value, data)
-		return lbryschema.Metadata_Version(val), err
-	case reflect.TypeOf(lbryschema.Metadata_Language(0)):
-		val, err := getEnumVal(lbryschema.Metadata_Language_value, data)
-		return lbryschema.Metadata_Language(val), err
-
-	case reflect.TypeOf(lbryschema.Stream_Version(0)):
-		val, err := getEnumVal(lbryschema.Stream_Version_value, data)
-		return lbryschema.Stream_Version(val), err
-
-	case reflect.TypeOf(lbryschema.Claim_Version(0)):
-		val, err := getEnumVal(lbryschema.Claim_Version_value, data)
-		return lbryschema.Claim_Version(val), err
-	case reflect.TypeOf(lbryschema.Claim_ClaimType(0)):
-		val, err := getEnumVal(lbryschema.Claim_ClaimType_value, data)
-		return lbryschema.Claim_ClaimType(val), err
-
-	case reflect.TypeOf(lbryschema.Fee_Version(0)):
-		val, err := getEnumVal(lbryschema.Fee_Version_value, data)
-		return lbryschema.Fee_Version(val), err
 	case reflect.TypeOf(lbryschema.Fee_Currency(0)):
 		val, err := getEnumVal(lbryschema.Fee_Currency_value, data)
 		return lbryschema.Fee_Currency(val), err
+	case reflect.TypeOf(lbryschema.Claim{}):
+		blockChainName := os.Getenv("BLOCKCHAIN_NAME")
+		if blockChainName == "" {
+			blockChainName = "lbrycrd_main"
+		}
 
-	case reflect.TypeOf(lbryschema.Source_Version(0)):
-		val, err := getEnumVal(lbryschema.Source_Version_value, data)
-		return lbryschema.Source_Version(val), err
-	case reflect.TypeOf(lbryschema.Source_SourceTypes(0)):
-		val, err := getEnumVal(lbryschema.Source_SourceTypes_value, data)
-		return lbryschema.Source_SourceTypes(val), err
-
-	case reflect.TypeOf(lbryschema.KeyType(0)):
-		val, err := getEnumVal(lbryschema.KeyType_value, data)
-		return lbryschema.KeyType(val), err
-
-	case reflect.TypeOf(lbryschema.Signature_Version(0)):
-		val, err := getEnumVal(lbryschema.Signature_Version_value, data)
-		return lbryschema.Signature_Version(val), err
-
-	case reflect.TypeOf(lbryschema.Certificate_Version(0)):
-		val, err := getEnumVal(lbryschema.Certificate_Version_value, data)
-		return lbryschema.Certificate_Version(val), err
+		claim, err := schema.DecodeClaimHex(data.(string), blockChainName)
+		if err != nil {
+			return nil, err
+		}
+		return claim.Claim, nil
 	}
 
 	return data, nil
 }
 
-type CommandsResponse []string
-
 type WalletBalanceResponse decimal.Decimal
-
-type VersionResponse struct {
-	Build             string `json:"build"`
-	LbrynetVersion    string `json:"lbrynet_version"`
-	LbryschemaVersion string `json:"lbryschema_version"`
-	LbryumVersion     string `json:"lbryum_version"`
-	OsRelease         string `json:"os_release"`
-	OsSystem          string `json:"os_system"`
-	Platform          string `json:"platform"`
-	Processor         string `json:"processor"`
-	PythonVersion     string `json:"python_version"`
-}
-type StatusResponse struct {
-	BlobManager struct {
-		FinishedBlobs int `json:"finished_blobs"`
-	} `json:"blob_manager"`
-	ConnectionStatus struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"connection_status"`
-	Dht struct {
-		NodeID              string `json:"node_id"`
-		PeersInRoutingTable int    `json:"peers_in_routing_table"`
-	} `json:"dht"`
-	FileManager struct {
-		ManagedFiles int `json:"managed_files"`
-	} `json:"file_manager"`
-	HashAnnouncer struct {
-		AnnounceQueueSize int `json:"announce_queue_size"`
-	} `json:"hash_announcer"`
-	InstallationID    string   `json:"installation_id"`
-	IsFirstRun        bool     `json:"is_first_run"`
-	IsRunning         bool     `json:"is_running"`
-	SkippedComponents []string `json:"skipped_components"`
-	StartupStatus     struct {
-		BlobManager         bool `json:"blob_manager"`
-		BlockchainHeaders   bool `json:"blockchain_headers"`
-		Database            bool `json:"database"`
-		Dht                 bool `json:"dht"`
-		ExchangeRateManager bool `json:"exchange_rate_manager"`
-		FileManager         bool `json:"file_manager"`
-		HashAnnouncer       bool `json:"hash_announcer"`
-		PaymentRateManager  bool `json:"payment_rate_manager"`
-		PeerProtocolServer  bool `json:"peer_protocol_server"`
-		RateLimiter         bool `json:"rate_limiter"`
-		StreamIdentifier    bool `json:"stream_identifier"`
-		Upnp                bool `json:"upnp"`
-		Wallet              bool `json:"wallet"`
-	} `json:"startup_status"`
-	Wallet struct {
-		BestBlockchain string `json:"best_blockchain"`
-		Blocks         int    `json:"blocks"`
-		BlocksBehind   int    `json:"blocks_behind"`
-		IsEncrypted    bool   `json:"is_encrypted"`
-	} `json:"wallet"`
-}
-
-type ClaimListResponse struct {
-	Claims                []Claim   `json:"claims"`
-	LastTakeoverHeight    int       `json:"last_takeover_height"`
-	SupportsWithoutClaims []Support `json:"supports_without_claims"`
-}
-type ClaimListMineResponse []Claim
-type ClaimShowResponse Claim
-type ClaimAbandonResponse struct {
-	Txid string  `json:"txid"`
-	Fee  float64 `json:"fee"`
-}
 
 type PeerListResponsePeer struct {
 	IP     string `json:"host"`
@@ -295,56 +168,7 @@ type StreamAvailabilityResponse struct {
 type GetResponse File
 type FileListResponse []File
 
-type ResolveResponse map[string]ResolveResponseItem
-type ResolveResponseItem struct {
-	Certificate     *Claim  `json:"certificate,omitempty"`
-	Claim           *Claim  `json:"claim,omitempty"`
-	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
-	Error           *string `json:"error,omitempty"`
-}
-
-type ChannelNewResponse struct {
-	ClaimID string          `json:"claim_id"`
-	Fee     decimal.Decimal `json:"fee"`
-	Nout    int             `json:"nout"`
-	Success bool            `json:"success"`
-	Tx      string          `json:"tx"`
-	Txid    string          `json:"txid"`
-}
-
-type ChannelListSingleResponse struct {
-	Address            string            `json:"address"`
-	Amount             decimal.Decimal   `json:"amount"`
-	BlocksToExpiration int               `json:"blocks_to_expiration"`
-	CanSign            bool              `json:"can_sign"`
-	Category           string            `json:"category"`
-	ClaimID            string            `json:"claim_id"`
-	Confirmations      int               `json:"confirmations"`
-	DecodedClaim       bool              `json:"decoded_claim"`
-	ExpirationHeight   int               `json:"expiration_height"`
-	Expired            bool              `json:"expired"`
-	HasSignature       bool              `json:"has_signature"`
-	Height             int               `json:"height"`
-	Hex                string            `json:"hex"`
-	IsPending          bool              `json:"is_pending"`
-	IsSpent            bool              `json:"is_spent"`
-	Name               string            `json:"name"`
-	Nout               int               `json:"nout"`
-	Txid               string            `json:"txid"`
-	Value              *lbryschema.Claim `json:"value"`
-}
-
-type ChannelListResponse []ChannelListSingleResponse
-
 type WalletListResponse []string
-
-type PublishResponse struct {
-	ClaimID string          `json:"claim_id"`
-	Fee     decimal.Decimal `json:"fee"`
-	Nout    int             `json:"nout"`
-	Tx      string          `json:"tx"`
-	Txid    string          `json:"txid"`
-}
 
 type BlobAnnounceResponse bool
 
@@ -354,23 +178,294 @@ type WalletPrefillAddressesResponse struct {
 	Hex       string `json:"hex"`
 }
 
-type UTXOListResponse []struct {
-	Address    string          `json:"address"`
-	Amount     decimal.Decimal `json:"amount"`
-	Height     int             `json:"height"`
-	IsClaim    bool            `json:"is_claim"`
-	IsCoinbase bool            `json:"is_coinbase"`
-	IsSupport  bool            `json:"is_support"`
-	IsUpdate   bool            `json:"is_update"`
-	Nout       int             `json:"nout"`
-	Txid       string          `json:"txid"`
-}
-
 type WalletNewAddressResponse string
 
 type WalletUnusedAddressResponse string
 
-type NumClaimsInChannelResponse map[string]struct {
-	ClaimsInChannel uint64 `json:"claims_in_channel,omitempty"`
-	Error           string `json:"error,omitempty"`
+type Account struct {
+	AddressGenerator struct {
+		Change struct {
+			Gap                   uint64 `json:"gap"`
+			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
+		} `json:"change"`
+		Name      string `json:"name"`
+		Receiving struct {
+			Gap                   uint64 `json:"gap"`
+			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
+		} `json:"receiving"`
+	} `json:"address_generator"`
+	Certificates uint64  `json:"certificates"`
+	Coins        float64 `json:"coins"`
+	Encrypted    bool    `json:"encrypted"`
+	ID           string  `json:"id"`
+	IsDefault    bool    `json:"is_default"`
+	Name         string  `json:"name"`
+	PublicKey    string  `json:"public_key"`
+	Satoshis     uint64  `json:"satoshis"`
 }
+
+type AccountListResponse struct {
+	LBCMainnet []Account `json:"lbc_mainnet"`
+	LBCTestnet []Account `json:"lbc_testnet"`
+	LBCRegtest []Account `json:"lbc_regtest"`
+}
+type AccountBalanceResponse string
+
+type AccountCreateResponse struct {
+	Account
+	PrivateKey string  `json:"private_key,omitempty"`
+	PublicKey  string  `json:"public_key"`
+	Seed       string  `json:"seed"`
+	Ledger     string  `json:"ledger"`
+	ModifiedOn float64 `json:"modified_on"`
+}
+
+type Transaction struct {
+	Address       string            `json:"address"`
+	Amount        string            `json:"amount"`
+	ClaimID       string            `json:"claim_id"`
+	Confirmations int               `json:"confirmations"`
+	Height        int               `json:"height"`
+	IsChange      bool              `json:"is_change"`
+	IsMine        bool              `json:"is_mine"`
+	Name          string            `json:"name"`
+	Nout          uint64            `json:"nout"`
+	PermanentUrl  string            `json:"permanent_url"`
+	Protobuf      string            `json:"protobuf,omitempty"`
+	Txid          string            `json:"txid"`
+	Type          string            `json:"type"`
+	Value         *lbryschema.Claim `json:"protobuf"`
+}
+
+type TransactionSummary struct {
+	Height      int           `json:"height"`
+	Hex         string        `json:"hex"`
+	Inputs      []Transaction `json:"inputs"`
+	Outputs     []Transaction `json:"outputs"`
+	TotalFee    string        `json:"total_fee"`
+	TotalOutput string        `json:"total_output"`
+	Txid        string        `json:"txid"`
+}
+
+type AccountFundResponse TransactionSummary
+
+type Address string
+type AddressUnusedResponse Address
+type AddressListResponse []Address
+
+type ChannelListResponse struct {
+	Items      []Transaction `json:"items"`
+	Page       uint64        `json:"page"`
+	PageSize   uint64        `json:"page_size"`
+	TotalPages uint64        `json:"total_pages"`
+}
+
+type ClaimAbandonResponse struct {
+	Success bool               `json:"success"`
+	Tx      TransactionSummary `json:"tx"`
+}
+type Support struct {
+	Amount string `json:"amount"`
+	Nout   uint64 `json:"nout"`
+	Txid   string `json:"txid"`
+}
+
+type Claim struct {
+	Address                 string `json:"address"`
+	Amount                  string `json:"amount"`
+	ClaimID                 string `json:"claim_id"`
+	ClaimOp                 string `json:"claim_op,omitempty"`
+	Confirmations           int    `json:"confirmations"`
+	Height                  int    `json:"height"`
+	IsChange                bool   `json:"is_change,omitempty"`
+	IsChannelSignatureValid bool   `json:"is_channel_signature_valid,omitempty"`
+	IsMine                  bool   `json:"is_mine,omitempty"`
+	Name                    string `json:"name"`
+	Nout                    uint64 `json:"nout"`
+	PermanentURL            string `json:"permanent_url"`
+	SigningChannel          struct {
+		ClaimID string `json:"claim_id"`
+		Name    string `json:"name"`
+		Value   struct {
+			PublicKey string `json:"public_key"`
+			Title     string `json:"title"`
+		} `json:"value"`
+	} `json:"signing_channel,omitempty"`
+	Timestamp               int              `json:"timestamp"`
+	Txid                    string           `json:"txid"`
+	Type                    string           `json:"type,omitempty"`
+	ValueType               string           `json:"value_type,omitempty"`
+	Value                   lbryschema.Claim `json:"protobuf,omitempty"`
+	AbsoluteChannelPosition int              `json:"absolute_channel_position,omitempty"`
+	ChannelName             string           `json:"channel_name,omitempty"`
+	ClaimSequence           int64            `json:"claim_sequence,omitempty"`
+	DecodedClaim            bool             `json:"decoded_claim,omitempty"`
+	EffectiveAmount         string           `json:"effective_amount,omitempty"`
+	HasSignature            *bool            `json:"has_signature,omitempty"`
+	SignatureIsValid        *bool            `json:"signature_is_valid,omitempty"`
+	Supports                []Support        `json:"supports,omitempty"`
+	ValidAtHeight           int              `json:"valid_at_height,omitempty"`
+}
+
+const reflectorURL = "http://blobs.lbry.io/"
+
+// GetStreamSizeByMagic uses "magic" to not just estimate, but actually return the exact size of a stream
+// It does so by fetching the sd blob and the last blob from our S3 bucket, decrypting and unpadding the last blob
+// adding up all full blobs that have a known size and finally adding the real last blob size too.
+// This will only work if we host at least the sd blob and the last blob on S3, if not, this will error.
+func (c *Claim) GetStreamSizeByMagic() (uint64, error) {
+	if c.Value.GetStream() == nil {
+		return 0, errors.Err("this claim is not a stream")
+	}
+	resp, err := http.Get(reflectorURL + hex.EncodeToString(c.Value.GetStream().Source.SdHash))
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+	sdb := &stream.SDBlob{}
+	err = sdb.UnmarshalJSON(body)
+
+	if err != nil {
+		return 0, err
+	}
+	lastBlobIndex := len(sdb.BlobInfos) - 2
+	lastBlobHash := sdb.BlobInfos[lastBlobIndex].BlobHash
+
+	var streamSize uint64 = 0
+	if len(sdb.BlobInfos) > 2 {
+		streamSize = uint64(stream.MaxBlobSize-1) * uint64(len(sdb.BlobInfos)-2)
+	}
+
+	resp2, err := http.Get(reflectorURL + hex.EncodeToString(lastBlobHash))
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+	defer resp2.Body.Close()
+
+	body2, err := ioutil.ReadAll(resp2.Body)
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+
+	lastBlob, err := stream.DecryptBlob(body2, sdb.Key, sdb.BlobInfos[lastBlobIndex].IV)
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+
+	streamSize += uint64(len(lastBlob))
+	return streamSize, nil
+}
+
+type ClaimListResponse struct {
+	Claims     []Claim `json:"items"`
+	Page       uint64  `json:"page"`
+	PageSize   uint64  `json:"page_size"`
+	TotalPages uint64  `json:"total_pages"`
+}
+type ClaimSearchResponse ClaimListResponse
+
+type StatusResponse struct {
+	BlobManager struct {
+		FinishedBlobs uint64 `json:"finished_blobs"`
+	} `json:"blob_manager"`
+	ConnectionStatus struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"connection_status"`
+	Dht struct {
+		NodeID              string `json:"node_id"`
+		PeersInRoutingTable uint64 `json:"peers_in_routing_table"`
+	} `json:"dht"`
+	HashAnnouncer struct {
+		AnnounceQueueSize uint64 `json:"announce_queue_size"`
+	} `json:"hash_announcer"`
+	InstallationID    string   `json:"installation_id"`
+	IsFirstRun        bool     `json:"is_first_run"`
+	IsRunning         bool     `json:"is_running"`
+	SkippedComponents []string `json:"skipped_components"`
+	StartupStatus     struct {
+		BlobManager         bool `json:"blob_manager"`
+		BlockchainHeaders   bool `json:"blockchain_headers"`
+		Database            bool `json:"database"`
+		Dht                 bool `json:"dht"`
+		ExchangeRateManager bool `json:"exchange_rate_manager"`
+		HashAnnouncer       bool `json:"hash_announcer"`
+		PeerProtocolServer  bool `json:"peer_protocol_server"`
+		StreamManager       bool `json:"stream_manager"`
+		Upnp                bool `json:"upnp"`
+		Wallet              bool `json:"wallet"`
+	} `json:"startup_status"`
+	StreamManager struct {
+		ManagedFiles int64 `json:"managed_files"`
+	} `json:"stream_manager"`
+	Upnp struct {
+		AioupnpVersion  string   `json:"aioupnp_version"`
+		DhtRedirectSet  bool     `json:"dht_redirect_set"`
+		ExternalIp      string   `json:"external_ip"`
+		Gateway         string   `json:"gateway"`
+		PeerRedirectSet bool     `json:"peer_redirect_set"`
+		Redirects       struct{} `json:"redirects"`
+	}
+	Wallet struct {
+		BestBlochash string `json:"best_blockhash"`
+		Blocks       int    `json:"blocks"`
+		BlocksBehind int    `json:"blocks_behind"`
+		IsEncrypted  bool   `json:"is_encrypted"`
+		IsLocked     bool   `json:"is_locked"`
+	} `json:"wallet"`
+}
+
+type UTXOListResponse []struct {
+	Address    string `json:"address"`
+	Amount     string `json:"amount"`
+	Height     int    `json:"height"`
+	IsClaim    bool   `json:"is_claim"`
+	IsCoinbase bool   `json:"is_coinbase"`
+	IsSupport  bool   `json:"is_support"`
+	IsUpdate   bool   `json:"is_update"`
+	Nout       int    `json:"nout"`
+	Txid       string `json:"txid"`
+}
+
+type VersionResponse struct {
+	Build   string `json:"build"`
+	Desktop string `json:"desktop"`
+	Distro  struct {
+		Codename     string `json:"codename"`
+		ID           string `json:"id"`
+		Like         string `json:"like"`
+		Version      string `json:"version"`
+		VersionParts struct {
+			BuildNumber string `json:"build_number"`
+			Major       string `json:"major"`
+			Minor       string `json:"minor"`
+		} `json:"version_parts"`
+	} `json:"distro"`
+	LbrynetVersion    string `json:"lbrynet_version"`
+	LbryschemaVersion string `json:"lbryschema_version"`
+	OsRelease         string `json:"os_release"`
+	OsSystem          string `json:"os_system"`
+	Platform          string `json:"platform"`
+	Processor         string `json:"processor"`
+	PythonVersion     string `json:"python_version"`
+}
+
+type ResolveResponse map[string]ResolveResponseItem
+type ResolveResponseItem struct {
+	Certificate     *Claim  `json:"certificate,omitempty"`
+	Claim           *Claim  `json:"claim,omitempty"`
+	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
+	Error           *string `json:"error,omitempty"`
+}
+
+type NumClaimsInChannelResponse map[string]struct {
+	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
+	Error           *string `json:"error,omitempty"`
+}
+
+type ClaimShowResponse *Claim

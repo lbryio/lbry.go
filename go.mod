@@ -8,10 +8,12 @@ require (
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/davecgh/go-spew v1.1.0
+	github.com/fatih/structs v1.1.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-ini/ini v1.38.2
 	github.com/go-ozzo/ozzo-validation v3.5.0+incompatible // indirect
 	github.com/golang/protobuf v1.3.0
+	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
@@ -19,8 +21,9 @@ require (
 	github.com/gorilla/websocket v1.2.0 // indirect
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c
+	github.com/lbryio/lbryschema.go v0.0.0-20190428231007-c54836bca002
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
-	github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a
+	github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
@@ -48,4 +51,5 @@ require (
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/ini.v1 v1.41.0 // indirect
 	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79
+	gotest.tools v2.2.0+incompatible // indirect
 )
