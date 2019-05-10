@@ -10,14 +10,14 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // Client stores data about internal-apis call it is about to make.
 type Client struct {
 	ServerAddress string
 	AuthToken     string
-	Logger        *logrus.Logger
+	Logger        *log.Logger
 }
 
 // APIResponse reflects internal-apis JSON response format.
@@ -30,20 +30,19 @@ type APIResponse struct {
 // ResponseData is a map containing parsed json response.
 type ResponseData map[string]interface{}
 
-const defaultServerAddress = "https://api.lbry.com"
-
-// const defaultServerAddress = "http://127.0.0.1:9000/"
-const timeout = 5 * time.Second
-
-const userObjectPath = "user"
+const (
+	defaultAPIHost = "https://api.lbry.com"
+	timeout        = 5 * time.Second
+	userObjectPath = "user"
+)
 
 // NewClient returns a client instance for internal-apis. It requires authToken to be provided
 // for authentication.
 func NewClient(authToken string) Client {
 	return Client{
-		ServerAddress: defaultServerAddress,
+		ServerAddress: defaultAPIHost,
 		AuthToken:     authToken,
-		Logger:        logrus.StandardLogger(),
+		Logger:        log.StandardLogger(),
 	}
 }
 
@@ -63,7 +62,8 @@ func (c Client) prepareParams(params map[string]interface{}) (string, error) {
 	return form.Encode(), nil
 }
 
-func (c Client) doCall(url string, payload string) (body []byte, err error) {
+func (c Client) doCall(url string, payload string) ([]byte, error) {
+	var body []byte
 	c.Logger.Debugf("sending payload: %s", payload)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(payload)))
 	if err != nil {
@@ -78,14 +78,13 @@ func (c Client) doCall(url string, payload string) (body []byte, err error) {
 		return body, err
 	}
 	defer r.Body.Close()
-
-	body, err = ioutil.ReadAll(r.Body)
-	return body, err
+	return ioutil.ReadAll(r.Body)
 }
 
 // Call calls a remote internal-apis server, returning a response,
 // wrapped into standardized API Response struct.
-func (c Client) Call(object, method string, params map[string]interface{}) (rd ResponseData, err error) {
+func (c Client) Call(object, method string, params map[string]interface{}) (ResponseData, error) {
+	var rd ResponseData
 	payload, err := c.prepareParams(params)
 	if err != nil {
 		return rd, err
