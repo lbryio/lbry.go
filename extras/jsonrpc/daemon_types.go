@@ -182,9 +182,6 @@ type WalletNewAddressResponse string
 
 type WalletUnusedAddressResponse string
 
-//============================================
-//				NEW SDK
-//============================================
 type Account struct {
 	AddressGenerator struct {
 		Change struct {
