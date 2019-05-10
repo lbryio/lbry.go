@@ -20,6 +20,13 @@ Contributions to this project are welcome, encouraged, and compensated. For more
 
 Make sure you `go fmt` your code before submitting PRs.
 
+## Versioning
+
+This codebase follows the semver standards. You can find the releases [here](https://github.com/lbryio/lbry.go/releases)
+
+You can include the libraries by running `go get github.com/lbryio/lbry.go@latest`. 
+You can lock (and you should) to a version whenever you make use of this set of libraries.
+
 ## License
 
 This project is MIT licensed. For the full license, see [LICENSE](LICENSE).

@@ -5,16 +5,15 @@ go:
   - 1.11.x
 
 env:
-  - GO111MODULE=on
   global:
-    - GO111MODULE=on
+   - GO111MODULE=on
     #GITHUB_TOKEN
-    secure: "P4YMfllsq/guf5swmBl80IHGvNfUM+5X2b+0LvQQxGJpY9TD6d+PW6U1C90HIT0CDk6UZbtlHyGN+oo+shsWnwMIaM4qmbGdRgtG4TZolXY1QtYQZFW9fTWeHM0wnJeXLV8V4vpTRHnkLrvT8PctbGp5pVOEtcV4y3sEnMP1rkxnMPeHtrDbTlpBmBYEziByEpbg3pe3CE9xVaDD9DqgW7VOOZnQQl7exTtjsIeJYI7OYvdidf/04p632/8WZP2EJbmA2HunfTydWtcD51lCF8V3IvhKKqH4/7sNOKfmUwTDyhLltk9eDcFsYR/FYsy8njH4QDBBrKo/bPq3jzgKF9BY7g28/jMTDY4vDY0Na+4a3+7sDqwdsZ+eiZrgWYUbZ4MwYtpUtcvp8gUz7Avs3v7BBgYsYpgLEW47bT6uNLGO+SdfSwBCYuxT5P0IGCv6wkgYcYgfqVafk+9FiwJlayP2j3wPOdauiYh4WnYX1Rt0zNvaiP5iBhkXwIv3VvUcI1Yu9k0eLDibzZlpR8fkGw3USl+omdjCvXDfJQW1ghMONTm0d7VPG84P/MRhJ+thoh1UwMaT3S0sdPznRnNL6XDntCRT1CZW4l0jfyCPDBW2qw8dWunULYsQZTPWnv4s+BuRRDsfGjyamH5b8evh0TOF+XNOFewmNvflWBNG2y0="
+   - secure: "P4YMfllsq/guf5swmBl80IHGvNfUM+5X2b+0LvQQxGJpY9TD6d+PW6U1C90HIT0CDk6UZbtlHyGN+oo+shsWnwMIaM4qmbGdRgtG4TZolXY1QtYQZFW9fTWeHM0wnJeXLV8V4vpTRHnkLrvT8PctbGp5pVOEtcV4y3sEnMP1rkxnMPeHtrDbTlpBmBYEziByEpbg3pe3CE9xVaDD9DqgW7VOOZnQQl7exTtjsIeJYI7OYvdidf/04p632/8WZP2EJbmA2HunfTydWtcD51lCF8V3IvhKKqH4/7sNOKfmUwTDyhLltk9eDcFsYR/FYsy8njH4QDBBrKo/bPq3jzgKF9BY7g28/jMTDY4vDY0Na+4a3+7sDqwdsZ+eiZrgWYUbZ4MwYtpUtcvp8gUz7Avs3v7BBgYsYpgLEW47bT6uNLGO+SdfSwBCYuxT5P0IGCv6wkgYcYgfqVafk+9FiwJlayP2j3wPOdauiYh4WnYX1Rt0zNvaiP5iBhkXwIv3VvUcI1Yu9k0eLDibzZlpR8fkGw3USl+omdjCvXDfJQW1ghMONTm0d7VPG84P/MRhJ+thoh1UwMaT3S0sdPznRnNL6XDntCRT1CZW4l0jfyCPDBW2qw8dWunULYsQZTPWnv4s+BuRRDsfGjyamH5b8evh0TOF+XNOFewmNvflWBNG2y0="
 install: true
 
 script:
   # Fail if a .go file hasn't been formatted with gofmt
-  - test -z $(gofmt -s -l $(find . -iname '*.go' -type f | grep -v /vendor/ ))
+  - test -z $(gofmt -s -l $(find . -iname '*.go' -type f))
   - make
 
 notifications:
@@ -24,7 +23,7 @@ deploy:
   provider: script
   skip_cleanup: true
   script: ./scripts/deploy.sh
-  file: bin/ytsync
+  file: bin/lbry
   on:
-    repo: lbryio/ytsync
+    repo: lbryio/lbry.go
     tags: true
