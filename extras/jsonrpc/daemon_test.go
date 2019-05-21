@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,6 +47,19 @@ func TestClient_AccountList(t *testing.T) {
 		t.Error(err)
 	}
 	prettyPrint(*got)
+}
+
+func TestClient_SingleAccountList(t *testing.T) {
+	d := NewClient("")
+	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err := d.SingleAccountList(createdAccount.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prettyPrint(*account)
 }
 
 func TestClient_AccountBalance(t *testing.T) {
@@ -316,4 +330,22 @@ func TestClient_AccountCreate(t *testing.T) {
 		t.Error(err)
 	}
 	prettyPrint(*account)
+}
+
+func TestClient_AccountRemove(t *testing.T) {
+	d := NewClient("")
+	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removedAccount, err := d.AccountRemove(createdAccount.ID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = d.SingleAccountList(createdAccount.ID)
+	if !strings.HasPrefix("Couldn't find account", err.Error()) {
+		t.Error("account was not removed")
+	}
+	prettyPrint(*removedAccount)
 }

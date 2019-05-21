@@ -209,6 +209,11 @@ type AccountListResponse struct {
 	LBCTestnet []Account `json:"lbc_testnet"`
 	LBCRegtest []Account `json:"lbc_regtest"`
 }
+
+type SingleAccountListResponse struct {
+	Account
+}
+
 type AccountBalanceResponse string
 
 type AccountCreateResponse struct {
@@ -218,6 +223,10 @@ type AccountCreateResponse struct {
 	Seed       string  `json:"seed"`
 	Ledger     string  `json:"ledger"`
 	ModifiedOn float64 `json:"modified_on"`
+}
+
+type AccountRemoveResponse struct {
+	AccountCreateResponse
 }
 
 type Transaction struct {
