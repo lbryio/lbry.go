@@ -4,7 +4,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf // indirect
 	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32
 	github.com/btcsuite/btcutil v0.0.0-20190207003914-4c204d697803
-	github.com/davecgh/go-spew v1.1.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-ini/ini v1.38.2
@@ -27,10 +27,11 @@ require (
 	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
 	github.com/nlopes/slack v0.5.0
 	github.com/pkg/errors v0.8.1 // indirect
+	github.com/prometheus/common v0.4.0
 	github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
 	github.com/sergi/go-diff v1.0.0
 	github.com/shopspring/decimal v0.0.0-20180607144847-19e3cb6c2930
-	github.com/sirupsen/logrus v0.0.0-20180523074243-ea8897e79973
+	github.com/sirupsen/logrus v1.2.0
 	github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d // indirect
 	github.com/smartystreets/goconvey v0.0.0-20181108003508-044398e4856c // indirect
 	github.com/spf13/cast v1.2.0
@@ -38,8 +39,9 @@ require (
 	github.com/uber-go/atomic v1.3.2
 	github.com/ybbus/jsonrpc v0.0.0-20180411222309-2a548b7d822d
 	go.uber.org/atomic v1.3.2 // indirect
-	golang.org/x/crypto v0.0.0-20180608092829-8ac0e0d97ce4
-	golang.org/x/net v0.0.0-20180906233101-161cd47e91fd
+	golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
+	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a
+	golang.org/x/sys v0.0.0-20190520201301-c432e742b0af // indirect
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
 	google.golang.org/genproto v0.0.0-20181004005441-af9cb2a35e7f // indirect
 	google.golang.org/grpc v1.17.0

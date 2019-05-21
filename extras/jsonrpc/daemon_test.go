@@ -323,11 +323,16 @@ func TestClient_AccountSet(t *testing.T) {
 	}
 	prettyPrint(*got)
 }
+
 func TestClient_AccountCreate(t *testing.T) {
 	d := NewClient("")
-	account, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	name := "test" + fmt.Sprintf("%d", time.Now().Unix()) + "@lbry.com"
+	account, err := d.AccountCreate(name, false)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
+	}
+	if account.Name != name {
+		t.Errorf("account name mismatch, expected %q, got %q", name, account.Name)
 	}
 	prettyPrint(*account)
 }
