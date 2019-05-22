@@ -213,12 +213,12 @@ type AccountListResponse struct {
 type AccountBalanceResponse string
 
 type AccountCreateResponse struct {
-	Account
-	PrivateKey string  `json:"private_key,omitempty"`
-	PublicKey  string  `json:"public_key"`
-	Seed       string  `json:"seed"`
-	Ledger     string  `json:"ledger"`
-	ModifiedOn float64 `json:"modified_on"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	PublicKey  string `json:"public_key"`
+	PrivateKey string `json:"private_key"`
+	Seed       string `json:"seed"`
+	Ledger     string `json:"ledger"`
 }
 
 type AccountRemoveResponse AccountCreateResponse
