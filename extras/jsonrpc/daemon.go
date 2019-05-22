@@ -143,8 +143,8 @@ func (d *Client) AccountList() (*AccountListResponse, error) {
 	return response, d.call(response, "account_list", map[string]interface{}{})
 }
 
-func (d *Client) SingleAccountList(accountID string) (*SingleAccountListResponse, error) {
-	response := new(SingleAccountListResponse)
+func (d *Client) SingleAccountList(accountID string) (*Account, error) {
+	response := new(Account)
 	return response, d.call(response, "account_list", map[string]interface{}{"account_id": accountID})
 }
 

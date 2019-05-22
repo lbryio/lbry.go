@@ -210,10 +210,6 @@ type AccountListResponse struct {
 	LBCRegtest []Account `json:"lbc_regtest"`
 }
 
-type SingleAccountListResponse struct {
-	Account
-}
-
 type AccountBalanceResponse string
 
 type AccountCreateResponse struct {
