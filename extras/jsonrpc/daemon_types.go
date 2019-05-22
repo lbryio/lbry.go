@@ -221,9 +221,7 @@ type AccountCreateResponse struct {
 	ModifiedOn float64 `json:"modified_on"`
 }
 
-type AccountRemoveResponse struct {
-	AccountCreateResponse
-}
+type AccountRemoveResponse AccountCreateResponse
 
 type Transaction struct {
 	Address       string            `json:"address"`
