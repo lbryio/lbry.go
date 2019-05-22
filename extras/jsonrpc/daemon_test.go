@@ -347,10 +347,14 @@ func TestClient_AccountRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	if removedAccount.ID != createdAccount.ID {
+		t.Error("accounts IDs mismatch")
+	}
 
-	_, err = d.SingleAccountList(createdAccount.ID)
-	if !strings.HasPrefix("Couldn't find account", err.Error()) {
+	account, err := d.SingleAccountList(createdAccount.ID)
+	if !strings.HasPrefix(err.Error(), "Error in daemon: Couldn't find account") {
 		t.Error("account was not removed")
 	}
-	prettyPrint(*removedAccount)
+	fmt.Println(err.Error())
+	prettyPrint(*account)
 }
