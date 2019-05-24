@@ -182,15 +182,10 @@ func (d *Client) AccountFund(fromAccount string, toAccount string, amount string
 
 func (d *Client) AccountCreate(accountName string, singleKey bool) (*AccountCreateResponse, error) {
 	response := new(AccountCreateResponse)
-	args := struct {
-		AccountName string `json:"account_name"`
-		SingleKey   bool   `json:"single_key"`
-	}{
-		AccountName: accountName,
-		SingleKey:   singleKey,
-	}
-	structs.DefaultTagName = "json"
-	return response, d.call(response, "account_create", structs.Map(args))
+	return response, d.call(response, "account_create", map[string]interface{}{
+		"account_name": accountName,
+		"single_key":   singleKey,
+	})
 }
 
 func (d *Client) AccountRemove(accountID string) (*AccountRemoveResponse, error) {
