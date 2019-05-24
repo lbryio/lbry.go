@@ -209,16 +209,20 @@ type AccountListResponse struct {
 	LBCTestnet []Account `json:"lbc_testnet"`
 	LBCRegtest []Account `json:"lbc_regtest"`
 }
+
 type AccountBalanceResponse string
 
 type AccountCreateResponse struct {
-	Account
-	PrivateKey string  `json:"private_key,omitempty"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
 	PublicKey  string  `json:"public_key"`
+	PrivateKey string  `json:"private_key"`
 	Seed       string  `json:"seed"`
 	Ledger     string  `json:"ledger"`
 	ModifiedOn float64 `json:"modified_on"`
 }
+
+type AccountRemoveResponse AccountCreateResponse
 
 type Transaction struct {
 	Address       string            `json:"address"`

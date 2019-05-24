@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,6 +47,19 @@ func TestClient_AccountList(t *testing.T) {
 		t.Error(err)
 	}
 	prettyPrint(*got)
+}
+
+func TestClient_SingleAccountList(t *testing.T) {
+	d := NewClient("")
+	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err := d.SingleAccountList(createdAccount.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prettyPrint(*account)
 }
 
 func TestClient_AccountBalance(t *testing.T) {
@@ -309,11 +323,38 @@ func TestClient_AccountSet(t *testing.T) {
 	}
 	prettyPrint(*got)
 }
+
 func TestClient_AccountCreate(t *testing.T) {
 	d := NewClient("")
-	account, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	name := "test" + fmt.Sprintf("%d", time.Now().Unix()) + "@lbry.com"
+	account, err := d.AccountCreate(name, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if account.Name != name {
+		t.Errorf("account name mismatch, expected %q, got %q", name, account.Name)
+	}
+	prettyPrint(*account)
+}
+
+func TestClient_AccountRemove(t *testing.T) {
+	d := NewClient("")
+	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removedAccount, err := d.AccountRemove(createdAccount.ID)
 	if err != nil {
 		t.Error(err)
 	}
+	if removedAccount.ID != createdAccount.ID {
+		t.Error("accounts IDs mismatch")
+	}
+
+	account, err := d.SingleAccountList(createdAccount.ID)
+	if !strings.HasPrefix(err.Error(), "Error in daemon: Couldn't find account") {
+		t.Error("account was not removed")
+	}
+	fmt.Println(err.Error())
 	prettyPrint(*account)
 }

@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/structs"
-
 	"github.com/lbryio/lbry.go/extras/errors"
 
+	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -144,6 +143,11 @@ func (d *Client) AccountList() (*AccountListResponse, error) {
 	return response, d.call(response, "account_list", map[string]interface{}{})
 }
 
+func (d *Client) SingleAccountList(accountID string) (*Account, error) {
+	response := new(Account)
+	return response, d.call(response, "account_list", map[string]interface{}{"account_id": accountID})
+}
+
 type AccountSettings struct {
 	Default          bool   `json:"default"`
 	NewName          string `json:"new_name"`
@@ -181,6 +185,13 @@ func (d *Client) AccountCreate(accountName string, singleKey bool) (*AccountCrea
 	return response, d.call(response, "account_create", map[string]interface{}{
 		"account_name": accountName,
 		"single_key":   singleKey,
+	})
+}
+
+func (d *Client) AccountRemove(accountID string) (*AccountRemoveResponse, error) {
+	response := new(AccountRemoveResponse)
+	return response, d.call(response, "account_remove", map[string]interface{}{
+		"account_id": accountID,
 	})
 }
 
