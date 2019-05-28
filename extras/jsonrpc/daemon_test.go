@@ -305,6 +305,7 @@ func TestClient_Version(t *testing.T) {
 }
 
 func TestClient_GetFile(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
 	got, err := d.Get("lbry://test1559058649")
 	if err != nil {
@@ -326,6 +327,7 @@ func TestClient_FileList(t *testing.T) {
 }
 
 func TestClient_Resolve(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
 	got, err := d.Resolve("test1559058649")
 	if err != nil {
