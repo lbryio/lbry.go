@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -23,19 +24,23 @@ func TestClient_AccountFund(t *testing.T) {
 	accounts, err := d.AccountList()
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	account := (accounts.LBCRegtest)[0].ID
 	balanceString, err := d.AccountBalance(&account)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	balance, err := strconv.ParseFloat(string(*balanceString), 64)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance/2.0), 40)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -45,6 +50,7 @@ func TestClient_AccountList(t *testing.T) {
 	got, err := d.AccountList()
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -54,10 +60,12 @@ func TestClient_SingleAccountList(t *testing.T) {
 	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
 	if err != nil {
 		t.Fatal(err)
+		return
 	}
 	account, err := d.SingleAccountList(createdAccount.ID)
 	if err != nil {
 		t.Fatal(err)
+		return
 	}
 	prettyPrint(*account)
 }
@@ -67,6 +75,7 @@ func TestClient_AccountBalance(t *testing.T) {
 	got, err := d.AccountBalance(nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -76,6 +85,7 @@ func TestClient_AddressUnused(t *testing.T) {
 	got, err := d.AddressUnused(nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -85,18 +95,21 @@ func TestClient_ChannelList(t *testing.T) {
 	got, err := d.ChannelList(nil, 1, 50)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_StreamCreate(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
 	addressResponse, err := d.AddressUnused(nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	address := string(*addressResponse)
-	got, err := d.StreamCreate("test"+fmt.Sprintf("%d", time.Now().Unix()), "/home/niko/work2/2019-04-11_17-36-25-925698088.png", 14.37, StreamCreateOptions{
+	got, err := d.StreamCreate("test"+fmt.Sprintf("%d", time.Now().Unix()), "/home/niko/Downloads/IMG_20171012_205120.jpg", 14.37, StreamCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
 			Title:       "This is a Test Title" + fmt.Sprintf("%d", time.Now().Unix()),
 			Description: "My Special Description",
@@ -129,11 +142,12 @@ func TestClient_StreamCreate(t *testing.T) {
 		Preview:            nil,
 		AllowDuplicateName: nil,
 		ChannelName:        nil,
-		ChannelID:          util.PtrToString("2e28aa6dbd41f959893907841f4e40d0ecb0ede9"),
+		ChannelID:          util.PtrToString("253ca42da47ad8a430e18d52860cb499c50eff25"),
 		ChannelAccountID:   nil,
 	})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -159,13 +173,14 @@ func TestClient_ChannelCreate(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_ChannelUpdate(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelUpdate("709868122fe3560a3929d6d63bdbc792d8306a6c", ChannelUpdateOptions{
+	got, err := d.ChannelUpdate("2a8b6d061c5ecb2515f1dd7e04729e9fafac660d", ChannelUpdateOptions{
 		ClearLanguages: util.PtrToBool(true),
 		ClearLocations: util.PtrToBool(true),
 		ClearTags:      util.PtrToBool(true),
@@ -188,6 +203,7 @@ func TestClient_ChannelUpdate(t *testing.T) {
 		}})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -214,6 +230,7 @@ func TestClient_ChannelAbandon(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	txID := channelResponse.Outputs[0].Txid
 	nout := channelResponse.Outputs[0].Nout
@@ -221,6 +238,7 @@ func TestClient_ChannelAbandon(t *testing.T) {
 	got, err := d.ChannelAbandon(txID, nout, nil, false)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -230,24 +248,28 @@ func TestClient_AddressList(t *testing.T) {
 	got, err := d.AddressList(nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_ClaimList(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
 	got, err := d.ClaimList(nil, 1, 10)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimSearch(nil, util.PtrToString("1b2b530dfcef9885354f8f41190c8f678da5414e"), nil, nil)
+	got, err := d.ClaimSearch(nil, util.PtrToString("2a8b6d061c5ecb2515f1dd7e04729e9fafac660d"), nil, nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -257,6 +279,7 @@ func TestClient_Status(t *testing.T) {
 	got, err := d.Status()
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -266,6 +289,7 @@ func TestClient_UTXOList(t *testing.T) {
 	got, err := d.UTXOList(nil)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -275,36 +299,42 @@ func TestClient_Version(t *testing.T) {
 	got, err := d.Version()
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_GetFile(t *testing.T) {
 	d := NewClient("")
-	got, err := d.Get("lbry://test1555965264")
+	got, err := d.Get("lbry://test1559058649")
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_FileList(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
 	got, err := d.FileList()
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
 
 func TestClient_Resolve(t *testing.T) {
 	d := NewClient("")
-	got, err := d.Resolve("test1555965264")
+	got, err := d.Resolve("test1559058649")
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -314,12 +344,14 @@ func TestClient_AccountSet(t *testing.T) {
 	accounts, err := d.AccountList()
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	account := (accounts.LBCRegtest)[0].ID
 
 	got, err := d.AccountSet(account, AccountSettings{ChangeMaxUses: 10000})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	prettyPrint(*got)
 }
@@ -330,9 +362,11 @@ func TestClient_AccountCreate(t *testing.T) {
 	account, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
+		return
 	}
 	if account.Name != name {
 		t.Errorf("account name mismatch, expected %q, got %q", name, account.Name)
+		return
 	}
 	prettyPrint(*account)
 }
@@ -342,19 +376,27 @@ func TestClient_AccountRemove(t *testing.T) {
 	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
 	if err != nil {
 		t.Fatal(err)
+		return
 	}
 	removedAccount, err := d.AccountRemove(createdAccount.ID)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	if removedAccount.ID != createdAccount.ID {
 		t.Error("accounts IDs mismatch")
 	}
 
 	account, err := d.SingleAccountList(createdAccount.ID)
-	if !strings.HasPrefix(err.Error(), "Error in daemon: Couldn't find account") {
-		t.Error("account was not removed")
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "Error in daemon: Couldn't find account") {
+			prettyPrint(*removedAccount)
+			return
+		}
+
+		t.Error(err)
+		return
 	}
-	fmt.Println(err.Error())
+	t.Error("account was not removed")
 	prettyPrint(*account)
 }

@@ -374,9 +374,9 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Tra
 	return response, d.call(response, "stream_update", structs.Map(args))
 }
 
-func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
-	response := new(ClaimAbandonResponse)
-	err := d.call(response, "claim_abandon", map[string]interface{}{
+func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	err := d.call(response, "channel_abandon", map[string]interface{}{
 		"txid":             txID,
 		"nout":             nOut,
 		"account_id":       accountID,

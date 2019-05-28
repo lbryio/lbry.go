@@ -32,28 +32,38 @@ type Fee struct {
 }
 
 type File struct {
-	ClaimID           string            `json:"claim_id"`
-	Completed         bool              `json:"completed"`
-	DownloadDirectory string            `json:"download_directory"`
-	DownloadPath      string            `json:"download_path"`
-	FileName          string            `json:"file_name"`
-	Key               string            `json:"key"`
-	Message           string            `json:"message"`
-	Metadata          *lbryschema.Claim `json:"protobuf"`
-	MimeType          string            `json:"mime_type"`
-	Name              string            `json:"name"`
-	Outpoint          string            `json:"outpoint"`
-	PointsPaid        decimal.Decimal   `json:"points_paid"`
-	SdHash            string            `json:"sd_hash"`
-	Stopped           bool              `json:"stopped"`
-	StreamHash        string            `json:"stream_hash"`
-	StreamName        string            `json:"stream_name"`
-	SuggestedFileName string            `json:"suggested_file_name"`
-	TotalBytes        uint64            `json:"total_bytes"`
-	WrittenBytes      uint64            `json:"written_bytes"`
-	ChannelName       *string           `json:"channel_name,omitempty"`
-	HasSignature      *bool             `json:"has_signature,omitempty"`
-	SignatureIsValid  *bool             `json:"signature_is_valid,omitempty"`
+	BlobsCompleted       uint64            `json:"blobs_completed"`
+	BlobsInStream        uint64            `json:"blobs_in_stream"`
+	BlobsRemaining       uint64            `json:"blobs_remaining"`
+	ChannelClaimID       string            `json:"channel_claim_id"`
+	ChannelName          string            `json:"channel_name"`
+	ClaimID              string            `json:"claim_id"`
+	ClaimName            string            `json:"claim_name"`
+	Completed            bool              `json:"completed"`
+	Confirmations        int64             `json:"confirmations"`
+	ContentFee           *Fee              `json:"content_fee"`
+	DownloadDirectory    string            `json:"download_directory"`
+	DownloadPath         string            `json:"download_path"`
+	FileName             string            `json:"file_name"`
+	Height               int               `json:"height"`
+	Key                  string            `json:"key"`
+	Metadata             *lbryschema.Claim `json:"protobuf"`
+	MimeType             string            `json:"mime_type"`
+	Nout                 int               `json:"nout"`
+	Outpoint             string            `json:"outpoint"`
+	PointsPaid           decimal.Decimal   `json:"points_paid"`
+	SdHash               string            `json:"sd_hash"`
+	Status               string            `json:"status"`
+	Stopped              bool              `json:"stopped"`
+	StreamHash           string            `json:"stream_hash"`
+	StreamName           string            `json:"stream_name"`
+	StreamingURL         string            `json:"streaming_url"`
+	SuggestedFileName    string            `json:"suggested_file_name"`
+	Timestamp            int64             `json:"timestamp"`
+	TotalBytes           uint64            `json:"total_bytes"`
+	TotalBytesLowerBound uint64            `json:"total_bytes_lower_bound"`
+	Txid                 string            `json:"txid"`
+	WrittenBytes         uint64            `json:"written_bytes"`
 }
 
 func getEnumVal(enum map[string]int32, data interface{}) (int32, error) {
