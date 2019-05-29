@@ -335,7 +335,7 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 
 func (d *Client) StreamAbandon(txID string, nOut uint64, accountID *string, blocking bool) (*ClaimAbandonResponse, error) {
 	response := new(ClaimAbandonResponse)
-	err := d.call(response, "claim_abandon", map[string]interface{}{
+	err := d.call(response, "stream_abandon", map[string]interface{}{
 		"txid":             txID,
 		"nout":             nOut,
 		"account_id":       accountID,
