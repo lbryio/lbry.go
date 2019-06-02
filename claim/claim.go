@@ -147,10 +147,12 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 		Payload:     pbPayload,
 	}
 
-	err = c.ValidateAddresses(blockchainName)
-	if err != nil {
-		return err
-	}
+	// Commenting out because of a bug in SDK release allowing empty addresses.
+	//err = c.ValidateAddresses(blockchainName)
+	//if err != nil {
+	//	return err
+	//}
+
 	err = c.ValidateCertificate()
 	if err != nil {
 		return err
