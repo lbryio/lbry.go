@@ -111,8 +111,8 @@ func TestClient_StreamCreate(t *testing.T) {
 	address := string(*addressResponse)
 	got, err := d.StreamCreate("test"+fmt.Sprintf("%d", time.Now().Unix()), "/home/niko/Downloads/IMG_20171012_205120.jpg", 14.37, StreamCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
-			Title:       "This is a Test Title" + fmt.Sprintf("%d", time.Now().Unix()),
-			Description: "My Special Description",
+			Title:       util.PtrToString("This is a Test Title" + fmt.Sprintf("%d", time.Now().Unix())),
+			Description: util.PtrToString("My Special Description"),
 			Tags:        []string{"nsfw", "test"},
 			Languages:   []string{"en-US", "fr-CH"},
 			Locations: []Location{{
@@ -142,7 +142,7 @@ func TestClient_StreamCreate(t *testing.T) {
 		Preview:            nil,
 		AllowDuplicateName: nil,
 		ChannelName:        nil,
-		ChannelID:          util.PtrToString("253ca42da47ad8a430e18d52860cb499c50eff25"),
+		ChannelID:          util.PtrToString("dd0b559b4f17a7af984f173efb5438534eb6ab27"),
 		ChannelAccountID:   nil,
 	})
 	if err != nil {
@@ -156,8 +156,8 @@ func TestClient_ChannelCreate(t *testing.T) {
 	d := NewClient("")
 	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
-			Title:       "Mess with the channels",
-			Description: "And you'll get what you deserve",
+			Title:       util.PtrToString("Mess with the channels"),
+			Description: util.PtrToString("And you'll get what you deserve"),
 			Tags:        []string{"we", "got", "tags"},
 			Languages:   []string{"en-US"},
 			Locations: []Location{{
@@ -186,8 +186,8 @@ func TestClient_ChannelUpdate(t *testing.T) {
 		ClearTags:      util.PtrToBool(true),
 		ChannelCreateOptions: ChannelCreateOptions{
 			ClaimCreateOptions: ClaimCreateOptions{
-				Title:       "Mess with the channels",
-				Description: "And you'll get what you deserve",
+				Title:       util.PtrToString("Mess with the channels"),
+				Description: util.PtrToString("And you'll get what you deserve"),
 				Tags:        []string{"we", "got", "more", "tags"},
 				Languages:   []string{"en-US"},
 				Locations: []Location{{
@@ -213,8 +213,8 @@ func TestClient_ChannelAbandon(t *testing.T) {
 	channelName := "@TestToDelete" + fmt.Sprintf("%d", time.Now().Unix())
 	channelResponse, err := d.ChannelCreate(channelName, 13.37, ChannelCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
-			Title:       "Mess with the channels",
-			Description: "And you'll get what you deserve",
+			Title:       util.PtrToString("Mess with the channels"),
+			Description: util.PtrToString("And you'll get what you deserve"),
 			Tags:        []string{"we", "got", "tags"},
 			Languages:   []string{"en-US"},
 			Locations: []Location{{

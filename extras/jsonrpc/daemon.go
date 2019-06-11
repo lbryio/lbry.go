@@ -259,11 +259,13 @@ func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOp
 		FilePath             string `json:"file_path,omitempty"`
 		IncludeProtoBuf      bool   `json:"include_protobuf"`
 		ChannelCreateOptions `json:",flatten"`
+		Blocking             bool `json:"blocking"`
 	}{
 		Name:                 name,
 		Bid:                  fmt.Sprintf("%.6f", bid),
 		IncludeProtoBuf:      true,
 		ChannelCreateOptions: options,
+		Blocking:             true,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "channel_create", structs.Map(args))
@@ -284,10 +286,12 @@ func (d *Client) ChannelUpdate(claimID string, options ChannelUpdateOptions) (*T
 		ClaimID               string `json:"claim_id"`
 		IncludeProtoBuf       bool   `json:"include_protobuf"`
 		*ChannelUpdateOptions `json:",flatten"`
+		Blocking              bool `json:"blocking"`
 	}{
 		ClaimID:              claimID,
 		IncludeProtoBuf:      true,
 		ChannelUpdateOptions: &options,
+		Blocking:             true,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "channel_update", structs.Map(args))
@@ -319,12 +323,14 @@ func (d *Client) StreamCreate(name, filePath string, bid float64, options Stream
 		FilePath             string  `json:"file_path,omitempty"`
 		FileSize             *string `json:"file_size,omitempty"`
 		IncludeProtoBuf      bool    `json:"include_protobuf"`
+		Blocking             bool    `json:"blocking"`
 		*StreamCreateOptions `json:",flatten"`
 	}{
 		Name:                name,
 		FilePath:            filePath,
 		Bid:                 fmt.Sprintf("%.6f", bid),
 		IncludeProtoBuf:     true,
+		Blocking:            true,
 		StreamCreateOptions: &options,
 	}
 	structs.DefaultTagName = "json"
@@ -338,6 +344,7 @@ func (d *Client) StreamAbandon(txID string, nOut uint64, accountID *string, bloc
 		"nout":             nOut,
 		"account_id":       accountID,
 		"include_protobuf": true,
+		"blocking":         true,
 	})
 	if err != nil {
 		return nil, err
@@ -363,10 +370,12 @@ func (d *Client) StreamUpdate(claimID string, options StreamUpdateOptions) (*Tra
 		ClaimID              string `json:"claim_id"`
 		IncludeProtoBuf      bool   `json:"include_protobuf"`
 		*StreamUpdateOptions `json:",flatten"`
+		Blocking             bool `json:"blocking"`
 	}{
 		ClaimID:             claimID,
 		IncludeProtoBuf:     true,
 		StreamUpdateOptions: &options,
+		Blocking:            true,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "stream_update", structs.Map(args))
@@ -379,6 +388,7 @@ func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blo
 		"nout":             nOut,
 		"account_id":       accountID,
 		"include_protobuf": true,
+		"blocking":         true,
 	})
 	if err != nil {
 		return nil, err
