@@ -159,7 +159,7 @@ type AccountSettings struct {
 
 func (d *Client) AccountSet(accountID string, settings AccountSettings) (*Account, error) {
 	response := new(Account)
-	return response, d.call(response, "account_list", map[string]interface{}{})
+	return response, d.call(response, "account_set", map[string]interface{}{})
 }
 
 func (d *Client) AccountBalance(account *string) (*AccountBalanceResponse, error) {
