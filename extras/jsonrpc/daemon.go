@@ -169,13 +169,15 @@ func (d *Client) AccountBalance(account *string) (*AccountBalanceResponse, error
 	})
 }
 
-func (d *Client) AccountFund(fromAccount string, toAccount string, amount string, outputs uint64) (*AccountFundResponse, error) {
+// funds an account. If everything is true then amount is ignored
+func (d *Client) AccountFund(fromAccount string, toAccount string, amount string, outputs uint64, everything bool) (*AccountFundResponse, error) {
 	response := new(AccountFundResponse)
 	return response, d.call(response, "account_fund", map[string]interface{}{
 		"from_account": fromAccount,
 		"to_account":   toAccount,
 		"amount":       amount,
 		"outputs":      outputs,
+		"everything":   everything,
 		"broadcast":    true,
 	})
 }
