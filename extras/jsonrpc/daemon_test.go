@@ -37,7 +37,7 @@ func TestClient_AccountFund(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance/2.0), 40)
+	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance/2.0), 40, false)
 	if err != nil {
 		t.Error(err)
 		return
