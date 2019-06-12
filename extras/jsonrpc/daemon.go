@@ -159,7 +159,15 @@ type AccountSettings struct {
 
 func (d *Client) AccountSet(accountID string, settings AccountSettings) (*Account, error) {
 	response := new(Account)
-	return response, d.call(response, "account_set", map[string]interface{}{})
+	args := struct {
+		AccountID       string `json:"account_id"`
+		AccountSettings `json:",flatten"`
+	}{
+		AccountID:       accountID,
+		AccountSettings: settings,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "account_set", structs.Map(args))
 }
 
 func (d *Client) AccountBalance(account *string) (*AccountBalanceResponse, error) {
