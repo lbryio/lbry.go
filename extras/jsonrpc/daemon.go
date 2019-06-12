@@ -149,12 +149,12 @@ func (d *Client) SingleAccountList(accountID string) (*Account, error) {
 }
 
 type AccountSettings struct {
-	Default          bool   `json:"default"`
-	NewName          string `json:"new_name"`
-	ReceivingGap     int    `json:"receiving_gap"`
-	ReceivingMaxUses int    `json:"receiving_max_uses"`
-	ChangeGap        int    `json:"change_gap"`
-	ChangeMaxUses    int    `json:"change_max_uses"`
+	Default          *bool   `json:"default,omitempty"`
+	NewName          *string `json:"new_name,omitempty"`
+	ReceivingGap     *int    `json:"receiving_gap,omitempty"`
+	ReceivingMaxUses *int    `json:"receiving_max_uses,omitempty"`
+	ChangeGap        *int    `json:"change_gap,omitempty"`
+	ChangeMaxUses    *int    `json:"change_max_uses,omitempty"`
 }
 
 func (d *Client) AccountSet(accountID string, settings AccountSettings) (*Account, error) {

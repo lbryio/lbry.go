@@ -350,7 +350,7 @@ func TestClient_AccountSet(t *testing.T) {
 	}
 	account := (accounts.LBCRegtest)[0].ID
 
-	got, err := d.AccountSet(account, AccountSettings{ChangeMaxUses: 10000})
+	got, err := d.AccountSet(account, AccountSettings{ChangeMaxUses: util.PtrToInt(10000)})
 	if err != nil {
 		t.Error(err)
 		return
