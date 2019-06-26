@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/lbryio/lbry.go/extras/errors"
 	"github.com/lbryio/lbry.go/stream"
@@ -435,15 +436,17 @@ type StatusResponse struct {
 }
 
 type UTXOListResponse []struct {
-	Address    string `json:"address"`
-	Amount     string `json:"amount"`
-	Height     int    `json:"height"`
-	IsClaim    bool   `json:"is_claim"`
-	IsCoinbase bool   `json:"is_coinbase"`
-	IsSupport  bool   `json:"is_support"`
-	IsUpdate   bool   `json:"is_update"`
-	Nout       int    `json:"nout"`
-	Txid       string `json:"txid"`
+	Address       string     `json:"address"`
+	Amount        string     `json:"amount"`
+	Confirmations int        `json:"confirmations"`
+	Height        int        `json:"height"`
+	IsChange      bool       `json:"is_change"`
+	IsSupport     bool       `json:"is_support"`
+	IsMine        bool       `json:"is_mine"`
+	Nout          int        `json:"nout"`
+	Timestamp     *time.Time `json:"timestamp"`
+	Txid          string     `json:"txid"`
+	Type          string     `json:"type"`
 }
 
 type VersionResponse struct {
