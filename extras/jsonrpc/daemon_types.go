@@ -435,16 +435,15 @@ type StatusResponse struct {
 }
 
 type UTXOListResponse []struct {
-	Address       string  `json:"address"`
-	Amount        string  `json:"amount"`
-	Confirmations int     `json:"confirmations"`
-	Height        int     `json:"height"`
-	IsChange      bool    `json:"is_change"`
-	IsMine        bool    `json:"is_mine"`
-	Nout          int     `json:"nout"`
-	Timestamp     *string `json:"timestamp"`
-	Txid          string  `json:"txid"`
-	Type          string  `json:"type"`
+	Address       string `json:"address"`
+	Amount        string `json:"amount"`
+	Confirmations int    `json:"confirmations"`
+	Height        int    `json:"height"`
+	IsChange      bool   `json:"is_change"`
+	IsMine        bool   `json:"is_mine"`
+	Nout          int    `json:"nout"`
+	Txid          string `json:"txid"`
+	Type          string `json:"type"`
 }
 
 type VersionResponse struct {
