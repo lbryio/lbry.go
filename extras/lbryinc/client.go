@@ -13,11 +13,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Client stores data about internal-apis call it is about to make.
+// Caller interface defines currently supported internal-apis methods.
+type Caller interface {
+	SetServerAddress(string)
+	GetServerAddress() string
+	UserMe() (ResponseData, error)
+}
+
+// Client stores parameters common for internal-apis calls plus a logger.
 type Client struct {
-	ServerAddress string
+	serverAddress string
 	AuthToken     string
-	Logger        *log.Logger
+	logger        *log.Logger
 }
 
 // APIResponse reflects internal-apis JSON response format.
@@ -38,16 +45,16 @@ const (
 
 // NewClient returns a client instance for internal-apis. It requires authToken to be provided
 // for authentication.
-func NewClient(authToken string) Client {
-	return Client{
-		ServerAddress: defaultAPIHost,
+func NewClient(authToken string) Caller {
+	return &Client{
+		serverAddress: defaultAPIHost,
 		AuthToken:     authToken,
-		Logger:        log.StandardLogger(),
+		logger:        log.StandardLogger(),
 	}
 }
 
 func (c Client) getEndpointURL(object, method string) string {
-	return fmt.Sprintf("%s/%s/%s", c.ServerAddress, object, method)
+	return fmt.Sprintf("%s/%s/%s", c.GetServerAddress(), object, method)
 }
 
 func (c Client) prepareParams(params map[string]interface{}) (string, error) {
@@ -62,9 +69,19 @@ func (c Client) prepareParams(params map[string]interface{}) (string, error) {
 	return form.Encode(), nil
 }
 
+// SetServerAddress overrides the default internal-apis server address.
+func (c *Client) SetServerAddress(s string) {
+	c.serverAddress = s
+}
+
+// GetServerAddress returns currently defined internal-apis server address.
+func (c Client) GetServerAddress() string {
+	return c.serverAddress
+}
+
 func (c Client) doCall(url string, payload string) ([]byte, error) {
 	var body []byte
-	c.Logger.Debugf("sending payload: %s", payload)
+	c.logger.Debugf("sending payload: %s", payload)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return body, err

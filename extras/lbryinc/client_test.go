@@ -55,10 +55,17 @@ func launchDummyServer() {
 	log.Fatal(s.ListenAndServe())
 }
 
+func TestClient_Set_GetServerAddress(t *testing.T) {
+	c := NewClient("realToken")
+	assert.Equal(t, defaultAPIHost, c.GetServerAddress())
+	c.SetServerAddress("http://host.com/api")
+	assert.Equal(t, "http://host.com/api", c.GetServerAddress())
+}
+
 func TestUserMe(t *testing.T) {
 	go launchDummyServer()
 	c := NewClient("realToken")
-	c.ServerAddress = dummyServerURL
+	c.SetServerAddress(dummyServerURL)
 	r, err := c.UserMe()
 	assert.Nil(t, err)
 	assert.Equal(t, r["primary_email"], "andrey@lbry.com")
