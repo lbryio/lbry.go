@@ -337,7 +337,7 @@ const reflectorURL = "http://blobs.lbry.io/"
 // It does so by fetching the sd blob and the last blob from our S3 bucket, decrypting and unpadding the last blob
 // adding up all full blobs that have a known size and finally adding the real last blob size too.
 // This will only work if we host at least the sd blob and the last blob on S3, if not, this will error.
-func (c *Claim) GetStreamSizeByMagic() (uint64, error) {
+func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 	if c.Value.GetStream() == nil {
 		return 0, errors.Err("this claim is not a stream")
 	}
@@ -360,7 +360,6 @@ func (c *Claim) GetStreamSizeByMagic() (uint64, error) {
 	lastBlobIndex := len(sdb.BlobInfos) - 2
 	lastBlobHash := sdb.BlobInfos[lastBlobIndex].BlobHash
 
-	var streamSize uint64 = 0
 	if len(sdb.BlobInfos) > 2 {
 		streamSize = uint64(stream.MaxBlobSize-1) * uint64(len(sdb.BlobInfos)-2)
 	}
@@ -375,7 +374,11 @@ func (c *Claim) GetStreamSizeByMagic() (uint64, error) {
 	if err != nil {
 		return 0, errors.Err(err)
 	}
-
+	defer func() {
+		if r := recover(); r != nil {
+			e = errors.Err("recovered from DecryptBlob panic for blob %s", lastBlobHash)
+		}
+	}()
 	lastBlob, err := stream.DecryptBlob(body2, sdb.Key, sdb.BlobInfos[lastBlobIndex].IV)
 	if err != nil {
 		return 0, errors.Err(err)
