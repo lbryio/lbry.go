@@ -285,31 +285,27 @@ type Support struct {
 }
 
 type Claim struct {
-	Address                 string `json:"address"`
-	Amount                  string `json:"amount"`
-	ClaimID                 string `json:"claim_id"`
-	ClaimOp                 string `json:"claim_op,omitempty"`
-	Confirmations           int    `json:"confirmations"`
-	Height                  int    `json:"height"`
-	IsChange                bool   `json:"is_change,omitempty"`
-	IsChannelSignatureValid bool   `json:"is_channel_signature_valid,omitempty"`
-	IsMine                  bool   `json:"is_mine,omitempty"`
-	Name                    string `json:"name"`
-	Nout                    uint64 `json:"nout"`
-	PermanentURL            string `json:"permanent_url"`
-	SigningChannel          struct {
-		ClaimID string `json:"claim_id"`
-		Name    string `json:"name"`
-		Value   struct {
-			PublicKey string `json:"public_key"`
-			Title     string `json:"title"`
-		} `json:"value"`
-	} `json:"signing_channel,omitempty"`
+	Address                 string           `json:"address"`
+	Amount                  string           `json:"amount"`
+	CanonicalURL            string           `json:"canonical_url"`
+	ClaimID                 string           `json:"claim_id"`
+	ClaimOp                 string           `json:"claim_op,omitempty"`
+	Confirmations           int              `json:"confirmations"`
+	Height                  int              `json:"height"`
+	IsChange                bool             `json:"is_change,omitempty"`
+	IsChannelSignatureValid bool             `json:"is_channel_signature_valid,omitempty"`
+	Meta                    Meta             `json:"meta,omitempty"`
+	Name                    string           `json:"name"`
+	NormalizedName          string           `json:"normalized_name"`
+	Nout                    uint64           `json:"nout"`
+	PermanentURL            string           `json:"permanent_url"`
+	ShortURL                string           `json:"short_url"`
+	SigningChannel          *Claim           `json:"signing_channel,omitempty"`
 	Timestamp               int              `json:"timestamp"`
 	Txid                    string           `json:"txid"`
 	Type                    string           `json:"type,omitempty"`
-	ValueType               string           `json:"value_type,omitempty"`
 	Value                   lbryschema.Claim `json:"protobuf,omitempty"`
+	ValueType               string           `json:"value_type,omitempty"`
 	AbsoluteChannelPosition int              `json:"absolute_channel_position,omitempty"`
 	ChannelName             string           `json:"channel_name,omitempty"`
 	ClaimSequence           int64            `json:"claim_sequence,omitempty"`
@@ -319,6 +315,20 @@ type Claim struct {
 	SignatureIsValid        *bool            `json:"signature_is_valid,omitempty"`
 	Supports                []Support        `json:"supports,omitempty"`
 	ValidAtHeight           int              `json:"valid_at_height,omitempty"`
+}
+
+type Meta struct {
+	ActivationHeight  int64   `json:"activation_height,omitempty"`
+	CreationHeight    int64   `json:"creation_height,omitempty"`
+	CreationTimestamp int     `json:"creation_timestamp,omitempty"`
+	EffectiveAmount   string  `json:"effective_amount,omitempty"`
+	ExpirationHeight  int64   `json:"expiration_height,omitempty"`
+	IsControlling     bool    `json:"is_controlling,omitempty"`
+	SupportAmount     string  `json:"support_amount,omitempty"`
+	TrendingGlobal    float64 `json:"trending_global,omitempty"`
+	TrendingGroup     float64 `json:"trending_group,omitempty"`
+	TrendingLocal     float64 `json:"trending_local,omitempty"`
+	TrendingMixed     float64 `json:"trending_mixed,omitempty"`
 }
 
 const reflectorURL = "http://blobs.lbry.io/"
@@ -469,13 +479,7 @@ type VersionResponse struct {
 	PythonVersion     string `json:"python_version"`
 }
 
-type ResolveResponse map[string]ResolveResponseItem
-type ResolveResponseItem struct {
-	Certificate     *Claim  `json:"certificate,omitempty"`
-	Claim           *Claim  `json:"claim,omitempty"`
-	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
-	Error           *string `json:"error,omitempty"`
-}
+type ResolveResponse map[string]Claim
 
 type NumClaimsInChannelResponse map[string]struct {
 	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
