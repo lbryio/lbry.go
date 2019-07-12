@@ -74,7 +74,7 @@ func New(lbrycrdURL string) (*Client, error) {
 	}
 
 	// make sure lbrycrd is running and responsive
-	_, err = client.GetInfo()
+	_, err = client.GetBlockChainInfo()
 	if err != nil {
 		return nil, errors.Err(err)
 	}

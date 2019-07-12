@@ -2,11 +2,7 @@ module github.com/lbryio/lbry.go
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf // indirect
-	github.com/btcsuite/btcd v0.0.0-20180531025944-86fed781132a
-	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcutil v0.0.0-20180524032703-d4cc87b86016
-	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
-	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
+	github.com/btcsuite/btcd v0.0.0-20190629003639-c26ffa870fd8
 	github.com/davecgh/go-spew v1.1.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-ini/ini v1.38.2
@@ -26,7 +22,6 @@ require (
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
 	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
 	github.com/nlopes/slack v0.5.0
-	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
 	github.com/sergi/go-diff v1.0.0
