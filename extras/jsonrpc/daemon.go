@@ -505,3 +505,12 @@ func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*Cla
 		"name":     claimName,
 	})
 }
+
+func (d *Client) ChannelExport(channelClaimID string, channelName, accountID *string) (*ChannelExportResponse, error) {
+	response := new(ChannelExportResponse)
+	return response, d.call(response, "channel_export", map[string]interface{}{
+		"channel_id":   channelClaimID,
+		"channel_name": channelName,
+		"account_id":   accountID,
+	})
+}
