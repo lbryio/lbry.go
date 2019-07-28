@@ -402,3 +402,16 @@ func TestClient_AccountRemove(t *testing.T) {
 	t.Error("account was not removed")
 	prettyPrint(*account)
 }
+
+func TestClient_ChannelExport(t *testing.T) {
+	d := NewClient("")
+	channelClaimID := "f1ad0d72eae6b471cfd72b7956768c0c191b22d7"
+	response, err := d.ChannelExport(channelClaimID, nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if response == nil || len(*response) == 0 {
+		t.Error("nothing returned!")
+	}
+	t.Log("Export:", *response)
+}

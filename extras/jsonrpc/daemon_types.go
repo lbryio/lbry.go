@@ -266,6 +266,7 @@ type AccountFundResponse TransactionSummary
 type Address string
 type AddressUnusedResponse Address
 type AddressListResponse []Address
+type ChannelExportResponse string
 
 type ChannelListResponse struct {
 	Items      []Transaction `json:"items"`
