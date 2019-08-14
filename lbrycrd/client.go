@@ -1,15 +1,20 @@
 package lbrycrd
 
 import (
+	"encoding/hex"
 	"net/url"
 	"os"
 	"strconv"
 
 	"github.com/lbryio/lbry.go/extras/errors"
+	c "github.com/lbryio/lbryschema.go/claim"
 
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/go-ini/ini"
 )
@@ -114,30 +119,6 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 	return hash, nil
 }
 
-//func (c *Client) SendWithSplit(toAddress string, amount float64, numUTXOs int) (*chainhash.Hash, error) {
-//	decodedAddress, err := DecodeAddress(toAddress, &MainNetParams)
-//	if err != nil {
-//		return nil, errors.Wrap(err, 0)
-//	}
-//
-//	amountPerAddress, err := btcutil.NewAmount(amount / float64(numUTXOs))
-//	if err != nil {
-//		return nil, errors.Wrap(err, 0)
-//	}
-//
-//	amounts := map[btcutil.Address]btcutil.Amount{}
-//	for i := 0; i < numUTXOs; i++ {
-//		addr := decodedAddress // to give it a new address, so
-//		amounts[addr] = amountPerAddress
-//	}
-//
-//	hash, err := c.Client.SendManyMinConf("", amounts, 0)
-//	if err != nil && err.Error() == "-6: Insufficient funds" {
-//		err = errors.Wrap(errInsufficientFunds, 0)
-//	}
-//	return hash, errors.Wrap(err, 0)
-//}
-
 func getLbrycrdURLFromConfFile() (string, error) {
 	if os.Getenv("HOME") == "" {
 		return "", errors.Err("no $HOME var found")
@@ -178,4 +159,131 @@ func getLbrycrdURLFromConfFile() (string, error) {
 	}
 
 	return "rpc://" + userpass + host + ":" + port, nil
+}
+
+func (c *Client) CreateBaseRawTx(inputs []btcjson.TransactionInput, change float64) (*wire.MsgTx, error) {
+	addresses := make(map[btcutil.Address]btcutil.Amount)
+	changeAddress, err := c.GetNewAddress("")
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	changeAmount, err := btcutil.NewAmount(change)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	addresses[changeAddress] = changeAmount
+	lockTime := int64(0)
+	return c.CreateRawTransaction(inputs, addresses, &lockTime)
+}
+
+func (c *Client) GetEmptyTx(totalOutputSpend float64) (*wire.MsgTx, error) {
+	totalFees := 0.1
+	unspentResults, err := c.ListUnspentMin(1)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	finder := newOutputFinder(unspentResults)
+
+	outputs, err := finder.nextBatch(totalOutputSpend + totalFees)
+	if err != nil {
+		return nil, err
+	}
+	if len(outputs) == 0 {
+		return nil, errors.Err("Not enough spendable outputs to create transaction")
+	}
+	inputs := make([]btcjson.TransactionInput, len(outputs))
+	var totalInputSpend float64
+	for i, output := range outputs {
+		inputs[i] = btcjson.TransactionInput{Txid: output.TxID, Vout: output.Vout}
+		totalInputSpend = totalInputSpend + output.Amount
+	}
+
+	change := totalInputSpend - totalOutputSpend - totalFees
+	return c.CreateBaseRawTx(inputs, change)
+}
+
+func (c *Client) SignTxAndSend(rawTx *wire.MsgTx) (*chainhash.Hash, error) {
+	signedTx, allInputsSigned, err := c.SignRawTransaction(rawTx)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	if !allInputsSigned {
+		return nil, errors.Err("Not all inputs for the tx could be signed!")
+	}
+
+	return c.SendRawTransaction(signedTx, false)
+}
+
+type ScriptType int
+
+const (
+	ClaimName ScriptType = iota
+	ClaimUpdate
+	ClaimSupport
+)
+
+func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.ClaimHelper, name string, claimAmount float64, scriptType ScriptType) error {
+
+	address, err := c.GetNewAddress("")
+	if err != nil {
+		return errors.Err(err)
+	}
+	amount, err := btcutil.NewAmount(claimAmount)
+	if err != nil {
+		return errors.Err(err)
+	}
+
+	value, err := claim.CompileValue()
+	if err != nil {
+		return errors.Err(err)
+	}
+	var claimID string
+	if len(claim.ClaimID) > 0 {
+		claimID = hex.EncodeToString(rev(claim.ClaimID))
+	}
+	var script []byte
+	switch scriptType {
+	case ClaimName:
+		script, err = getClaimNamePayoutScript(name, value, address)
+		if err != nil {
+			return errors.Err(err)
+		}
+	case ClaimUpdate:
+		script, err = getUpdateClaimPayoutScript(name, claimID, value, address)
+		if err != nil {
+			return errors.Err(err)
+		}
+	case ClaimSupport:
+		script, err = getUpdateClaimPayoutScript(name, claimID, value, address)
+		if err != nil {
+			return errors.Err(err)
+		}
+	}
+
+	rawTx.AddTxOut(wire.NewTxOut(int64(amount), script))
+
+	return nil
+}
+
+func (c *Client) CreateChannel(name string, amount float64) (*c.ClaimHelper, *btcec.PrivateKey, error) {
+	channel, key, err := NewChannel()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rawTx, err := c.GetEmptyTx(amount)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = c.AddStakeToTx(rawTx, channel, name, amount, ClaimName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = c.SignTxAndSend(rawTx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return channel, key, nil
 }
