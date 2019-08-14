@@ -470,40 +470,21 @@ func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	})
 }
 
-/*
-// use resolve?
-func (d *Client) NumClaimsInChannel(channelClaimID string) (uint64, error) {
-	response := new(NumClaimsInChannelResponse)
-	err := d.call(response, "claim_search", map[string]interface{}{
-		"channel_id": channelClaimID,
-	})
-	if err != nil {
-		return 0, err
-	} else if response == nil {
-		return 0, errors.Err("no response")
-	}
-
-	channel, ok := (*response)[uri]
-	if !ok {
-		return 0, errors.Err("url not in response")
-	}
-	if channel.Error != nil {
-		if strings.Contains(*channel.Error, "cannot be resolved") {
-			return 0, nil
-		}
-		return 0, errors.Err(*channel.Error)
-	}
-	return *channel.ClaimsInChannel, nil
-}
-*/
 func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*ClaimSearchResponse, error) {
 	response := new(ClaimSearchResponse)
-	return response, d.call(response, "claim_search", map[string]interface{}{
-		"claim_id": claimID,
-		"txid":     txid,
-		"nout":     nout,
-		"name":     claimName,
-	})
+	args := struct {
+		ClaimID *string `json:"claim_id,omitempty"`
+		TXID    *string `json:"txid,omitempty"`
+		Nout    *uint   `json:"nout,omitempty"`
+		Name    *string `json:"name,omitempty"`
+	}{
+		ClaimID: claimID,
+		TXID:    txid,
+		Nout:    nout,
+		Name:    claimName,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "claim_search", structs.Map(args))
 }
 
 func (d *Client) ChannelExport(channelClaimID string, channelName, accountID *string) (*ChannelExportResponse, error) {
