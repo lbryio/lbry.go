@@ -7,11 +7,11 @@ import (
 
 	"github.com/lbryio/lbry.go/extras/errors"
 
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/btcsuite/btcutil"
 	"github.com/go-ini/ini"
+	"github.com/nikooo777/btcd/chaincfg"
+	"github.com/nikooo777/btcd/chaincfg/chainhash"
+	"github.com/nikooo777/btcd/rpcclient"
+	"github.com/nikooo777/btcutil"
 )
 
 const DefaultPort = 9245

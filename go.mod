@@ -2,8 +2,7 @@ module github.com/lbryio/lbry.go
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf // indirect
-	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32
-	github.com/btcsuite/btcutil v0.0.0-20190207003914-4c204d697803
+	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
 	github.com/go-errors/errors v1.0.1
@@ -25,6 +24,8 @@ require (
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
 	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
+	github.com/nikooo777/btcd v0.0.0-20190816154301-461b8fe8a3ab
+	github.com/nikooo777/btcutil v0.0.0-20190816153817-a36a47de17b7
 	github.com/nlopes/slack v0.5.0
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561

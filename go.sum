@@ -82,6 +82,10 @@ github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5 h1:mG83tLXWSRdcX
 github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5/go.mod h1:H0aPCWffGOaDcjkw1iB7W9DVLp6GXmfcJY/7YZCWPA4=
 github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675 h1:/rdJjIiKG5rRdwG5yxHmSE/7ZREjpyC0kL7GxGT/qJw=
 github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
+github.com/nikooo777/btcd v0.0.0-20190816154301-461b8fe8a3ab h1:nCJko+q5hLn6rdpcqJnEF6iosKUa81eEfeeMWdbq2M8=
+github.com/nikooo777/btcd v0.0.0-20190816154301-461b8fe8a3ab/go.mod h1:BDq40KtVIbqCFQ0zKweLKEttLuC+A5x/ZAF6nu8yyRY=
+github.com/nikooo777/btcutil v0.0.0-20190816153817-a36a47de17b7 h1:QZo/VXbEuP9Q7klNyrjSrfSs/iYoq9Z5RhcsTM21knc=
+github.com/nikooo777/btcutil v0.0.0-20190816153817-a36a47de17b7/go.mod h1:tNsG8NJ70xm/RYKUWszG1sXjg8satxIxcIXeJZ6ZYhc=
 github.com/nlopes/slack v0.5.0 h1:NbIae8Kd0NpqaEI3iUrsuS0KbcEDhzhc939jLW5fNm0=
 github.com/nlopes/slack v0.5.0/go.mod h1:jVI4BBK3lSktibKahxBF74txcK2vyvkza1z/+rRnVAM=
 github.com/onsi/ginkgo v1.6.0 h1:Ix8l273rp3QzYgXSR+c8d1fTG7UPgYkOSELPhiY/YGw=
