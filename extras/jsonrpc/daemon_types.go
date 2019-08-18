@@ -220,7 +220,12 @@ type AccountListResponse struct {
 	LBCRegtest []Account `json:"lbc_regtest"`
 }
 
-type AccountBalanceResponse string
+type AccountBalanceResponse struct {
+	Available         decimal.Decimal  `json:"available"`
+	Reserved          decimal.Decimal  `json:"reserved"`
+	ReservedSubtotals *decimal.Decimal `json:"reserved_subtotals"`
+	Total             decimal.Decimal  `json:"total"`
+}
 
 type AccountCreateResponse struct {
 	ID         string  `json:"id"`
