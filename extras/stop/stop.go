@@ -106,8 +106,6 @@ func (s *Group) DoneNamed(name string) {
 
 	if s.waitingOn != nil {
 		s.mu.Lock()
-		defer s.mu.Unlock()
-
 		if current, ok := s.waitingOn[name]; ok {
 			if current <= 1 {
 				delete(s.waitingOn, name)
