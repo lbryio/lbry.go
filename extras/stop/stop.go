@@ -72,7 +72,6 @@ func (s *Group) StopAndWait() {
 
 func (s *Group) Wait() {
 	defer s.Wait()
-	s.listWaitingOn()
 }
 
 // Child returns a new instance that will be stopped when s is stopped.
