@@ -70,6 +70,11 @@ func (s *Group) StopAndWait() {
 	s.Wait()
 }
 
+func (s *Group) Wait() {
+	defer s.Wait()
+	s.listWaitingOn()
+}
+
 // Child returns a new instance that will be stopped when s is stopped.
 func (s *Group) Child() *Group {
 	return New(s)
@@ -112,9 +117,16 @@ func (s *Group) DoneNamed(name string) {
 		} else {
 			log.Printf("%s is not recorded in stop group map", name)
 		}
+		s.mu.Unlock()
+		s.listWaitingOn()
+	}
+}
 
+func (s *Group) listWaitingOn() {
+	if s.waitingOn != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		log.Printf("-->> LIST ROUTINES WAITING ON")
-
 		for k, v := range s.waitingOn {
 			if v > 0 {
 				log.Printf("waiting on %d %s routines...", v, k)
