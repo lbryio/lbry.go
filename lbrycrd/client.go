@@ -30,6 +30,7 @@ var MainNetParams = chaincfg.Params{
 	PrivateKeyID:     0x1c,
 	Bech32HRPSegwit:  "not-used", // we don't have this (yet)
 	GenesisHash:      &GenesisHash,
+	Name:             "mainnet",
 }
 
 func init() {

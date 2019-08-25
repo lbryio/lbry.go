@@ -34,7 +34,7 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (btcutil.Address, e
 		if err == base58.ErrChecksum {
 			return nil, btcutil.ErrChecksumMismatch
 		}
-		return nil, errors.Err("decoded address is of unknown format")
+		return nil, errors.Err("decoded address[%s] is of unknown format even with default chainparams[%s]", addr, defaultNet.Name)
 	}
 
 	switch len(decoded) {
