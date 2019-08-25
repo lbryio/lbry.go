@@ -70,10 +70,6 @@ func (s *Group) StopAndWait() {
 	s.Wait()
 }
 
-func (s *Group) Wait() {
-	defer s.Wait()
-}
-
 // Child returns a new instance that will be stopped when s is stopped.
 func (s *Group) Child() *Group {
 	return New(s)
