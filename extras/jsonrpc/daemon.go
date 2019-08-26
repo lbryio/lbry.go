@@ -495,3 +495,59 @@ func (d *Client) ChannelExport(channelClaimID string, channelName, accountID *st
 		"account_id":   accountID,
 	})
 }
+
+func (d *Client) SupportList(accountID *string, page uint64, pageSize uint64) (*SupportListResponse, error) {
+	response := new(SupportListResponse)
+	return response, d.call(response, "support_list", map[string]interface{}{
+		"account_id": accountID,
+		"page":       page,
+		"page_size":  pageSize,
+	})
+}
+
+func (d *Client) SupportCreate(claimID string, amount string, tip *bool, accountID *string, fundingAccountIDs []string) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		ClaimID           string   `json:"claim_id"`
+		Amount            string   `json:"amount"`
+		Tip               *bool    `json:"tip,omitempty"`
+		AccountID         *string  `json:"account_id,omitempty"`
+		FundingAccountIDs []string `json:"funding_account_ids,omitempty"`
+		Preview           bool     `json:"preview,omitempty"`
+		Blocking          bool     `json:"blocking,omitempty"`
+	}{
+		ClaimID:           claimID,
+		AccountID:         accountID,
+		Blocking:          true,
+		Amount:            amount,
+		FundingAccountIDs: fundingAccountIDs,
+		Preview:           false,
+		Tip:               tip,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "support_create", structs.Map(args))
+}
+
+func (d *Client) SupportAbandon(claimID *string, txid *string, nout *uint, keep *string, accountID *string) (*TransactionSummary, error) {
+	if claimID == nil && (txid == nil || nout == nil) {
+		return nil, errors.Err("either claimID or txid+nout must be supplied")
+	}
+	response := new(TransactionSummary)
+	args := struct {
+		ClaimID   *string `json:"claim_id,omitempty"`
+		TxID      *string `json:"claim_id,omitempty"`
+		Nout      *uint   `json:"nout,omitempty"`
+		AccountID *string `json:"account_id,omitempty"`
+		Preview   bool    `json:"preview,omitempty"`
+		Blocking  bool    `json:"blocking,omitempty"`
+	}{
+		ClaimID:   claimID,
+		AccountID: accountID,
+		Nout:      nout,
+		TxID:      txid,
+		Blocking:  true,
+		Preview:   false,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "support_abandon", structs.Map(args))
+}

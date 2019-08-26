@@ -11,6 +11,8 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/lbryio/lbry.go/extras/errors"
+
 	"github.com/lbryio/lbry.go/extras/util"
 )
 
@@ -32,7 +34,7 @@ func TestClient_AccountFund(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	balance, err := strconv.ParseFloat(string(*balanceString), 64)
+	balance, err := strconv.ParseFloat(balanceString.Available.String(), 64)
 	if err != nil {
 		t.Error(err)
 		return
@@ -100,6 +102,35 @@ func TestClient_ChannelList(t *testing.T) {
 	prettyPrint(*got)
 }
 
+var channelID string
+
+func TestClient_ChannelCreate(t *testing.T) {
+	d := NewClient("")
+	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
+		ClaimCreateOptions: ClaimCreateOptions{
+			Title:       util.PtrToString("Mess with the channels"),
+			Description: util.PtrToString("And you'll get what you deserve"),
+			Tags:        []string{"we", "got", "tags"},
+			Languages:   []string{"en-US"},
+			Locations: []Location{{
+				Country: util.PtrToString("CH"),
+				State:   util.PtrToString("Ticino"),
+				City:    util.PtrToString("Lugano"),
+			}},
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		},
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	channelID = got.Outputs[0].ClaimID
+	prettyPrint(*got)
+}
+
 func TestClient_StreamCreate(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
@@ -142,34 +173,8 @@ func TestClient_StreamCreate(t *testing.T) {
 		Preview:            nil,
 		AllowDuplicateName: nil,
 		ChannelName:        nil,
-		ChannelID:          util.PtrToString("dd0b559b4f17a7af984f173efb5438534eb6ab27"),
+		ChannelID:          util.PtrToString(channelID),
 		ChannelAccountID:   nil,
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	prettyPrint(*got)
-}
-
-func TestClient_ChannelCreate(t *testing.T) {
-	d := NewClient("")
-	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
-		ClaimCreateOptions: ClaimCreateOptions{
-			Title:       util.PtrToString("Mess with the channels"),
-			Description: util.PtrToString("And you'll get what you deserve"),
-			Tags:        []string{"we", "got", "tags"},
-			Languages:   []string{"en-US"},
-			Locations: []Location{{
-				Country: util.PtrToString("CH"),
-				State:   util.PtrToString("Ticino"),
-				City:    util.PtrToString("Lugano"),
-			}},
-			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
-		},
-		Email:      util.PtrToString("niko@lbry.com"),
-		WebsiteURL: util.PtrToString("https://lbry.com"),
-		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
 	})
 	if err != nil {
 		t.Error(err)
@@ -180,7 +185,7 @@ func TestClient_ChannelCreate(t *testing.T) {
 
 func TestClient_ChannelUpdate(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelUpdate("2a8b6d061c5ecb2515f1dd7e04729e9fafac660d", ChannelUpdateOptions{
+	got, err := d.ChannelUpdate(channelID, ChannelUpdateOptions{
 		ClearLanguages: util.PtrToBool(true),
 		ClearLocations: util.PtrToBool(true),
 		ClearTags:      util.PtrToBool(true),
@@ -264,9 +269,65 @@ func TestClient_ClaimList(t *testing.T) {
 	prettyPrint(*got)
 }
 
+func TestClient_SupportTest(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
+	d := NewClient("")
+	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
+		ClaimCreateOptions: ClaimCreateOptions{
+			Title:       util.PtrToString("Mess with the channels"),
+			Description: util.PtrToString("And you'll get what you deserve"),
+			Tags:        []string{"we", "got", "tags"},
+			Languages:   []string{"en-US"},
+			Locations: []Location{{
+				Country: util.PtrToString("CH"),
+				State:   util.PtrToString("Ticino"),
+				City:    util.PtrToString("Lugano"),
+			}},
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		},
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	time.Sleep(10 * time.Second)
+	got2, err := d.SupportCreate(got.Outputs[0].ClaimID, "1.0", util.PtrToBool(true), nil, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got2)
+
+	got3, err := d.SupportList(nil, 1, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	found := false
+	for _, support := range got3.Items {
+		if support.ClaimID == got.Outputs[0].ClaimID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error(errors.Err("support not found"))
+		return
+	}
+	prettyPrint(*got3)
+	got4, err := d.SupportAbandon(util.PtrToString(got.Outputs[0].ClaimID), nil, nil, nil, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got4)
+}
+
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimSearch(nil, util.PtrToString("2a8b6d061c5ecb2515f1dd7e04729e9fafac660d"), nil, nil)
+	got, err := d.ClaimSearch(nil, util.PtrToString(channelID), nil, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -405,8 +466,7 @@ func TestClient_AccountRemove(t *testing.T) {
 
 func TestClient_ChannelExport(t *testing.T) {
 	d := NewClient("")
-	channelClaimID := "f1ad0d72eae6b471cfd72b7956768c0c191b22d7"
-	response, err := d.ChannelExport(channelClaimID, nil, nil)
+	response, err := d.ChannelExport(channelID, nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
