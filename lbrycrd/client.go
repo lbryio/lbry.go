@@ -38,6 +38,39 @@ var MainNetParams = chaincfg.Params{
 	Name:             "mainnet",
 }
 
+const (
+	lbrycrdMainPubkeyPrefix    = byte(85)
+	lbrycrdMainScriptPrefix    = byte(122)
+	lbrycrdTestnetPubkeyPrefix = byte(111)
+	lbrycrdTestnetScriptPrefix = byte(196)
+	lbrycrdRegtestPubkeyPrefix = byte(111)
+	lbrycrdRegtestScriptPrefix = byte(196)
+
+	LbrycrdMain    = "lbrycrd_main"
+	LbrycrdTestnet = "lbrycrd_testnet"
+	LbrycrdRegtest = "lbrycrd_regtest"
+)
+
+var mainNetParams = chaincfg.Params{
+	PubKeyHashAddrID: lbrycrdMainPubkeyPrefix,
+	ScriptHashAddrID: lbrycrdMainScriptPrefix,
+	PrivateKeyID:     0x1c,
+}
+
+var testNetParams = chaincfg.Params{
+	PubKeyHashAddrID: lbrycrdTestnetPubkeyPrefix,
+	ScriptHashAddrID: lbrycrdTestnetScriptPrefix,
+	PrivateKeyID:     0x1c,
+}
+
+var regTestNetParams = chaincfg.Params{
+	PubKeyHashAddrID: lbrycrdRegtestPubkeyPrefix,
+	ScriptHashAddrID: lbrycrdRegtestScriptPrefix,
+	PrivateKeyID:     0x1c,
+}
+
+var ChainParamsMap = map[string]chaincfg.Params{LbrycrdMain: mainNetParams, LbrycrdTestnet: testNetParams, LbrycrdRegtest: regTestNetParams}
+
 func init() {
 	// Register lbrycrd network
 	err := chaincfg.Register(&MainNetParams)
@@ -287,4 +320,53 @@ func (c *Client) CreateChannel(name string, amount float64) (*c.ClaimHelper, *bt
 	}
 
 	return channel, key, nil
+}
+
+func (c *Client) SupportClaim(name, claimID, address, blockchainName string, claimAmount float64) (*chainhash.Hash, error) {
+	const DefaultFeePerSupport = float64(0.0001)
+	unspentResults, err := c.ListUnspentMin(1)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+
+	finder := newOutputFinder(unspentResults)
+	outputs, err := finder.nextBatch(claimAmount + DefaultFeePerSupport)
+	if err != nil {
+		return nil, err
+	}
+	if len(outputs) == 0 {
+		return nil, errors.Err("Not enough spendable outputs to create transaction")
+	}
+	inputs := make([]btcjson.TransactionInput, len(outputs))
+
+	var totalInputSpend float64
+	for i, output := range outputs {
+		inputs[i] = btcjson.TransactionInput{Txid: output.TxID, Vout: output.Vout}
+		totalInputSpend = totalInputSpend + output.Amount
+	}
+
+	change := totalInputSpend - claimAmount - DefaultFeePerSupport
+	rawTx, err := c.CreateBaseRawTx(inputs, change)
+	if err != nil {
+		return nil, err
+	}
+	chainParams, ok := ChainParamsMap[blockchainName]
+	if !ok {
+		return nil, errors.Err("invalid blockchain name %s", blockchainName)
+	}
+	decodedAddress, err := DecodeAddress(address, &chainParams)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	amount, err := btcutil.NewAmount(claimAmount)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	script, err := getClaimSupportPayoutScript(name, claimID, decodedAddress)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	rawTx.AddTxOut(wire.NewTxOut(int64(amount), script))
+
+	return c.SignTxAndSend(rawTx)
 }
