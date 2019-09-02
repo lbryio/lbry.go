@@ -323,6 +323,7 @@ type StreamCreateOptions struct {
 	ChannelName        *string     `json:"channel_name,omitempty"`
 	ChannelID          *string     `json:"channel_id,omitempty"`
 	ChannelAccountID   *string     `json:"channel_account_id,omitempty"`
+	AccountID          *string     `json:"account_id,omitempty"`
 }
 
 func (d *Client) StreamCreate(name, filePath string, bid float64, options StreamCreateOptions) (*TransactionSummary, error) {
