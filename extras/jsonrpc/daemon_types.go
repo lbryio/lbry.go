@@ -471,6 +471,50 @@ type UTXOListResponse []struct {
 	Type          string `json:"type"`
 }
 
+type UTXOReleaseResponse *string
+
+type TransactionListResponse []struct {
+	AbandonInfo struct {
+		Address      string `json:"address"`
+		Amount       string `json:"amount"`
+		BalanceDelta string `json:"balance_delta"`
+		ClaimId      string `json:"claim_id"`
+		ClaimName    string `json:"claim_name"`
+		Nout         int    `json:"nout"`
+	} `json:"abandon_info"`
+	ClaimInfo struct {
+		Address      string `json:"address"`
+		Amount       string `json:"amount"`
+		BalanceDelta string `json:"balance_delta"`
+		ClaimId      string `json:"claim_id"`
+		ClaimName    string `json:"claim_name"`
+		Nout         int    `json:"nout"`
+	} `json:"claim_info"`
+	Confirmations int64  `json:"confirmations"`
+	Date          string `json:"date"`
+	Fee           string `json:"fee"`
+	SupportInfo   struct {
+		Address      string `json:"address"`
+		Amount       string `json:"amount"`
+		BalanceDelta string `json:"balance_delta"`
+		ClaimId      string `json:"claim_id"`
+		ClaimName    string `json:"claim_name"`
+		IsTip        bool   `json:"is_tip"`
+		Nout         int    `json:"nout"`
+	} `json:"support_info"`
+	Timestamp  int64  `json:"timestamp"`
+	Txid       string `json:"txid"`
+	UpdateInfo struct {
+		Address      string `json:"address"`
+		Amount       string `json:"amount"`
+		BalanceDelta string `json:"balance_delta"`
+		ClaimId      string `json:"claim_id"`
+		ClaimName    string `json:"claim_name"`
+		Nout         int    `json:"nout"`
+	} `json:"update_info"`
+	Value string `json:"value"`
+}
+
 type VersionResponse struct {
 	Build   string `json:"build"`
 	Desktop string `json:"desktop"`
