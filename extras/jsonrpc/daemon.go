@@ -259,6 +259,7 @@ type ChannelCreateOptions struct {
 	WebsiteURL         *string  `json:"website_url,omitempty"`
 	CoverURL           *string  `json:"cover_url,omitempty"`
 	Featured           []string `json:"featured,omitempty"`
+	AccountID          *string  `json:"account_id,omitempty"`
 }
 
 func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*TransactionSummary, error) {
@@ -436,9 +437,23 @@ func (d *Client) Status() (*StatusResponse, error) {
 	return response, d.call(response, "status", map[string]interface{}{})
 }
 
+func (d *Client) TransactionList(account *string) (*TransactionListResponse, error) {
+	response := new(TransactionListResponse)
+	return response, d.call(response, "transaction_list", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
 func (d *Client) UTXOList(account *string) (*UTXOListResponse, error) {
 	response := new(UTXOListResponse)
 	return response, d.call(response, "utxo_list", map[string]interface{}{
+		"account_id": account,
+	})
+}
+
+func (d *Client) UTXORelease(account *string) (*UTXOReleaseResponse, error) {
+	response := new(UTXOReleaseResponse)
+	return response, d.call(response, "utxo_release", map[string]interface{}{
 		"account_id": account,
 	})
 }
