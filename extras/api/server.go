@@ -113,21 +113,17 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var trace []string
 	if TraceEnabled && errors.HasTrace(rsp.Error) {
-		trace = strings.Split(errors.Trace(rsp.Error), "\n")
-		for index, element := range trace {
-			if strings.HasPrefix(element, "\t") {
-				trace[index] = strings.Replace(element, "\t", "    ", 1)
-			}
-		}
+		trace = getTraceFromError(rsp.Error)
 	}
 
 	// http://choly.ca/post/go-json-marshalling/
-	jsonResponse, err := json.MarshalIndent(&struct {
+	type apiResponse struct {
 		Success bool        `json:"success"`
 		Error   *string     `json:"error"`
 		Data    interface{} `json:"data"`
 		Trace   []string    `json:"_trace,omitempty"`
-	}{
+	}
+	jsonResponse, err := json.MarshalIndent(&apiResponse{
 		Success: success,
 		Error:   errorString,
 		Data:    rsp.Data,
@@ -135,10 +131,29 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}, "", "  ")
 	if err != nil {
 		Log(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
+		jsonResponse, err = json.MarshalIndent(&apiResponse{
+			Success: false,
+			Error:   util.PtrToString(err.Error()),
+			Data:    rsp.Data,
+			Trace:   getTraceFromError(err),
+		}, "", "  ")
+		if err != nil {
+			Log(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
+		}
 	}
 
 	w.WriteHeader(rsp.Status)
-	w.Write(jsonResponse)
+	_, _ = w.Write(jsonResponse)
+}
+
+func getTraceFromError(err error) []string {
+	trace := strings.Split(errors.Trace(err), "\n")
+	for index, element := range trace {
+		if strings.HasPrefix(element, "\t") {
+			trace[index] = strings.Replace(element, "\t", "    ", 1)
+		}
+	}
+	return trace
 }
 
 // IgnoredFormFields are ignored by FormValues() when checking for extraneous fields
