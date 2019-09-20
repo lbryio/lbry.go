@@ -13,6 +13,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	defaultServerAddress = "https://api.lbry.com"
+	timeout              = 5 * time.Second
+	headerForwardedFor   = "X-Forwarded-For"
+
+	userObjectPath = "user"
+	userMeMethod   = "me"
+)
+
 // Client stores data about internal-apis call it is about to make.
 type Client struct {
 	AuthToken     string
@@ -38,13 +47,6 @@ type APIResponse struct {
 
 // ResponseData is a map containing parsed json response.
 type ResponseData map[string]interface{}
-
-const (
-	defaultServerAddress = "https://api.lbry.com"
-	timeout              = 5 * time.Second
-	userObjectPath       = "user"
-	headerForwardedFor   = "X-Forwarded-For"
-)
 
 // NewClient returns a client instance for internal-apis. It requires authToken to be provided
 // for authentication.
@@ -133,5 +135,5 @@ func (c Client) Call(object, method string, params map[string]interface{}) (Resp
 
 // UserMe returns user details for the user associated with the current auth_token
 func (c Client) UserMe() (ResponseData, error) {
-	return c.Call(userObjectPath, "me", map[string]interface{}{})
+	return c.Call(userObjectPath, userMeMethod, map[string]interface{}{})
 }
