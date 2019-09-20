@@ -13,11 +13,29 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	defaultServerAddress = "https://api.lbry.com"
+	timeout              = 5 * time.Second
+	headerForwardedFor   = "X-Forwarded-For"
+
+	userObjectPath = "user"
+	userMeMethod   = "me"
+)
+
 // Client stores data about internal-apis call it is about to make.
 type Client struct {
-	ServerAddress string
 	AuthToken     string
 	Logger        *log.Logger
+	serverAddress string
+	extraHeaders  map[string]string
+}
+
+// ClientOpts allow to provide extra parameters to NewClient:
+// - ServerAddress
+// - RemoteIP — to forward the IP of a frontend client making the request
+type ClientOpts struct {
+	ServerAddress string
+	RemoteIP      string
 }
 
 // APIResponse reflects internal-apis JSON response format.
@@ -30,24 +48,29 @@ type APIResponse struct {
 // ResponseData is a map containing parsed json response.
 type ResponseData map[string]interface{}
 
-const (
-	defaultAPIHost = "https://api.lbry.com"
-	timeout        = 5 * time.Second
-	userObjectPath = "user"
-)
-
 // NewClient returns a client instance for internal-apis. It requires authToken to be provided
 // for authentication.
-func NewClient(authToken string) Client {
-	return Client{
-		ServerAddress: defaultAPIHost,
+func NewClient(authToken string, opts *ClientOpts) Client {
+	c := Client{
+		serverAddress: defaultServerAddress,
+		extraHeaders:  make(map[string]string),
 		AuthToken:     authToken,
 		Logger:        log.StandardLogger(),
 	}
+	if opts != nil {
+		if opts.ServerAddress != "" {
+			c.serverAddress = opts.ServerAddress
+		}
+		if opts.RemoteIP != "" {
+			c.extraHeaders[headerForwardedFor] = opts.RemoteIP
+		}
+	}
+
+	return c
 }
 
 func (c Client) getEndpointURL(object, method string) string {
-	return fmt.Sprintf("%s/%s/%s", c.ServerAddress, object, method)
+	return fmt.Sprintf("%s/%s/%s", c.serverAddress, object, method)
 }
 
 func (c Client) prepareParams(params map[string]interface{}) (string, error) {
@@ -69,8 +92,13 @@ func (c Client) doCall(url string, payload string) ([]byte, error) {
 	if err != nil {
 		return body, err
 	}
+
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	for k, v := range c.extraHeaders {
+		req.Header.Set(k, v)
+	}
 
 	client := &http.Client{Timeout: timeout}
 	r, err := client.Do(req)
@@ -107,5 +135,5 @@ func (c Client) Call(object, method string, params map[string]interface{}) (Resp
 
 // UserMe returns user details for the user associated with the current auth_token
 func (c Client) UserMe() (ResponseData, error) {
-	return c.Call(userObjectPath, "me", map[string]interface{}{})
+	return c.Call(userObjectPath, userMeMethod, map[string]interface{}{})
 }
