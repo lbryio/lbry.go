@@ -250,7 +250,7 @@ func TestClient_ChannelAbandon(t *testing.T) {
 
 func TestClient_AddressList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.AddressList(nil)
+	got, err := d.AddressList(nil, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -262,6 +262,17 @@ func TestClient_ClaimList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
 	got, err := d.ClaimList(nil, 1, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got)
+}
+
+func TestClient_TransactionList(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
+	d := NewClient("")
+	got, err := d.TransactionList(nil)
 	if err != nil {
 		t.Error(err)
 		return
