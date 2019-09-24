@@ -204,14 +204,21 @@ type Account struct {
 			MaximumUsesPerAddress uint64 `json:"maximum_uses_per_address"`
 		} `json:"receiving"`
 	} `json:"address_generator"`
-	Certificates uint64  `json:"certificates"`
-	Coins        float64 `json:"coins"`
-	Encrypted    bool    `json:"encrypted"`
-	ID           string  `json:"id"`
-	IsDefault    bool    `json:"is_default"`
-	Name         string  `json:"name"`
-	PublicKey    string  `json:"public_key"`
-	Satoshis     uint64  `json:"satoshis"`
+	Certificates uint64   `json:"certificates"`
+	Coins        float64  `json:"coins"`
+	Encrypted    bool     `json:"encrypted"`
+	ID           string   `json:"id"`
+	IsDefault    bool     `json:"is_default"`
+	Ledger       *string  `json:"ledger,omitempty"`
+	ModifiedOn   *float64 `json:"modified_on,omitempty"`
+	Name         string   `json:"name"`
+	Preferences  *struct {
+		Theme string `json:"theme"`
+	} `json:"preferences,omitempty"`
+	PublicKey  string  `json:"public_key"`
+	PrivateKey *string `json:"private_key,omitempty"`
+	Seed       *string `json:"seed,omitempty"`
+	Satoshis   uint64  `json:"satoshis"`
 }
 
 type AccountListResponse struct {
@@ -226,18 +233,6 @@ type AccountBalanceResponse struct {
 	ReservedSubtotals *decimal.Decimal `json:"reserved_subtotals"`
 	Total             decimal.Decimal  `json:"total"`
 }
-
-type AccountCreateResponse struct {
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	PublicKey  string  `json:"public_key"`
-	PrivateKey string  `json:"private_key"`
-	Seed       string  `json:"seed"`
-	Ledger     string  `json:"ledger"`
-	ModifiedOn float64 `json:"modified_on"`
-}
-
-type AccountRemoveResponse AccountCreateResponse
 
 type Transaction struct {
 	Address       string            `json:"address"`

@@ -445,6 +445,26 @@ func TestClient_AccountCreate(t *testing.T) {
 	prettyPrint(*account)
 }
 
+func TestClient_AccountAdd(t *testing.T) {
+	d := NewClient("")
+	name := "test" + fmt.Sprintf("%d", time.Now().Unix()) + "@lbry.com"
+	pubKey := "tpubDA9GDAntyJu4hD3wU7175p7CuV6DWbYXfyb2HedBA3yuBp9HZ4n3QE4Ex6RHCSiEuVp2nKAL1Lzf2ZLo9ApaFgNaJjG6Xo1wB3iEeVbrDZp"
+	account, err := d.AccountAdd(name, nil, nil, &pubKey, util.PtrToBool(true), nil)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	if account.Name != name {
+		t.Errorf("account name mismatch, expected %q, got %q", name, account.Name)
+		return
+	}
+	if account.PublicKey != pubKey {
+		t.Errorf("public key mismatch, expected %q, got %q", name, account.Name)
+		return
+	}
+	prettyPrint(*account)
+}
+
 func TestClient_AccountRemove(t *testing.T) {
 	d := NewClient("")
 	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
