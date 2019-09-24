@@ -1,10 +1,8 @@
 package jsonrpc
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"sort"
@@ -12,10 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbry.go/stream"
-
 	"github.com/fatih/structs"
+	"github.com/lbryio/lbry.go/extras/errors"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -598,59 +594,4 @@ func (d *Client) AccountAdd(accountName string, seed *string, privateKey *string
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "account_add", structs.Map(args))
-}
-
-// GetStreamSizeByMagic uses "magic" to not just estimate, but actually return the exact size of a stream
-// It does so by fetching the sd blob and the last blob from our S3 bucket, decrypting and unpadding the last blob
-// adding up all full blobs that have a known size and finally adding the real last blob size too.
-// This will only work if we host at least the sd blob and the last blob on S3, if not, this will error.
-func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
-	if c.Value.GetStream() == nil {
-		return 0, errors.Err("this claim is not a stream")
-	}
-	resp, err := http.Get(reflectorURL + hex.EncodeToString(c.Value.GetStream().Source.SdHash))
-	if err != nil {
-		return 0, errors.Err(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, errors.Err(err)
-	}
-	sdb := &stream.SDBlob{}
-	err = sdb.UnmarshalJSON(body)
-
-	if err != nil {
-		return 0, err
-	}
-	lastBlobIndex := len(sdb.BlobInfos) - 2
-	lastBlobHash := sdb.BlobInfos[lastBlobIndex].BlobHash
-
-	if len(sdb.BlobInfos) > 2 {
-		streamSize = uint64(stream.MaxBlobSize-1) * uint64(len(sdb.BlobInfos)-2)
-	}
-
-	resp2, err := http.Get(reflectorURL + hex.EncodeToString(lastBlobHash))
-	if err != nil {
-		return 0, errors.Err(err)
-	}
-	defer resp2.Body.Close()
-
-	body2, err := ioutil.ReadAll(resp2.Body)
-	if err != nil {
-		return 0, errors.Err(err)
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			e = errors.Err("recovered from DecryptBlob panic for blob %s", lastBlobHash)
-		}
-	}()
-	lastBlob, err := stream.DecryptBlob(body2, sdb.Key, sdb.BlobInfos[lastBlobIndex].IV)
-	if err != nil {
-		return 0, errors.Err(err)
-	}
-
-	streamSize += uint64(len(lastBlob))
-	return streamSize, nil
 }
