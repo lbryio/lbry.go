@@ -408,11 +408,18 @@ func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blo
 	return response, nil
 }
 
-func (d *Client) AddressList(account *string) (*AddressListResponse, error) {
+func (d *Client) AddressList(account *string, address *string) (*AddressListResponse, error) {
 	response := new(AddressListResponse)
-	return response, d.call(response, "address_list", map[string]interface{}{
-		"account_id": account,
-	})
+
+	args := struct {
+		AccountID *string `json:"account_id,omitempty"`
+		Address   *string `json:"address,omitempty"`
+	}{
+		AccountID: account,
+		Address:   address,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "address_list", structs.Map(args))
 }
 
 func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListResponse, error) {

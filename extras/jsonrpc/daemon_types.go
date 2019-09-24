@@ -270,7 +270,12 @@ type AccountFundResponse TransactionSummary
 
 type Address string
 type AddressUnusedResponse Address
-type AddressListResponse []Address
+type AddressListResponse []struct {
+	Account   string  `json:"account"`
+	Address   Address `json:"address"`
+	Pubkey    string  `json:"pubkey"`
+	UsedTimes uint64  `json:"used_times"`
+}
 type ChannelExportResponse string
 
 type ChannelListResponse struct {
@@ -473,46 +478,38 @@ type UTXOListResponse []struct {
 
 type UTXOReleaseResponse *string
 
+type transactionListBlob struct {
+	Address      string `json:"address"`
+	Amount       string `json:"amount"`
+	BalanceDelta string `json:"balance_delta"`
+	ClaimId      string `json:"claim_id"`
+	ClaimName    string `json:"claim_name"`
+	Nout         int    `json:"nout"`
+}
+
+//TODO: this repeats all the fields from transactionListBlob which doesn't make sense
+// but if i extend the type with transactionListBlob it doesn't fill the fields. does our unmarshaller crap out on these?
+type supportBlob struct {
+	Address      string `json:"address"`
+	Amount       string `json:"amount"`
+	BalanceDelta string `json:"balance_delta"`
+	ClaimId      string `json:"claim_id"`
+	ClaimName    string `json:"claim_name"`
+	Nout         int    `json:"nout"`
+	IsTip        bool   `json:"is_tip"`
+}
+
 type TransactionListResponse []struct {
-	AbandonInfo struct {
-		Address      string `json:"address"`
-		Amount       string `json:"amount"`
-		BalanceDelta string `json:"balance_delta"`
-		ClaimId      string `json:"claim_id"`
-		ClaimName    string `json:"claim_name"`
-		Nout         int    `json:"nout"`
-	} `json:"abandon_info"`
-	ClaimInfo struct {
-		Address      string `json:"address"`
-		Amount       string `json:"amount"`
-		BalanceDelta string `json:"balance_delta"`
-		ClaimId      string `json:"claim_id"`
-		ClaimName    string `json:"claim_name"`
-		Nout         int    `json:"nout"`
-	} `json:"claim_info"`
-	Confirmations int64  `json:"confirmations"`
-	Date          string `json:"date"`
-	Fee           string `json:"fee"`
-	SupportInfo   struct {
-		Address      string `json:"address"`
-		Amount       string `json:"amount"`
-		BalanceDelta string `json:"balance_delta"`
-		ClaimId      string `json:"claim_id"`
-		ClaimName    string `json:"claim_name"`
-		IsTip        bool   `json:"is_tip"`
-		Nout         int    `json:"nout"`
-	} `json:"support_info"`
-	Timestamp  int64  `json:"timestamp"`
-	Txid       string `json:"txid"`
-	UpdateInfo struct {
-		Address      string `json:"address"`
-		Amount       string `json:"amount"`
-		BalanceDelta string `json:"balance_delta"`
-		ClaimId      string `json:"claim_id"`
-		ClaimName    string `json:"claim_name"`
-		Nout         int    `json:"nout"`
-	} `json:"update_info"`
-	Value string `json:"value"`
+	AbandonInfo   []transactionListBlob `json:"abandon_info"`
+	ClaimInfo     []transactionListBlob `json:"claim_info"`
+	Confirmations int64                 `json:"confirmations"`
+	Date          string                `json:"date"`
+	Fee           string                `json:"fee"`
+	SupportInfo   []supportBlob         `json:"support_info"`
+	Timestamp     int64                 `json:"timestamp"`
+	Txid          string                `json:"txid"`
+	UpdateInfo    []transactionListBlob `json:"update_info"`
+	Value         string                `json:"value"`
 }
 
 type VersionResponse struct {
