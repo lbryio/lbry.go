@@ -134,7 +134,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		jsonResponse, err = json.MarshalIndent(&apiResponse{
 			Success: false,
 			Error:   util.PtrToString(err.Error()),
-			Data:    rsp.Data,
+			Data:    nil,
 			Trace:   getTraceFromError(err),
 		}, "", "  ")
 		if err != nil {
