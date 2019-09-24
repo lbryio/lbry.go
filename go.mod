@@ -17,7 +17,6 @@ require (
 	github.com/gorilla/rpc v1.1.0
 	github.com/gorilla/websocket v1.2.0 // indirect
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
-	github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c
 	github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
 	github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c
