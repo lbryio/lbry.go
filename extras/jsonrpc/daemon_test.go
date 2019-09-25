@@ -549,6 +549,35 @@ func TestClient_WalletCreateWithOpts(t *testing.T) {
 	}
 }
 
+func TestClient_WalletList(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wList, err := d.WalletList(id)
+	if err == nil {
+		t.Fatalf("wallet %v was unexpectedly found", id)
+	}
+	if err.Error() != fmt.Sprintf("Error in daemon: Couldn't find wallet: %v.", id) {
+		t.Fatal(err)
+	}
+
+	_, err = d.WalletCreate(id, &WalletCreateOpts{CreateAccount: true, SingleKey: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wList, err = d.WalletList(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(*wList) < 1 {
+		t.Fatal("wallet list is empty")
+	}
+	if (*wList)[0].ID != id {
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", id, (*wList)[0].ID)
+	}
+}
+
 func TestClient_WalletRemoveWalletAdd(t *testing.T) {
 	d := NewClient("")
 

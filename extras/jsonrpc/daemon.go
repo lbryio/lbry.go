@@ -608,8 +608,8 @@ type WalletCreateOpts struct {
 	SingleKey     bool
 }
 
-func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*WalletCommandResponse, error) {
-	response := new(WalletCommandResponse)
+func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*Wallet, error) {
+	response := new(Wallet)
 	if opts == nil {
 		opts = &WalletCreateOpts{}
 	}
@@ -622,12 +622,21 @@ func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*WalletCommand
 	return response, d.call(response, "wallet_create", params)
 }
 
-func (d *Client) WalletAdd(id string) (*WalletCommandResponse, error) {
-	response := new(WalletCommandResponse)
+func (d *Client) WalletAdd(id string) (*Wallet, error) {
+	response := new(Wallet)
 	return response, d.call(response, "wallet_add", map[string]interface{}{"wallet_id": id})
 }
 
-func (d *Client) WalletRemove(id string) (*WalletCommandResponse, error) {
-	response := new(WalletCommandResponse)
+func (d *Client) WalletList(id string) (*WalletList, error) {
+	response := new(WalletList)
+	params := map[string]interface{}{}
+	if id != "" {
+		params["wallet_id"] = id
+	}
+	return response, d.call(response, "wallet_list", params)
+}
+
+func (d *Client) WalletRemove(id string) (*Wallet, error) {
+	response := new(Wallet)
 	return response, d.call(response, "wallet_remove", map[string]interface{}{"wallet_id": id})
 }
