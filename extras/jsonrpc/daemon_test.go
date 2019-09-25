@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,12 @@ import (
 func prettyPrint(i interface{}) {
 	s, _ := json.MarshalIndent(i, "", "\t")
 	fmt.Println(string(s))
+}
+
+func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UnixNano())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestClient_AccountFund(t *testing.T) {
@@ -59,17 +66,20 @@ func TestClient_AccountList(t *testing.T) {
 
 func TestClient_SingleAccountList(t *testing.T) {
 	d := NewClient("")
-	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	name := "test" + fmt.Sprintf("%d", rand.Int()) + "@lbry.com"
+	createdAccount, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
-		return
 	}
 	account, err := d.SingleAccountList(createdAccount.ID)
+	prettyPrint(*createdAccount)
+	prettyPrint(*account)
 	if err != nil {
 		t.Fatal(err)
-		return
 	}
-	prettyPrint(*account)
+	if account.Name != name {
+		t.Fatalf("account name mismatch: %v != %v", account.Name, name)
+	}
 }
 
 func TestClient_AccountBalance(t *testing.T) {
@@ -432,7 +442,7 @@ func TestClient_AccountSet(t *testing.T) {
 
 func TestClient_AccountCreate(t *testing.T) {
 	d := NewClient("")
-	name := "test" + fmt.Sprintf("%d", time.Now().Unix()) + "@lbry.com"
+	name := "lbry#user#id:" + fmt.Sprintf("%d", rand.Int())
 	account, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
@@ -467,7 +477,8 @@ func TestClient_AccountAdd(t *testing.T) {
 
 func TestClient_AccountRemove(t *testing.T) {
 	d := NewClient("")
-	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	name := "lbry#user#id:" + fmt.Sprintf("%d", rand.Int())
+	createdAccount, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -487,9 +498,7 @@ func TestClient_AccountRemove(t *testing.T) {
 			prettyPrint(*removedAccount)
 			return
 		}
-
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	t.Error("account was not removed")
 	prettyPrint(*account)
@@ -505,4 +514,61 @@ func TestClient_ChannelExport(t *testing.T) {
 		t.Error("nothing returned!")
 	}
 	t.Log("Export:", *response)
+}
+
+func TestClient_WalletCreate(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wallet.ID != id {
+		prettyPrint(*wallet)
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", id, wallet.Name)
+	}
+}
+
+func TestClient_WalletCreateWithOpts(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, &WalletCreateOpts{CreateAccount: true, SingleKey: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts, err := d.AccountListForWallet(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prettyPrint(wallet)
+	prettyPrint(accounts)
+	if accounts.LBCMainnet[0].Name == "" {
+		t.Fatalf("account name is empty")
+	}
+}
+
+func TestClient_WalletRemoveWalletAdd(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = d.WalletRemove(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addedWallet, err := d.WalletAdd(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addedWallet.ID != wallet.ID {
+		prettyPrint(*addedWallet)
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", wallet.ID, addedWallet.Name)
+	}
 }

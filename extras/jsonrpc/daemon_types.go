@@ -538,3 +538,8 @@ type NumClaimsInChannelResponse map[string]struct {
 }
 
 type ClaimShowResponse *Claim
+
+type WalletCommandResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}

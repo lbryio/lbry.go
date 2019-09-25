@@ -137,9 +137,15 @@ func (d *Client) SetRPCTimeout(timeout time.Duration) {
 //============================================
 //				NEW SDK
 //============================================
+
 func (d *Client) AccountList() (*AccountListResponse, error) {
 	response := new(AccountListResponse)
 	return response, d.call(response, "account_list", map[string]interface{}{})
+}
+
+func (d *Client) AccountListForWallet(walletID string) (*AccountListResponse, error) {
+	response := new(AccountListResponse)
+	return response, d.call(response, "account_list", map[string]interface{}{"wallet_id": walletID})
 }
 
 func (d *Client) SingleAccountList(accountID string) (*Account, error) {
@@ -594,4 +600,34 @@ func (d *Client) AccountAdd(accountName string, seed *string, privateKey *string
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "account_add", structs.Map(args))
+}
+
+type WalletCreateOpts struct {
+	SkipOnStartup bool
+	CreateAccount bool
+	SingleKey     bool
+}
+
+func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*WalletCommandResponse, error) {
+	response := new(WalletCommandResponse)
+	if opts == nil {
+		opts = &WalletCreateOpts{}
+	}
+	params := map[string]interface{}{
+		"wallet_id":       id,
+		"skip_on_startup": opts.SkipOnStartup,
+		"create_account":  opts.CreateAccount,
+		"single_key":      opts.SingleKey,
+	}
+	return response, d.call(response, "wallet_create", params)
+}
+
+func (d *Client) WalletAdd(id string) (*WalletCommandResponse, error) {
+	response := new(WalletCommandResponse)
+	return response, d.call(response, "wallet_add", map[string]interface{}{"wallet_id": id})
+}
+
+func (d *Client) WalletRemove(id string) (*WalletCommandResponse, error) {
+	response := new(WalletCommandResponse)
+	return response, d.call(response, "wallet_remove", map[string]interface{}{"wallet_id": id})
 }
