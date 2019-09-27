@@ -283,11 +283,12 @@ func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOp
 
 type ChannelUpdateOptions struct {
 	ChannelCreateOptions `json:",flatten"`
-	NewSigningKey        *bool `json:"new_signing_key,omitempty"`
-	ClearFeatured        *bool `json:"clear_featured,omitempty"`
-	ClearTags            *bool `json:"clear_tags,omitempty"`
-	ClearLanguages       *bool `json:"clear_languages,omitempty"`
-	ClearLocations       *bool `json:"clear_locations,omitempty"`
+	NewSigningKey        *bool   `json:"new_signing_key,omitempty"`
+	ClearFeatured        *bool   `json:"clear_featured,omitempty"`
+	ClearTags            *bool   `json:"clear_tags,omitempty"`
+	ClearLanguages       *bool   `json:"clear_languages,omitempty"`
+	ClearLocations       *bool   `json:"clear_locations,omitempty"`
+	Bid                  *string `json:"bid,omitempty"`
 }
 
 func (d *Client) ChannelUpdate(claimID string, options ChannelUpdateOptions) (*TransactionSummary, error) {

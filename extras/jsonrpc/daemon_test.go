@@ -186,6 +186,7 @@ func TestClient_StreamCreate(t *testing.T) {
 func TestClient_ChannelUpdate(t *testing.T) {
 	d := NewClient("")
 	got, err := d.ChannelUpdate(channelID, ChannelUpdateOptions{
+		Bid:            util.PtrToString("0.01"),
 		ClearLanguages: util.PtrToBool(true),
 		ClearLocations: util.PtrToBool(true),
 		ClearTags:      util.PtrToBool(true),
