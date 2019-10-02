@@ -603,14 +603,10 @@ func (d *Client) AccountAdd(accountName string, seed *string, privateKey *string
 }
 
 type WalletCreateOpts struct {
-	SkipOnStartup bool `json:"skip_on_startup,omitempty"`
-	CreateAccount bool `json:"create_account,omitempty"`
-	SingleKey     bool `json:"single_key,omitempty"`
-}
-
-type WalletCreateArgs struct {
-	WalletCreateOpts
-	ID string `json:"wallet_id"`
+	ID            string `json:"wallet_id"`
+	SkipOnStartup bool   `json:"skip_on_startup,omitempty"`
+	CreateAccount bool   `json:"create_account,omitempty"`
+	SingleKey     bool   `json:"single_key,omitempty"`
 }
 
 func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*Wallet, error) {
@@ -618,8 +614,9 @@ func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*Wallet, error
 	if opts == nil {
 		opts = &WalletCreateOpts{}
 	}
-	args := WalletCreateArgs{ID: id, WalletCreateOpts: *opts}
-	return response, d.call(response, "wallet_create", structs.Map(args))
+	opts.ID = id
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "wallet_create", structs.Map(opts))
 }
 
 func (d *Client) WalletAdd(id string) (*Wallet, error) {
