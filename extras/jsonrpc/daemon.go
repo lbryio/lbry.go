@@ -496,15 +496,17 @@ func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*ClaimSearchResponse, error) {
 	response := new(ClaimSearchResponse)
 	args := struct {
-		ClaimID *string `json:"claim_id,omitempty"`
-		TXID    *string `json:"txid,omitempty"`
-		Nout    *uint   `json:"nout,omitempty"`
-		Name    *string `json:"name,omitempty"`
+		ClaimID         *string `json:"claim_id,omitempty"`
+		TXID            *string `json:"txid,omitempty"`
+		Nout            *uint   `json:"nout,omitempty"`
+		Name            *string `json:"name,omitempty"`
+		IncludeProtobuf bool    `json:"include_protobuf"`
 	}{
-		ClaimID: claimID,
-		TXID:    txid,
-		Nout:    nout,
-		Name:    claimName,
+		ClaimID:         claimID,
+		TXID:            txid,
+		Nout:            nout,
+		Name:            claimName,
+		IncludeProtobuf: true,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "claim_search", structs.Map(args))
