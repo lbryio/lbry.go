@@ -519,6 +519,40 @@ func TestClient_ChannelExport(t *testing.T) {
 func TestClient_ChannelImport(t *testing.T) {
 	d := NewClient("")
 
+	// A channel created just for automated testing purposes
+	channelName := "@LbryAutomatedTestChannel"
+	channelkey := "7943FWPBHZES4dUcMXSpDYwoM5a2tsyJT1R8V54QoUhekGcqmeH3hbzDXoLLQ8" +
+		"oKkfb99PgGK5efrZeYqaxg4X5XRJMJ6gKC8hqKcnwhYkmKDXmoBDNgd2ccZ9jhP8z" +
+		"HG3NJorAN9Hh4XMyBc5goBLZYYvC9MYvBmT3Fcteb5saqMvmQxFURv74NqXLQZC1t" +
+		"p6iRZKfTj77Pd5gsBsCYAbVmCqzbm5m1hHkUmfFEZVGcQNTYCDwZn543xSMYvSPnJ" +
+		"zt8tRYCJWaPdj713uENZZMo3gxuAMb1NwSnx8tbwETp7WPkpFLL6HZ9jKpB8BURHM" +
+		"F1RFD1PRyqbC6YezPyPQ2oninKKHdBduvXZG5KF2G2Q3ixsuE2ntifBBo1f5PotRk" +
+		"UanXKEafWxvXAayJjpsmZ4bFt7n6Xg4438WZXBiZKCPobLJAiHfe72n618kE6PCNU" +
+		"77cyU5Rk8J3CuY6QzZPzwuiXz2GLfkUMCYd9jGT6g53XbE6SwCsmGnd9NJkBAaJf5" +
+		"1FAYRURrhHnp79PAoHftEWtZEuU8MCPMdSRjzxYMRS4ScUzg5viDMTAkE8frsfCVZ" +
+		"hxsFwGUyNNno8eiqrrYmpbJGEwwK3S4437JboAUEFPdMNn8zNQWZcLLVrK9KyQeKM" +
+		"XpKkf4zJV6sZJ7gBMpzvPL18ULEgXTy7VsNBKmsfC1rM4WVG9ri1UixEcLDS79foC" +
+		"Jb3FnSr1T4MRKESeN3W"
+	response, err := d.ChannelImport(channelkey, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	channels, err := d.ChannelList(nil, 1, 50, nil)
+	seen := false
+	for _, c := range channels.Items {
+		if c.Name == channelName {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Error("couldn't find imported channel")
+	}
+	t.Log("Response:", *response)
+}
+
+func TestClient_ChannelImportWithWalletID(t *testing.T) {
+	d := NewClient("")
+
 	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
 	wallet, err := d.WalletCreate(id, nil)
 
