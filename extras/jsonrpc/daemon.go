@@ -217,7 +217,7 @@ func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) 
 	})
 }
 
-func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*ChannelListResponse, error) {
+func (d *Client) ChannelList(account *string, page uint64, pageSize uint64, wid *string) (*ChannelListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")
 	}
@@ -227,6 +227,7 @@ func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*Ch
 		"page":             page,
 		"page_size":        pageSize,
 		"include_protobuf": true,
+		"wallet_id":        wid,
 	})
 }
 
@@ -521,6 +522,14 @@ func (d *Client) ChannelExport(channelClaimID string, channelName, accountID *st
 		"channel_id":   channelClaimID,
 		"channel_name": channelName,
 		"account_id":   accountID,
+	})
+}
+
+func (d *Client) ChannelImport(key string, walletID *string) (*ChannelImportResponse, error) {
+	response := new(ChannelImportResponse)
+	return response, d.call(response, "channel_import", map[string]interface{}{
+		"channel_data": key,
+		"wallet_id":    walletID,
 	})
 }
 

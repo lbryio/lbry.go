@@ -271,7 +271,9 @@ type AddressListResponse []struct {
 	Pubkey    string  `json:"pubkey"`
 	UsedTimes uint64  `json:"used_times"`
 }
+
 type ChannelExportResponse string
+type ChannelImportResponse string
 
 type ChannelListResponse struct {
 	Items      []Transaction `json:"items"`
