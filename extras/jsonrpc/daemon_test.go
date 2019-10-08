@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,12 @@ import (
 func prettyPrint(i interface{}) {
 	s, _ := json.MarshalIndent(i, "", "\t")
 	fmt.Println(string(s))
+}
+
+func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UnixNano())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestClient_AccountFund(t *testing.T) {
@@ -59,17 +66,20 @@ func TestClient_AccountList(t *testing.T) {
 
 func TestClient_SingleAccountList(t *testing.T) {
 	d := NewClient("")
-	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	name := "test" + fmt.Sprintf("%d", rand.Int()) + "@lbry.com"
+	createdAccount, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
-		return
 	}
 	account, err := d.SingleAccountList(createdAccount.ID)
+	prettyPrint(*createdAccount)
+	prettyPrint(*account)
 	if err != nil {
 		t.Fatal(err)
-		return
 	}
-	prettyPrint(*account)
+	if account.Name != name {
+		t.Fatalf("account name mismatch: %v != %v", account.Name, name)
+	}
 }
 
 func TestClient_AccountBalance(t *testing.T) {
@@ -94,7 +104,7 @@ func TestClient_AddressUnused(t *testing.T) {
 
 func TestClient_ChannelList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelList(nil, 1, 50)
+	got, err := d.ChannelList(nil, 1, 50, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -433,7 +443,7 @@ func TestClient_AccountSet(t *testing.T) {
 
 func TestClient_AccountCreate(t *testing.T) {
 	d := NewClient("")
-	name := "test" + fmt.Sprintf("%d", time.Now().Unix()) + "@lbry.com"
+	name := "lbry#user#id:" + fmt.Sprintf("%d", rand.Int())
 	account, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
@@ -468,7 +478,8 @@ func TestClient_AccountAdd(t *testing.T) {
 
 func TestClient_AccountRemove(t *testing.T) {
 	d := NewClient("")
-	createdAccount, err := d.AccountCreate("test"+fmt.Sprintf("%d", time.Now().Unix())+"@lbry.com", false)
+	name := "lbry#user#id:" + fmt.Sprintf("%d", rand.Int())
+	createdAccount, err := d.AccountCreate(name, false)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -488,9 +499,7 @@ func TestClient_AccountRemove(t *testing.T) {
 			prettyPrint(*removedAccount)
 			return
 		}
-
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	t.Error("account was not removed")
 	prettyPrint(*account)
@@ -506,4 +515,161 @@ func TestClient_ChannelExport(t *testing.T) {
 		t.Error("nothing returned!")
 	}
 	t.Log("Export:", *response)
+}
+
+func TestClient_ChannelImport(t *testing.T) {
+	d := NewClient("")
+
+	// A channel created just for automated testing purposes
+	channelName := "@LbryAutomatedTestChannel"
+	channelkey := "7943FWPBHZES4dUcMXSpDYwoM5a2tsyJT1R8V54QoUhekGcqmeH3hbzDXoLLQ8" +
+		"oKkfb99PgGK5efrZeYqaxg4X5XRJMJ6gKC8hqKcnwhYkmKDXmoBDNgd2ccZ9jhP8z" +
+		"HG3NJorAN9Hh4XMyBc5goBLZYYvC9MYvBmT3Fcteb5saqMvmQxFURv74NqXLQZC1t" +
+		"p6iRZKfTj77Pd5gsBsCYAbVmCqzbm5m1hHkUmfFEZVGcQNTYCDwZn543xSMYvSPnJ" +
+		"zt8tRYCJWaPdj713uENZZMo3gxuAMb1NwSnx8tbwETp7WPkpFLL6HZ9jKpB8BURHM" +
+		"F1RFD1PRyqbC6YezPyPQ2oninKKHdBduvXZG5KF2G2Q3ixsuE2ntifBBo1f5PotRk" +
+		"UanXKEafWxvXAayJjpsmZ4bFt7n6Xg4438WZXBiZKCPobLJAiHfe72n618kE6PCNU" +
+		"77cyU5Rk8J3CuY6QzZPzwuiXz2GLfkUMCYd9jGT6g53XbE6SwCsmGnd9NJkBAaJf5" +
+		"1FAYRURrhHnp79PAoHftEWtZEuU8MCPMdSRjzxYMRS4ScUzg5viDMTAkE8frsfCVZ" +
+		"hxsFwGUyNNno8eiqrrYmpbJGEwwK3S4437JboAUEFPdMNn8zNQWZcLLVrK9KyQeKM" +
+		"XpKkf4zJV6sZJ7gBMpzvPL18ULEgXTy7VsNBKmsfC1rM4WVG9ri1UixEcLDS79foC" +
+		"Jb3FnSr1T4MRKESeN3W"
+	response, err := d.ChannelImport(channelkey, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	channels, err := d.ChannelList(nil, 1, 50, nil)
+	seen := false
+	for _, c := range channels.Items {
+		if c.Name == channelName {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Error("couldn't find imported channel")
+	}
+	t.Log("Response:", *response)
+}
+
+func TestClient_ChannelImportWithWalletID(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, nil)
+
+	// A channel created just for automated testing purposes
+	channelName := "@LbryAutomatedTestChannel"
+	channelkey := "7943FWPBHZES4dUcMXSpDYwoM5a2tsyJT1R8V54QoUhekGcqmeH3hbzDXoLLQ8" +
+		"oKkfb99PgGK5efrZeYqaxg4X5XRJMJ6gKC8hqKcnwhYkmKDXmoBDNgd2ccZ9jhP8z" +
+		"HG3NJorAN9Hh4XMyBc5goBLZYYvC9MYvBmT3Fcteb5saqMvmQxFURv74NqXLQZC1t" +
+		"p6iRZKfTj77Pd5gsBsCYAbVmCqzbm5m1hHkUmfFEZVGcQNTYCDwZn543xSMYvSPnJ" +
+		"zt8tRYCJWaPdj713uENZZMo3gxuAMb1NwSnx8tbwETp7WPkpFLL6HZ9jKpB8BURHM" +
+		"F1RFD1PRyqbC6YezPyPQ2oninKKHdBduvXZG5KF2G2Q3ixsuE2ntifBBo1f5PotRk" +
+		"UanXKEafWxvXAayJjpsmZ4bFt7n6Xg4438WZXBiZKCPobLJAiHfe72n618kE6PCNU" +
+		"77cyU5Rk8J3CuY6QzZPzwuiXz2GLfkUMCYd9jGT6g53XbE6SwCsmGnd9NJkBAaJf5" +
+		"1FAYRURrhHnp79PAoHftEWtZEuU8MCPMdSRjzxYMRS4ScUzg5viDMTAkE8frsfCVZ" +
+		"hxsFwGUyNNno8eiqrrYmpbJGEwwK3S4437JboAUEFPdMNn8zNQWZcLLVrK9KyQeKM" +
+		"XpKkf4zJV6sZJ7gBMpzvPL18ULEgXTy7VsNBKmsfC1rM4WVG9ri1UixEcLDS79foC" +
+		"Jb3FnSr1T4MRKESeN3W"
+	response, err := d.ChannelImport(channelkey, &wallet.ID)
+	if err != nil {
+		t.Error(err)
+	}
+	channels, err := d.ChannelList(nil, 1, 50, &wallet.ID)
+	seen := false
+	for _, c := range channels.Items {
+		if c.Name == channelName {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Error("couldn't find imported channel")
+	}
+	t.Log("Response:", *response)
+}
+
+func TestClient_WalletCreate(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wallet.ID != id {
+		prettyPrint(*wallet)
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", id, wallet.Name)
+	}
+}
+
+func TestClient_WalletCreateWithOpts(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, &WalletCreateOpts{CreateAccount: true, SingleKey: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts, err := d.AccountListForWallet(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prettyPrint(wallet)
+	prettyPrint(accounts)
+	if accounts.LBCMainnet[0].Name == "" {
+		t.Fatalf("account name is empty")
+	}
+}
+
+func TestClient_WalletList(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wList, err := d.WalletList(id)
+	if err == nil {
+		t.Fatalf("wallet %v was unexpectedly found", id)
+	}
+	if err.Error() != fmt.Sprintf("Error in daemon: Couldn't find wallet: %v.", id) {
+		t.Fatal(err)
+	}
+
+	_, err = d.WalletCreate(id, &WalletCreateOpts{CreateAccount: true, SingleKey: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wList, err = d.WalletList(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(*wList) < 1 {
+		t.Fatal("wallet list is empty")
+	}
+	if (*wList)[0].ID != id {
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", id, (*wList)[0].ID)
+	}
+}
+
+func TestClient_WalletRemoveWalletAdd(t *testing.T) {
+	d := NewClient("")
+
+	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
+	wallet, err := d.WalletCreate(id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = d.WalletRemove(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addedWallet, err := d.WalletAdd(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addedWallet.ID != wallet.ID {
+		prettyPrint(*addedWallet)
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", wallet.ID, addedWallet.Name)
+	}
 }

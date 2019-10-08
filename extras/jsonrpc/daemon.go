@@ -137,9 +137,15 @@ func (d *Client) SetRPCTimeout(timeout time.Duration) {
 //============================================
 //				NEW SDK
 //============================================
+
 func (d *Client) AccountList() (*AccountListResponse, error) {
 	response := new(AccountListResponse)
 	return response, d.call(response, "account_list", map[string]interface{}{})
+}
+
+func (d *Client) AccountListForWallet(walletID string) (*AccountListResponse, error) {
+	response := new(AccountListResponse)
+	return response, d.call(response, "account_list", map[string]interface{}{"wallet_id": walletID})
 }
 
 func (d *Client) SingleAccountList(accountID string) (*Account, error) {
@@ -211,7 +217,7 @@ func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) 
 	})
 }
 
-func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*ChannelListResponse, error) {
+func (d *Client) ChannelList(account *string, page uint64, pageSize uint64, wid *string) (*ChannelListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")
 	}
@@ -221,6 +227,7 @@ func (d *Client) ChannelList(account *string, page uint64, pageSize uint64) (*Ch
 		"page":             page,
 		"page_size":        pageSize,
 		"include_protobuf": true,
+		"wallet_id":        wid,
 	})
 }
 
@@ -521,6 +528,14 @@ func (d *Client) ChannelExport(channelClaimID string, channelName, accountID *st
 	})
 }
 
+func (d *Client) ChannelImport(key string, walletID *string) (*ChannelImportResponse, error) {
+	response := new(ChannelImportResponse)
+	return response, d.call(response, "channel_import", map[string]interface{}{
+		"channel_data": key,
+		"wallet_id":    walletID,
+	})
+}
+
 func (d *Client) SupportList(accountID *string, page uint64, pageSize uint64) (*SupportListResponse, error) {
 	response := new(SupportListResponse)
 	return response, d.call(response, "support_list", map[string]interface{}{
@@ -597,4 +612,40 @@ func (d *Client) AccountAdd(accountName string, seed *string, privateKey *string
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "account_add", structs.Map(args))
+}
+
+type WalletCreateOpts struct {
+	ID            string `json:"wallet_id"`
+	SkipOnStartup bool   `json:"skip_on_startup,omitempty"`
+	CreateAccount bool   `json:"create_account,omitempty"`
+	SingleKey     bool   `json:"single_key,omitempty"`
+}
+
+func (d *Client) WalletCreate(id string, opts *WalletCreateOpts) (*Wallet, error) {
+	response := new(Wallet)
+	if opts == nil {
+		opts = &WalletCreateOpts{}
+	}
+	opts.ID = id
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "wallet_create", structs.Map(opts))
+}
+
+func (d *Client) WalletAdd(id string) (*Wallet, error) {
+	response := new(Wallet)
+	return response, d.call(response, "wallet_add", map[string]interface{}{"wallet_id": id})
+}
+
+func (d *Client) WalletList(id string) (*WalletList, error) {
+	response := new(WalletList)
+	params := map[string]interface{}{}
+	if id != "" {
+		params["wallet_id"] = id
+	}
+	return response, d.call(response, "wallet_list", params)
+}
+
+func (d *Client) WalletRemove(id string) (*Wallet, error) {
+	response := new(Wallet)
+	return response, d.call(response, "wallet_remove", map[string]interface{}{"wallet_id": id})
 }

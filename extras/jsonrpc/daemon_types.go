@@ -271,7 +271,9 @@ type AddressListResponse []struct {
 	Pubkey    string  `json:"pubkey"`
 	UsedTimes uint64  `json:"used_times"`
 }
+
 type ChannelExportResponse string
+type ChannelImportResponse string
 
 type ChannelListResponse struct {
 	Items      []Transaction `json:"items"`
@@ -538,3 +540,10 @@ type NumClaimsInChannelResponse map[string]struct {
 }
 
 type ClaimShowResponse *Claim
+
+type Wallet struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type WalletList []Wallet
