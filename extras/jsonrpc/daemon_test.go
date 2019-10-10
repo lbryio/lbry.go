@@ -280,6 +280,17 @@ func TestClient_ClaimList(t *testing.T) {
 	prettyPrint(*got)
 }
 
+func TestClient_StreamList(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
+	d := NewClient("")
+	got, err := d.StreamList(nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got)
+}
+
 func TestClient_TransactionList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")

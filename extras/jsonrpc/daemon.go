@@ -429,6 +429,18 @@ func (d *Client) AddressList(account *string, address *string) (*AddressListResp
 	return response, d.call(response, "address_list", structs.Map(args))
 }
 
+func (d *Client) StreamList(account *string) (*StreamListResponse, error) {
+	response := new(StreamListResponse)
+	err := d.call(response, "stream_list", map[string]interface{}{
+		"account_id":       account,
+		"include_protobuf": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 func (d *Client) ClaimList(account *string, page uint64, pageSize uint64) (*ClaimListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")

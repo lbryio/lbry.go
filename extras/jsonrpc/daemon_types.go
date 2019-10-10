@@ -396,6 +396,8 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 	return streamSize, nil
 }
 
+type StreamListResponse []Claim
+
 type ClaimListResponse struct {
 	Claims     []Claim `json:"items"`
 	Page       uint64  `json:"page"`
