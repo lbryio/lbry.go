@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lbryio/lbry.go/claim"
+	"github.com/lbryio/lbry.go/v2/claim"
 
 	log "github.com/sirupsen/logrus"
 )

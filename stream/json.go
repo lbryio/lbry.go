@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 )
 
 // inspired by https://blog.gopheracademy.com/advent-2016/advanced-encoding-decoding/

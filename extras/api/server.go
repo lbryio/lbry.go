@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbry.go/extras/util"
-	"github.com/lbryio/lbry.go/extras/validator"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/util"
+	"github.com/lbryio/lbry.go/v2/extras/validator"
 	v "github.com/lbryio/ozzo-validation"
 
 	"github.com/spf13/cast"

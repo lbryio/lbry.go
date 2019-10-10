@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"strconv"
 
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 )
 
 const (

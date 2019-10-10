@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/v2/dht/bits"
 )
 
 func TestCompactEncoding(t *testing.T) {

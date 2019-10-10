@@ -3,7 +3,7 @@ package lbrycrd_test
 import (
 	"testing"
 
-	"github.com/lbryio/lbry.go/lbrycrd"
+	"github.com/lbryio/lbry.go/v2/lbrycrd"
 )
 
 var claimIdTests = []struct {

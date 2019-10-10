@@ -3,7 +3,7 @@ package bits
 import (
 	"math/big"
 
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 )
 
 // Range has a start and end

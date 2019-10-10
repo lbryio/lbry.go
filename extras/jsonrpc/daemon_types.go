@@ -8,8 +8,8 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbry.go/stream"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v2/stream"
 
 	schema "github.com/lbryio/lbryschema.go/claim"
 	lbryschema "github.com/lbryio/types/v2/go"

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/fatih/structs"
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -436,7 +436,7 @@ func (d *Client) StreamList(account *string) (*StreamListResponse, error) {
 		"include_protobuf": true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, err2
 	}
 	return response, nil
 }
