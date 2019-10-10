@@ -436,7 +436,7 @@ func (d *Client) StreamList(account *string) (*StreamListResponse, error) {
 		"include_protobuf": true,
 	})
 	if err != nil {
-		return nil, err2
+		return nil, err
 	}
 	return response, nil
 }
