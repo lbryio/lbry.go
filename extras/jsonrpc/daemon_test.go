@@ -640,7 +640,7 @@ func TestClient_WalletList(t *testing.T) {
 	if err == nil {
 		t.Fatalf("wallet %v was unexpectedly found", id)
 	}
-	if err.Error() != fmt.Sprintf("Error in daemon: Couldn't find wallet: %v.", id) {
+	if !strings.Contains(err.Error(), fmt.Sprintf("Couldn't find wallet: %v.", id)) {
 		t.Fatal(err)
 	}
 
