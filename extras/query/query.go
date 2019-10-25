@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbry.go/extras/null"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/null"
 )
 
 func InterpolateParams(query string, args ...interface{}) (string, error) {

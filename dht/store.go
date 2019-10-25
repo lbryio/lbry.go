@@ -3,7 +3,7 @@ package dht
 import (
 	"sync"
 
-	"github.com/lbryio/lbry.go/dht/bits"
+	"github.com/lbryio/lbry.go/v2/dht/bits"
 )
 
 // TODO: expire stored data after tExpire time

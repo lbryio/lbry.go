@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/lbryio/lbry.go/dht/bits"
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/dht/bits"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 
 	"github.com/lyoshenka/bencode"
 )

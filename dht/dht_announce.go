@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/dht/bits"
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/dht/bits"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 
 	"golang.org/x/time/rate"
 )

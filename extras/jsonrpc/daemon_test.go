@@ -12,9 +12,9 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 
-	"github.com/lbryio/lbry.go/extras/util"
+	"github.com/lbryio/lbry.go/v2/extras/util"
 )
 
 func prettyPrint(i interface{}) {
@@ -640,7 +640,7 @@ func TestClient_WalletList(t *testing.T) {
 	if err == nil {
 		t.Fatalf("wallet %v was unexpectedly found", id)
 	}
-	if err.Error() != fmt.Sprintf("Error in daemon: Couldn't find wallet: %v.", id) {
+	if !strings.Contains(err.Error(), fmt.Sprintf("Couldn't find wallet: %v.", id)) {
 		t.Fatal(err)
 	}
 

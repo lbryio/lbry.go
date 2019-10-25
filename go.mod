@@ -1,35 +1,53 @@
 module github.com/lbryio/lbry.go/v2
 
 require (
+	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
 	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32
 	github.com/btcsuite/btcutil v0.0.0-20190207003914-4c204d697803
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
 	github.com/go-errors/errors v1.0.1
-	github.com/go-ini/ini v1.38.2
-	github.com/golang/protobuf v1.3.0
-	github.com/gorilla/mux v1.6.2
-	github.com/gorilla/rpc v1.1.0
-	github.com/lbryio/lbry.go v1.1.2
+	github.com/go-ini/ini v1.48.0
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
+	github.com/golang/protobuf v1.3.2
+	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20190915194858-d3ddacdb130f // indirect
+	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/rpc v1.2.0
+	github.com/gorilla/websocket v1.4.1 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/kr/pretty v0.1.0 // indirect
+	github.com/lbryio/lbry.go v1.1.2 // indirect
 	github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
-	github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c
+	github.com/lbryio/types v0.0.0-20191009145016-1bb8107e04f8
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
-	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
-	github.com/nlopes/slack v0.5.0
-	github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
+	github.com/mitchellh/mapstructure v1.1.2
+	github.com/nlopes/slack v0.6.0
+	github.com/onsi/ginkgo v1.10.2 // indirect
+	github.com/onsi/gomega v1.7.0 // indirect
+	github.com/sebdah/goldie v0.0.0-20190531093107-d313ffb52c77
 	github.com/sergi/go-diff v1.0.0
-	github.com/shopspring/decimal v0.0.0-20180607144847-19e3cb6c2930
-	github.com/sirupsen/logrus v1.2.0
-	github.com/spf13/cast v1.2.0
-	github.com/stretchr/testify v1.3.0
-	github.com/uber-go/atomic v1.3.2
+	github.com/shopspring/decimal v0.0.0-20191009025716-f1972eb1d1f5
+	github.com/sirupsen/logrus v1.4.2
+	github.com/smartystreets/assertions v1.0.1 // indirect
+	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
+	github.com/spf13/cast v1.3.0
+	github.com/stretchr/testify v1.4.0
+	github.com/uber-go/atomic v1.4.0
 	github.com/ybbus/jsonrpc v0.0.0-20180411222309-2a548b7d822d
-	golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
-	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a
-	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
-	google.golang.org/grpc v1.17.0
+	go.uber.org/atomic v1.4.0 // indirect
+	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc
+	golang.org/x/net v0.0.0-20191009170851-d66e71096ffb
+	golang.org/x/sys v0.0.0-20191009170203-06d7bd2c5f4f // indirect
+	golang.org/x/text v0.3.2 // indirect
+	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0
+	google.golang.org/genproto v0.0.0-20191009194640-548a555dbc03 // indirect
+	google.golang.org/grpc v1.24.0
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/ini.v1 v1.48.0 // indirect
 	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79
+	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
 
 go 1.12

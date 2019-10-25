@@ -6,7 +6,7 @@ package util
 import (
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/null"
+	"github.com/lbryio/lbry.go/v2/extras/null"
 )
 
 func PtrToBool(b bool) *bool                   { return &b }
