@@ -25,9 +25,10 @@ type Chan <-chan struct{}
 
 // Stopper extends sync.WaitGroup to add a convenient way to stop running goroutines
 type Group struct {
-	sync.WaitGroup
-	ctx    context.Context
-	cancel context.CancelFunc
+	wg      sync.WaitGroup
+	parents []*Group
+	ctx     context.Context
+	cancel  context.CancelFunc
 
 	mu        *sync.Mutex
 	waitingOn map[string]int
@@ -35,11 +36,11 @@ type Group struct {
 type Stopper = Group
 
 // New allocates and returns a new instance. Use New(parent) to create an instance that is stopped when parent is stopped.
-func New(parent ...*Group) *Group {
-	s := &Group{}
+func New(parents ...*Group) *Group {
+	s := &Group{parents: parents}
 	ctx := context.Background()
-	if len(parent) > 0 && parent[0] != nil {
-		ctx = parent[0].ctx
+	if len(parents) > 0 && parents[0] != nil {
+		ctx = parents[0].ctx
 	}
 	s.ctx, s.cancel = context.WithCancel(ctx)
 	return s
@@ -67,12 +68,34 @@ func (s *Group) Stop() {
 // StopAndWait is a convenience method to close the channel and wait for goroutines to return.
 func (s *Group) StopAndWait() {
 	s.Stop()
-	s.Wait()
+	s.wg.Wait()
 }
 
 // Child returns a new instance that will be stopped when s is stopped.
 func (s *Group) Child() *Group {
 	return New(s)
+}
+
+func (s *Group) Add(delta int) {
+	s.wg.Add(delta)
+	for _, parent := range s.parents {
+		if parent != nil {
+			parent.Add(1)
+		}
+	}
+}
+
+func (s *Group) Wait() {
+	s.wg.Wait()
+}
+
+func (s *Group) Done() {
+	s.wg.Done()
+	for _, parent := range s.parents {
+		if parent != nil {
+			parent.Done()
+		}
+	}
 }
 
 //AddNamed is the same as Add but will register the functional name of the routine for later output. See `DoneNamed`.
