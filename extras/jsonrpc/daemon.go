@@ -248,15 +248,16 @@ type Location struct {
 	Longitude  *string `json:"longitude,omitempty"`
 }
 type ClaimCreateOptions struct {
-	Title        *string    `json:"title,omitempty"`
-	Description  *string    `json:"description,omitempty"`
-	Tags         []string   `json:"tags,omitempty"`
-	Languages    []string   `json:"languages,omitempty"`
-	Locations    []Location `json:"locations,omitempty"`
-	ThumbnailURL *string    `json:"thumbnail_url,omitempty"`
-	AccountID    *string    `json:"account_id,omitempty"`
-	ClaimAddress *string    `json:"claim_address,omitempty"`
-	Preview      *bool      `json:"preview,omitempty"`
+	Title             *string    `json:"title,omitempty"`
+	Description       *string    `json:"description,omitempty"`
+	Tags              []string   `json:"tags,omitempty"`
+	Languages         []string   `json:"languages,omitempty"`
+	Locations         []Location `json:"locations,omitempty"`
+	ThumbnailURL      *string    `json:"thumbnail_url,omitempty"`
+	AccountID         *string    `json:"account_id,omitempty"`
+	ClaimAddress      *string    `json:"claim_address,omitempty"`
+	Preview           *bool      `json:"preview,omitempty"`
+	FundingAccountIDs []string   `json:"funding_account_ids,omitempty"`
 }
 
 type ChannelCreateOptions struct {
