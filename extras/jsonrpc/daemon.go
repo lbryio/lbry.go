@@ -18,7 +18,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-const DefaultPort = 5279
+const DefaultPort = 15100
 
 type Client struct {
 	conn    jsonrpc.RPCClient
