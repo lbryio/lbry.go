@@ -176,7 +176,12 @@ type StreamAvailabilityResponse struct {
 }
 
 type GetResponse File
-type FileListResponse []File
+type FileListResponse struct {
+	Items      []File `json:"items"`
+	Page       uint64 `json:"page"`
+	PageSize   uint64 `json:"page_size"`
+	TotalPages uint64 `json:"total_pages"`
+}
 
 type WalletListResponse []string
 
@@ -222,9 +227,10 @@ type Account struct {
 }
 
 type AccountListResponse struct {
-	LBCMainnet []Account `json:"lbc_mainnet"`
-	LBCTestnet []Account `json:"lbc_testnet"`
-	LBCRegtest []Account `json:"lbc_regtest"`
+	Items      []Account `json:"items"`
+	Page       uint64    `json:"page"`
+	PageSize   uint64    `json:"page_size"`
+	TotalPages uint64    `json:"total_pages"`
 }
 
 type AccountBalanceResponse struct {
@@ -265,11 +271,16 @@ type AccountFundResponse TransactionSummary
 
 type Address string
 type AddressUnusedResponse Address
-type AddressListResponse []struct {
-	Account   string  `json:"account"`
-	Address   Address `json:"address"`
-	Pubkey    string  `json:"pubkey"`
-	UsedTimes uint64  `json:"used_times"`
+type AddressListResponse struct {
+	Items []struct {
+		Account   string  `json:"account"`
+		Address   Address `json:"address"`
+		Pubkey    string  `json:"pubkey"`
+		UsedTimes uint64  `json:"used_times"`
+	} `json:"items"`
+	Page       uint64 `json:"page"`
+	PageSize   uint64 `json:"page_size"`
+	TotalPages uint64 `json:"total_pages"`
 }
 
 type ChannelExportResponse string
@@ -396,7 +407,12 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 	return streamSize, nil
 }
 
-type StreamListResponse []Claim
+type StreamListResponse struct {
+	Items      []Claim `json:"items"`
+	Page       uint64  `json:"page"`
+	PageSize   uint64  `json:"page_size"`
+	TotalPages uint64  `json:"total_pages"`
+}
 
 type ClaimListResponse struct {
 	Claims     []Claim `json:"items"`
@@ -463,16 +479,21 @@ type StatusResponse struct {
 	} `json:"wallet"`
 }
 
-type UTXOListResponse []struct {
-	Address       string `json:"address"`
-	Amount        string `json:"amount"`
-	Confirmations int    `json:"confirmations"`
-	Height        int    `json:"height"`
-	IsChange      bool   `json:"is_change"`
-	IsMine        bool   `json:"is_mine"`
-	Nout          int    `json:"nout"`
-	Txid          string `json:"txid"`
-	Type          string `json:"type"`
+type UTXOListResponse struct {
+	Items []struct {
+		Address       string `json:"address"`
+		Amount        string `json:"amount"`
+		Confirmations int    `json:"confirmations"`
+		Height        int    `json:"height"`
+		IsChange      bool   `json:"is_change"`
+		IsMine        bool   `json:"is_mine"`
+		Nout          int    `json:"nout"`
+		Txid          string `json:"txid"`
+		Type          string `json:"type"`
+	} `json:"items"`
+	Page       uint64 `json:"page"`
+	PageSize   uint64 `json:"page_size"`
+	TotalPages uint64 `json:"total_pages"`
 }
 
 type UTXOReleaseResponse *string
@@ -498,17 +519,22 @@ type supportBlob struct {
 	IsTip        bool   `json:"is_tip"`
 }
 
-type TransactionListResponse []struct {
-	AbandonInfo   []transactionListBlob `json:"abandon_info"`
-	ClaimInfo     []transactionListBlob `json:"claim_info"`
-	Confirmations int64                 `json:"confirmations"`
-	Date          string                `json:"date"`
-	Fee           string                `json:"fee"`
-	SupportInfo   []supportBlob         `json:"support_info"`
-	Timestamp     int64                 `json:"timestamp"`
-	Txid          string                `json:"txid"`
-	UpdateInfo    []transactionListBlob `json:"update_info"`
-	Value         string                `json:"value"`
+type TransactionListResponse struct {
+	Items []struct {
+		AbandonInfo   []transactionListBlob `json:"abandon_info"`
+		ClaimInfo     []transactionListBlob `json:"claim_info"`
+		Confirmations int64                 `json:"confirmations"`
+		Date          string                `json:"date"`
+		Fee           string                `json:"fee"`
+		SupportInfo   []supportBlob         `json:"support_info"`
+		Timestamp     int64                 `json:"timestamp"`
+		Txid          string                `json:"txid"`
+		UpdateInfo    []transactionListBlob `json:"update_info"`
+		Value         string                `json:"value"`
+	} `json:"items"`
+	Page       uint64 `json:"page"`
+	PageSize   uint64 `json:"page_size"`
+	TotalPages uint64 `json:"total_pages"`
 }
 
 type VersionResponse struct {
@@ -548,4 +574,9 @@ type Wallet struct {
 	Name string `json:"name"`
 }
 
-type WalletList []Wallet
+type WalletList struct {
+	Items      []Wallet `json:"items"`
+	Page       uint64   `json:"page"`
+	PageSize   uint64   `json:"page_size"`
+	TotalPages uint64   `json:"total_pages"`
+}

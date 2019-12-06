@@ -30,12 +30,12 @@ func TestMain(m *testing.M) {
 
 func TestClient_AccountFund(t *testing.T) {
 	d := NewClient("")
-	accounts, err := d.AccountList()
+	accounts, err := d.AccountList(1, 20)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	account := (accounts.LBCRegtest)[0].ID
+	account := (accounts.Items)[0].ID
 	balanceString, err := d.AccountBalance(&account)
 	if err != nil {
 		t.Error(err)
@@ -56,7 +56,7 @@ func TestClient_AccountFund(t *testing.T) {
 
 func TestClient_AccountList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.AccountList()
+	got, err := d.AccountList(1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -72,13 +72,16 @@ func TestClient_SingleAccountList(t *testing.T) {
 		t.Fatal(err)
 	}
 	account, err := d.SingleAccountList(createdAccount.ID)
+	if err != nil {
+		t.Error(err)
+	}
 	prettyPrint(*createdAccount)
 	prettyPrint(*account)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if account.Name != name {
-		t.Fatalf("account name mismatch: %v != %v", account.Name, name)
+	if account.Items[0].Name != name {
+		t.Fatalf("account name mismatch: %v != %v", account.Items[0].Name, name)
 	}
 }
 
@@ -116,7 +119,7 @@ var channelID string
 
 func TestClient_ChannelCreate(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
+	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 1.337, ChannelCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
 			Title:       util.PtrToString("Mess with the channels"),
 			Description: util.PtrToString("And you'll get what you deserve"),
@@ -150,7 +153,14 @@ func TestClient_StreamCreate(t *testing.T) {
 		return
 	}
 	address := string(*addressResponse)
-	got, err := d.StreamCreate("test"+fmt.Sprintf("%d", time.Now().Unix()), "/home/niko/Downloads/IMG_20171012_205120.jpg", 14.37, StreamCreateOptions{
+	f, e := os.OpenFile("/tmp/test.txt", os.O_RDONLY|os.O_CREATE, 0666)
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
+	_, _ = f.WriteString("test")
+	got, err := d.StreamCreate("test"+fmt.Sprintf("%d", time.Now().Unix()), "/tmp/test.txt", 1.437, StreamCreateOptions{
 		ClaimCreateOptions: ClaimCreateOptions{
 			Title:       util.PtrToString("This is a Test Title" + fmt.Sprintf("%d", time.Now().Unix())),
 			Description: util.PtrToString("My Special Description"),
@@ -261,7 +271,7 @@ func TestClient_ChannelAbandon(t *testing.T) {
 
 func TestClient_AddressList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.AddressList(nil, nil)
+	got, err := d.AddressList(nil, nil, 1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -283,7 +293,7 @@ func TestClient_ClaimList(t *testing.T) {
 func TestClient_StreamList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
-	got, err := d.StreamList(nil)
+	got, err := d.StreamList(nil, 1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -294,7 +304,7 @@ func TestClient_StreamList(t *testing.T) {
 func TestClient_TransactionList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
-	got, err := d.TransactionList(nil)
+	got, err := d.TransactionList(nil, 1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -327,7 +337,7 @@ func TestClient_SupportTest(t *testing.T) {
 		return
 	}
 	time.Sleep(10 * time.Second)
-	got2, err := d.SupportCreate(got.Outputs[0].ClaimID, "1.0", util.PtrToBool(true), nil, nil)
+	got2, err := d.SupportCreate(got.Outputs[0].ClaimID, "1.0", util.PtrToBool(true), nil, nil, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -360,7 +370,7 @@ func TestClient_SupportTest(t *testing.T) {
 
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimSearch(nil, util.PtrToString(channelID), nil, nil)
+	got, err := d.ClaimSearch(nil, util.PtrToString(channelID), nil, nil, 1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -380,7 +390,7 @@ func TestClient_Status(t *testing.T) {
 
 func TestClient_UTXOList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.UTXOList(nil)
+	got, err := d.UTXOList(nil, 1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -412,7 +422,7 @@ func TestClient_GetFile(t *testing.T) {
 func TestClient_FileList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
-	got, err := d.FileList()
+	got, err := d.FileList(1, 20)
 	if err != nil {
 		t.Error(err)
 		return
@@ -428,21 +438,17 @@ func TestClient_Resolve(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err != nil {
-		t.Error(err)
-		return
-	}
 	prettyPrint(*got)
 }
 
 func TestClient_AccountSet(t *testing.T) {
 	d := NewClient("")
-	accounts, err := d.AccountList()
+	accounts, err := d.AccountList(1, 20)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	account := (accounts.LBCRegtest)[0].ID
+	account := (accounts.Items)[0].ID
 
 	got, err := d.AccountSet(account, AccountSettings{ChangeMaxUses: util.PtrToInt(10000)})
 	if err != nil {
@@ -506,7 +512,7 @@ func TestClient_AccountRemove(t *testing.T) {
 
 	account, err := d.SingleAccountList(createdAccount.ID)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "Error in daemon: Couldn't find account") {
+		if strings.Contains(err.Error(), "Couldn't find account:") {
 			prettyPrint(*removedAccount)
 			return
 		}
@@ -550,6 +556,9 @@ func TestClient_ChannelImport(t *testing.T) {
 		t.Error(err)
 	}
 	channels, err := d.ChannelList(nil, 1, 50, nil)
+	if err != nil {
+		t.Error(err)
+	}
 	seen := false
 	for _, c := range channels.Items {
 		if c.Name == channelName {
@@ -567,10 +576,12 @@ func TestClient_ChannelImportWithWalletID(t *testing.T) {
 
 	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
 	wallet, err := d.WalletCreate(id, nil)
-
+	if err != nil {
+		t.Error(err)
+	}
 	// A channel created just for automated testing purposes
 	channelName := "@LbryAutomatedTestChannel"
-	channelkey := "7943FWPBHZES4dUcMXSpDYwoM5a2tsyJT1R8V54QoUhekGcqmeH3hbzDXoLLQ8" +
+	channelKey := "7943FWPBHZES4dUcMXSpDYwoM5a2tsyJT1R8V54QoUhekGcqmeH3hbzDXoLLQ8" +
 		"oKkfb99PgGK5efrZeYqaxg4X5XRJMJ6gKC8hqKcnwhYkmKDXmoBDNgd2ccZ9jhP8z" +
 		"HG3NJorAN9Hh4XMyBc5goBLZYYvC9MYvBmT3Fcteb5saqMvmQxFURv74NqXLQZC1t" +
 		"p6iRZKfTj77Pd5gsBsCYAbVmCqzbm5m1hHkUmfFEZVGcQNTYCDwZn543xSMYvSPnJ" +
@@ -582,11 +593,14 @@ func TestClient_ChannelImportWithWalletID(t *testing.T) {
 		"hxsFwGUyNNno8eiqrrYmpbJGEwwK3S4437JboAUEFPdMNn8zNQWZcLLVrK9KyQeKM" +
 		"XpKkf4zJV6sZJ7gBMpzvPL18ULEgXTy7VsNBKmsfC1rM4WVG9ri1UixEcLDS79foC" +
 		"Jb3FnSr1T4MRKESeN3W"
-	response, err := d.ChannelImport(channelkey, &wallet.ID)
+	response, err := d.ChannelImport(channelKey, &wallet.ID)
 	if err != nil {
 		t.Error(err)
 	}
 	channels, err := d.ChannelList(nil, 1, 50, &wallet.ID)
+	if err != nil {
+		t.Error(err)
+	}
 	seen := false
 	for _, c := range channels.Items {
 		if c.Name == channelName {
@@ -627,7 +641,7 @@ func TestClient_WalletCreateWithOpts(t *testing.T) {
 	}
 	prettyPrint(wallet)
 	prettyPrint(accounts)
-	if accounts.LBCMainnet[0].Name == "" {
+	if accounts.Items[0].Name == "" {
 		t.Fatalf("account name is empty")
 	}
 }
@@ -636,7 +650,7 @@ func TestClient_WalletList(t *testing.T) {
 	d := NewClient("")
 
 	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
-	wList, err := d.WalletList(id)
+	wList, err := d.WalletList(id, 1, 20)
 	if err == nil {
 		t.Fatalf("wallet %v was unexpectedly found", id)
 	}
@@ -649,15 +663,15 @@ func TestClient_WalletList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wList, err = d.WalletList(id)
+	wList, err = d.WalletList(id, 1, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(*wList) < 1 {
+	if len(wList.Items) < 1 {
 		t.Fatal("wallet list is empty")
 	}
-	if (*wList)[0].ID != id {
-		t.Fatalf("wallet ID mismatch, expected %q, got %q", id, (*wList)[0].ID)
+	if (wList.Items)[0].ID != id {
+		t.Fatalf("wallet ID mismatch, expected %q, got %q", id, (wList.Items)[0].ID)
 	}
 }
 

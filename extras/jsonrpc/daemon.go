@@ -138,9 +138,12 @@ func (d *Client) SetRPCTimeout(timeout time.Duration) {
 //				NEW SDK
 //============================================
 
-func (d *Client) AccountList() (*AccountListResponse, error) {
+func (d *Client) AccountList(page uint64, pageSize uint64) (*AccountListResponse, error) {
 	response := new(AccountListResponse)
-	return response, d.call(response, "account_list", map[string]interface{}{})
+	return response, d.call(response, "account_list", map[string]interface{}{
+		"page":      page,
+		"page_size": pageSize,
+	})
 }
 
 func (d *Client) AccountListForWallet(walletID string) (*AccountListResponse, error) {
@@ -148,8 +151,8 @@ func (d *Client) AccountListForWallet(walletID string) (*AccountListResponse, er
 	return response, d.call(response, "account_list", map[string]interface{}{"wallet_id": walletID})
 }
 
-func (d *Client) SingleAccountList(accountID string) (*Account, error) {
-	response := new(Account)
+func (d *Client) SingleAccountList(accountID string) (*AccountListResponse, error) {
+	response := new(AccountListResponse)
 	return response, d.call(response, "account_list", map[string]interface{}{"account_id": accountID})
 }
 
@@ -416,25 +419,31 @@ func (d *Client) ChannelAbandon(txID string, nOut uint64, accountID *string, blo
 	return response, nil
 }
 
-func (d *Client) AddressList(account *string, address *string) (*AddressListResponse, error) {
+func (d *Client) AddressList(account *string, address *string, page uint64, pageSize uint64) (*AddressListResponse, error) {
 	response := new(AddressListResponse)
 
 	args := struct {
 		AccountID *string `json:"account_id,omitempty"`
 		Address   *string `json:"address,omitempty"`
+		Page      uint64  `json:"page"`
+		PageSize  uint64  `json:"page_size"`
 	}{
 		AccountID: account,
 		Address:   address,
+		Page:      page,
+		PageSize:  pageSize,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "address_list", structs.Map(args))
 }
 
-func (d *Client) StreamList(account *string) (*StreamListResponse, error) {
+func (d *Client) StreamList(account *string, page uint64, pageSize uint64) (*StreamListResponse, error) {
 	response := new(StreamListResponse)
 	err := d.call(response, "stream_list", map[string]interface{}{
 		"account_id":       account,
 		"include_protobuf": true,
+		"page":             page,
+		"page_size":        pageSize,
 	})
 	if err != nil {
 		return nil, err
@@ -464,17 +473,21 @@ func (d *Client) Status() (*StatusResponse, error) {
 	return response, d.call(response, "status", map[string]interface{}{})
 }
 
-func (d *Client) TransactionList(account *string) (*TransactionListResponse, error) {
+func (d *Client) TransactionList(account *string, page uint64, pageSize uint64) (*TransactionListResponse, error) {
 	response := new(TransactionListResponse)
 	return response, d.call(response, "transaction_list", map[string]interface{}{
 		"account_id": account,
+		"page":       page,
+		"page_size":  pageSize,
 	})
 }
 
-func (d *Client) UTXOList(account *string) (*UTXOListResponse, error) {
+func (d *Client) UTXOList(account *string, page uint64, pageSize uint64) (*UTXOListResponse, error) {
 	response := new(UTXOListResponse)
 	return response, d.call(response, "utxo_list", map[string]interface{}{
 		"account_id": account,
+		"page":       page,
+		"page_size":  pageSize,
 	})
 }
 
@@ -493,10 +506,12 @@ func (d *Client) Get(uri string) (*GetResponse, error) {
 	})
 }
 
-func (d *Client) FileList() (*FileListResponse, error) {
+func (d *Client) FileList(page uint64, pageSize uint64) (*FileListResponse, error) {
 	response := new(FileListResponse)
 	return response, d.call(response, "file_list", map[string]interface{}{
 		"include_protobuf": true,
+		"page":             page,
+		"page_size":        pageSize,
 	})
 }
 
@@ -513,7 +528,7 @@ func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	})
 }
 
-func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*ClaimSearchResponse, error) {
+func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint, page uint64, pageSize uint64) (*ClaimSearchResponse, error) {
 	response := new(ClaimSearchResponse)
 	args := struct {
 		ClaimID         *string `json:"claim_id,omitempty"`
@@ -521,12 +536,16 @@ func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint) (*Cla
 		Nout            *uint   `json:"nout,omitempty"`
 		Name            *string `json:"name,omitempty"`
 		IncludeProtobuf bool    `json:"include_protobuf"`
+		Page            uint64  `json:"page"`
+		PageSize        uint64  `json:"page_size"`
 	}{
 		ClaimID:         claimID,
 		TXID:            txid,
 		Nout:            nout,
 		Name:            claimName,
 		IncludeProtobuf: true,
+		Page:            page,
+		PageSize:        pageSize,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "claim_search", structs.Map(args))
@@ -558,7 +577,7 @@ func (d *Client) SupportList(accountID *string, page uint64, pageSize uint64) (*
 	})
 }
 
-func (d *Client) SupportCreate(claimID string, amount string, tip *bool, accountID *string, fundingAccountIDs []string) (*TransactionSummary, error) {
+func (d *Client) SupportCreate(claimID string, amount string, tip *bool, accountID *string, fundingAccountIDs []string, walletID *string) (*TransactionSummary, error) {
 	response := new(TransactionSummary)
 	args := struct {
 		ClaimID           string   `json:"claim_id"`
@@ -568,6 +587,7 @@ func (d *Client) SupportCreate(claimID string, amount string, tip *bool, account
 		FundingAccountIDs []string `json:"funding_account_ids,omitempty"`
 		Preview           bool     `json:"preview,omitempty"`
 		Blocking          bool     `json:"blocking,omitempty"`
+		WalletID          *string  `json:"wallet_id,omitempty"`
 	}{
 		ClaimID:           claimID,
 		AccountID:         accountID,
@@ -649,9 +669,13 @@ func (d *Client) WalletAdd(id string) (*Wallet, error) {
 	return response, d.call(response, "wallet_add", map[string]interface{}{"wallet_id": id})
 }
 
-func (d *Client) WalletList(id string) (*WalletList, error) {
+func (d *Client) WalletList(id string, page uint64, pageSize uint64) (*WalletList, error) {
 	response := new(WalletList)
-	params := map[string]interface{}{}
+	params := map[string]interface {
+	}{
+		"page":      page,
+		"page_size": pageSize,
+	}
 	if id != "" {
 		params["wallet_id"] = id
 	}
