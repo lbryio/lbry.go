@@ -20,6 +20,19 @@ var ResponseHeaders map[string]string
 // Log allows logging of events and errors
 var Log = func(*http.Request, *Response, error) {}
 
+// http://choly.ca/post/go-json-marshalling/
+type ResponseInfo struct {
+	Success bool        `json:"success"`
+	Error   *string     `json:"error"`
+	Data    interface{} `json:"data"`
+	Trace   []string    `json:"_trace,omitempty"`
+}
+
+// BuildJSONResponse allows implementers to control the json response form from the api
+var BuildJSONResponse = func(response ResponseInfo) ([]byte, error) {
+	return json.MarshalIndent(&response, "", "  ")
+}
+
 // TraceEnabled Attaches a trace field to the JSON response when enabled.
 var TraceEnabled = false
 
@@ -116,27 +129,20 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		trace = getTraceFromError(rsp.Error)
 	}
 
-	// http://choly.ca/post/go-json-marshalling/
-	type apiResponse struct {
-		Success bool        `json:"success"`
-		Error   *string     `json:"error"`
-		Data    interface{} `json:"data"`
-		Trace   []string    `json:"_trace,omitempty"`
-	}
-	jsonResponse, err := json.MarshalIndent(&apiResponse{
+	jsonResponse, err := BuildJSONResponse(ResponseInfo{
 		Success: success,
 		Error:   errorString,
 		Data:    rsp.Data,
 		Trace:   trace,
-	}, "", "  ")
+	})
 	if err != nil {
 		Log(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
-		jsonResponse, err = json.MarshalIndent(&apiResponse{
+		jsonResponse, err = BuildJSONResponse(ResponseInfo{
 			Success: false,
 			Error:   util.PtrToString(err.Error()),
 			Data:    nil,
 			Trace:   getTraceFromError(err),
-		}, "", "  ")
+		})
 		if err != nil {
 			Log(r, &rsp, errors.Prefix("Error encoding JSON response: ", err))
 		}
