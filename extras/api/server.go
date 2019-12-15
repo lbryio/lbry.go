@@ -175,21 +175,25 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 	structValue := ref.Elem()
 	fields := map[string]bool{}
 	for i := 0; i < structType.NumField(); i++ {
-		name := structType.Field(i).Name
-		underscoredName := util.Underscore(name)
-		value := strings.TrimSpace(r.FormValue(underscoredName))
+		fieldName := structType.Field(i).Name
+		formattedName := util.Underscore(fieldName)
+		jsonName, ok := structType.Field(i).Tag.Lookup("json")
+		if ok {
+			formattedName = jsonName
+		}
+		value := strings.TrimSpace(r.FormValue(formattedName))
 
 		// if param is not set at all, continue
 		// comes after call to r.FormValue so form values get parsed internally (if they arent already)
-		if len(r.Form[underscoredName]) == 0 {
+		if len(r.Form[formattedName]) == 0 {
 			continue
 		}
 
-		fields[underscoredName] = true
+		fields[formattedName] = true
 		isPtr := false
 		var finalValue reflect.Value
 
-		structField := structValue.FieldByName(name)
+		structField := structValue.FieldByName(fieldName)
 		structFieldKind := structField.Kind()
 		if structFieldKind == reflect.Ptr {
 			isPtr = true
@@ -205,7 +209,7 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 			}
 			castVal, err := cast.ToInt64E(value)
 			if err != nil {
-				return errors.Err("%s: must be an integer", underscoredName)
+				return errors.Err("%s: must be an integer", formattedName)
 			}
 			switch structFieldKind {
 			case reflect.Int:
@@ -225,7 +229,7 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 			}
 			castVal, err := cast.ToUint64E(value)
 			if err != nil {
-				return errors.Err("%s: must be an unsigned integer", underscoredName)
+				return errors.Err("%s: must be an unsigned integer", formattedName)
 			}
 			switch structFieldKind {
 			case reflect.Uint:
@@ -245,7 +249,7 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 			}
 			if !validator.IsBoolString(value) {
 				return errors.Err("%s: must be one of the following values: %s",
-					underscoredName, strings.Join(validator.GetBoolStringValues(), ", "))
+					formattedName, strings.Join(validator.GetBoolStringValues(), ", "))
 			}
 			finalValue = reflect.ValueOf(validator.IsTruthy(value))
 
@@ -255,7 +259,7 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 			}
 			castVal, err := cast.ToFloat64E(value)
 			if err != nil {
-				return errors.Err("%s: must be a floating point number", underscoredName)
+				return errors.Err("%s: must be a floating point number", formattedName)
 			}
 			switch structFieldKind {
 			case reflect.Float32:
@@ -264,7 +268,7 @@ func FormValues(r *http.Request, params interface{}, validationRules []*v.FieldR
 				finalValue = reflect.ValueOf(float64(castVal))
 			}
 		default:
-			return errors.Err("field %s is an unsupported type", name)
+			return errors.Err("field %s is an unsupported type", fieldName)
 		}
 
 		if isPtr {
