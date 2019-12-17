@@ -18,8 +18,9 @@ const (
 	timeout              = 5 * time.Second
 	headerForwardedFor   = "X-Forwarded-For"
 
-	userObjectPath = "user"
-	userMeMethod   = "me"
+	userObjectPath             = "user"
+	userMeMethod               = "me"
+	userHasVerifiedEmailMethod = "has_verified_email"
 )
 
 // Client stores data about internal-apis call it is about to make.
@@ -48,6 +49,10 @@ type APIResponse struct {
 // ResponseData is a map containing parsed json response.
 type ResponseData map[string]interface{}
 
+func makeMethodPath(obj, method string) string {
+	return fmt.Sprintf("/%s/%s", obj, method)
+}
+
 // NewClient returns a client instance for internal-apis. It requires authToken to be provided
 // for authentication.
 func NewClient(authToken string, opts *ClientOpts) Client {
@@ -70,7 +75,7 @@ func NewClient(authToken string, opts *ClientOpts) Client {
 }
 
 func (c Client) getEndpointURL(object, method string) string {
-	return fmt.Sprintf("%s/%s/%s", c.serverAddress, object, method)
+	return fmt.Sprintf("%s%s", c.serverAddress, makeMethodPath(object, method))
 }
 
 func (c Client) prepareParams(params map[string]interface{}) (string, error) {
@@ -136,4 +141,8 @@ func (c Client) Call(object, method string, params map[string]interface{}) (Resp
 // UserMe returns user details for the user associated with the current auth_token
 func (c Client) UserMe() (ResponseData, error) {
 	return c.Call(userObjectPath, userMeMethod, map[string]interface{}{})
+}
+
+func (c Client) UserHasVerifiedEmail() (ResponseData, error) {
+	return c.Call(userObjectPath, userHasVerifiedEmailMethod, map[string]interface{}{})
 }

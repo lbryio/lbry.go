@@ -17,7 +17,7 @@ require (
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/lbryio/lbry.go v1.1.2 // indirect
+	github.com/lbryio/lbry.go v1.1.2
 	github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
 	github.com/lbryio/types v0.0.0-20191009145016-1bb8107e04f8
