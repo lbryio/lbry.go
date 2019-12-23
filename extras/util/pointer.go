@@ -33,6 +33,7 @@ func PtrToUintptr(u uintptr) *uintptr          { return &u }
 
 func PtrToNullString(s string) *null.String { n := null.StringFrom(s); return &n }
 func PtrToNullUint64(u uint64) *null.Uint64 { n := null.Uint64From(u); return &n }
+func PtrToNullTime(t time.Time) *null.Time  { n := null.TimeFrom(t); return &n }
 
 func StrFromPtr(ptr *string) string {
 	if ptr == nil {
