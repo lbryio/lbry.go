@@ -31,9 +31,11 @@ func PtrToUint64(u uint64) *uint64             { return &u }
 func PtrToUint8(u uint8) *uint8                { return &u }
 func PtrToUintptr(u uintptr) *uintptr          { return &u }
 
-func PtrToNullString(s string) *null.String { n := null.StringFrom(s); return &n }
-func PtrToNullUint64(u uint64) *null.Uint64 { n := null.Uint64From(u); return &n }
-func PtrToNullTime(t time.Time) *null.Time  { n := null.TimeFrom(t); return &n }
+func PtrToNullString(s string) *null.String    { n := null.StringFrom(s); return &n }
+func PtrToNullUint64(u uint64) *null.Uint64    { n := null.Uint64From(u); return &n }
+func PtrToNullTime(t time.Time) *null.Time     { n := null.TimeFrom(t); return &n }
+func PtrToNullFloat64(f float64) *null.Float64 { n := null.Float64From(f); return &n }
+func PtrToNullFloat32(f float32) *null.Float32 { n := null.Float32From(f); return &n }
 
 func StrFromPtr(ptr *string) string {
 	if ptr == nil {
