@@ -33,9 +33,16 @@ var MainNetParams = chaincfg.Params{
 	PubKeyHashAddrID: 0x55,
 	ScriptHashAddrID: 0x7a,
 	PrivateKeyID:     0x1c,
-	Bech32HRPSegwit:  "not-used", // we don't have this (yet)
-	GenesisHash:      &GenesisHash,
-	Name:             "mainnet",
+	Bech32HRPSegwit:  "lbc",
+	//WitnessPubKeyHashAddrID: , // i cant find these in bitcoin codebase either
+	//WitnessScriptHashAddrID:,
+	GenesisHash:   &GenesisHash,
+	Name:          "mainnet",
+	Net:           wire.BitcoinNet(0xfae4aaf1),
+	DefaultPort:   "9246",
+	BIP0034Height: 1,
+	BIP0065Height: 200000,
+	BIP0066Height: 200000,
 }
 
 const (
