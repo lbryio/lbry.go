@@ -68,12 +68,14 @@ var testNetParams = chaincfg.Params{
 	PubKeyHashAddrID: lbrycrdTestnetPubkeyPrefix,
 	ScriptHashAddrID: lbrycrdTestnetScriptPrefix,
 	PrivateKeyID:     0x1c,
+	Bech32HRPSegwit:  "tlbc",
 }
 
 var regTestNetParams = chaincfg.Params{
 	PubKeyHashAddrID: lbrycrdRegtestPubkeyPrefix,
 	ScriptHashAddrID: lbrycrdRegtestScriptPrefix,
 	PrivateKeyID:     0x1c,
+	Bech32HRPSegwit:  "rlbc",
 }
 
 var ChainParamsMap = map[string]chaincfg.Params{LbrycrdMain: mainNetParams, LbrycrdTestnet: testNetParams, LbrycrdRegtest: regTestNetParams}
@@ -92,7 +94,7 @@ type Client struct {
 }
 
 // New initializes a new Client
-func New(lbrycrdURL string) (*Client, error) {
+func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
 	// Connect to local bitcoin core RPC server using HTTP POST mode.
 
 	u, err := url.Parse(lbrycrdURL)
@@ -106,10 +108,16 @@ func New(lbrycrdURL string) (*Client, error) {
 
 	password, _ := u.User.Password()
 
+	chain := MainNetParams
+	if chainParams != nil {
+		chain = *chainParams
+	}
+
 	connCfg := &rpcclient.ConnConfig{
 		Host:         u.Host,
 		User:         u.User.Username(),
 		Pass:         password,
+		Params:       chain,
 		HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
 		DisableTLS:   true, // Bitcoin core does not provide TLS by default
 	}
@@ -128,12 +136,12 @@ func New(lbrycrdURL string) (*Client, error) {
 	return &Client{client}, nil
 }
 
-func NewWithDefaultURL() (*Client, error) {
+func NewWithDefaultURL(chainParams *chaincfg.Params) (*Client, error) {
 	url, err := getLbrycrdURLFromConfFile()
 	if err != nil {
 		return nil, err
 	}
-	return New(url)
+	return New(url, chainParams)
 }
 
 var errInsufficientFunds = errors.Base("insufficient funds")
