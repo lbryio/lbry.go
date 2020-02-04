@@ -158,7 +158,7 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 		return nil, errors.Err(err)
 	}
 
-	hash, err := c.Client.SendFromMinConf("", decodedAddress, lbcAmount, 0)
+	hash, err := c.Client.SendToAddress(decodedAddress, lbcAmount)
 	if err != nil {
 		if err.Error() == "-6: Insufficient funds" {
 			err = errors.Err(errInsufficientFunds)
