@@ -65,9 +65,10 @@ func NewStandardConfig() *Config {
 	return &Config{
 		Address: "0.0.0.0:" + strconv.Itoa(DefaultPort),
 		SeedNodes: []string{
-			"lbrynet1.lbry.io:4444",
-			"lbrynet2.lbry.io:4444",
-			"lbrynet3.lbry.io:4444",
+			"lbrynet1.lbry.com:4444",
+			"lbrynet2.lbry.com:4444",
+			"lbrynet3.lbry.com:4444",
+			"lbrynet4.lbry.com:4444",
 		},
 		PeerProtocolPort: DefaultPeerPort,
 		ReannounceTime:   DefaultReannounceTime,
