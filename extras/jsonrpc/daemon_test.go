@@ -368,6 +368,99 @@ func TestClient_SupportTest(t *testing.T) {
 	prettyPrint(*got4)
 }
 
+func TestClient_TxoSpendTest(t *testing.T) {
+	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
+	d := NewClient("")
+	got, err := d.ChannelCreate("@Test"+fmt.Sprintf("%d", time.Now().Unix()), 13.37, ChannelCreateOptions{
+		ClaimCreateOptions: ClaimCreateOptions{
+			Title:       util.PtrToString("Mess with the channels"),
+			Description: util.PtrToString("And you'll get what you deserve"),
+			Tags:        []string{"we", "got", "tags"},
+			Languages:   []string{"en-US"},
+			Locations: []Location{{
+				Country: util.PtrToString("CH"),
+				State:   util.PtrToString("Ticino"),
+				City:    util.PtrToString("Lugano"),
+			}},
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		},
+		Email:      util.PtrToString("niko@lbry.com"),
+		WebsiteURL: util.PtrToString("https://lbry.com"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	time.Sleep(10 * time.Second)
+	got2, err := d.SupportCreate(got.Outputs[0].ClaimID, "1.0", util.PtrToBool(true), nil, nil, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got2)
+
+	got3, err := d.SupportList(nil, 1, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	found := false
+	for _, support := range got3.Items {
+		if support.ClaimID == got.Outputs[0].ClaimID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error(errors.Err("support not found"))
+		return
+	}
+	prettyPrint(*got3)
+	got4, err := d.TxoSpend(util.PtrToString("support"), util.PtrToString(got.Outputs[0].ClaimID), nil, nil, nil, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got4)
+	time.Sleep(10 * time.Second)
+	got3, err = d.SupportList(nil, 1, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	found = false
+	for _, support := range got3.Items {
+		if support.ClaimID == got.Outputs[0].ClaimID {
+			found = true
+		}
+	}
+	if found {
+		t.Error(errors.Err("support found even though it should have been abandoned"))
+		return
+	}
+	prettyPrint(*got3)
+	got4, err = d.TxoSpend(util.PtrToString("channel"), util.PtrToString(got.Outputs[0].ClaimID), nil, nil, nil, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	prettyPrint(*got4)
+	time.Sleep(10 * time.Second)
+
+	got5, err := d.ClaimList(nil, 1, 50)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, claim := range got5.Claims {
+		if claim.ClaimID == got.Outputs[0].ClaimID {
+			t.Error(errors.Err("claim found even though it should have been abandoned"))
+			return
+		}
+	}
+	prettyPrint(*got5)
+}
+
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
 	got, err := d.ClaimSearch(nil, util.PtrToString(channelID), nil, nil, 1, 20)

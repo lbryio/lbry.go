@@ -428,6 +428,7 @@ type SupportListResponse struct {
 	PageSize   uint64 `json:"page_size"`
 	TotalPages uint64 `json:"total_pages"`
 }
+
 type StatusResponse struct {
 	BlobManager struct {
 		FinishedBlobs uint64 `json:"finished_blobs"`

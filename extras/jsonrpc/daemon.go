@@ -625,6 +625,34 @@ func (d *Client) SupportAbandon(claimID *string, txid *string, nout *uint, keep 
 	return response, d.call(response, "support_abandon", structs.Map(args))
 }
 
+func (d *Client) TxoSpend(txoType, claimID, txid, channelID, name, accountID *string) (*[]TransactionSummary, error) {
+	if txoType == nil && claimID == nil && txid == nil && channelID == nil && name == nil {
+		return nil, errors.Err("either txoType or claimID or channelID or name or txid must be supplied")
+	}
+	response := new([]TransactionSummary)
+	args := struct {
+		ClaimID   *string `json:"claim_id,omitempty"`
+		ChannelID *string `json:"channel_id,omitempty"`
+		Name      *string `json:"name,omitempty"`
+		TxID      *string `json:"claim_id,omitempty"`
+		Type      *string `json:"type,omitempty"`
+		AccountID *string `json:"account_id,omitempty"`
+		Preview   bool    `json:"preview,omitempty"`
+		Blocking  bool    `json:"blocking,omitempty"`
+	}{
+		ClaimID:   claimID,
+		ChannelID: channelID,
+		Name:      name,
+		Type:      txoType,
+		AccountID: accountID,
+		TxID:      txid,
+		Blocking:  true,
+		Preview:   false,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "txo_spend", structs.Map(args))
+}
+
 func (d *Client) AccountAdd(accountName string, seed *string, privateKey *string, publicKey *string, singleKey *bool, walletID *string) (*Account, error) {
 	response := new(Account)
 
