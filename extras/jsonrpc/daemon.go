@@ -631,23 +631,25 @@ func (d *Client) TxoSpend(txoType, claimID, txid, channelID, name, accountID *st
 	}
 	response := new([]TransactionSummary)
 	args := struct {
-		ClaimID   *string `json:"claim_id,omitempty"`
-		ChannelID *string `json:"channel_id,omitempty"`
-		Name      *string `json:"name,omitempty"`
-		TxID      *string `json:"claim_id,omitempty"`
-		Type      *string `json:"type,omitempty"`
-		AccountID *string `json:"account_id,omitempty"`
-		Preview   bool    `json:"preview,omitempty"`
-		Blocking  bool    `json:"blocking,omitempty"`
+		ClaimID       *string `json:"claim_id,omitempty"`
+		ChannelID     *string `json:"channel_id,omitempty"`
+		Name          *string `json:"name,omitempty"`
+		TxID          *string `json:"claim_id,omitempty"`
+		Type          *string `json:"type,omitempty"`
+		AccountID     *string `json:"account_id,omitempty"`
+		Preview       bool    `json:"preview,omitempty"`
+		Blocking      bool    `json:"blocking,omitempty"`
+		IncludeFullTx bool    `json:"include_full_tx,omitempty"`
 	}{
-		ClaimID:   claimID,
-		ChannelID: channelID,
-		Name:      name,
-		Type:      txoType,
-		AccountID: accountID,
-		TxID:      txid,
-		Blocking:  true,
-		Preview:   false,
+		ClaimID:       claimID,
+		ChannelID:     channelID,
+		Name:          name,
+		Type:          txoType,
+		AccountID:     accountID,
+		TxID:          txid,
+		Blocking:      true,
+		Preview:       false,
+		IncludeFullTx: true,
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "txo_spend", structs.Map(args))
