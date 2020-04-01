@@ -487,7 +487,7 @@ type UTXOListResponse struct {
 		Confirmations      int    `json:"confirmations"`
 		Height             int    `json:"height"`
 		IsInternalTransfer bool   `json:"is_internal_transfer"`
-		IsMyInput          bool   `json:"is_internal_transfer"`
+		IsMyInput          bool   `json:"is_my_input"`
 		IsMyOutput         bool   `json:"is_my_output"`
 		IsSpent            bool   `json:"is_spent"`
 		Nout               int    `json:"nout"`
