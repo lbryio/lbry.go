@@ -32,6 +32,7 @@ type Fee struct {
 }
 
 type File struct {
+	AddedOn              int64             `json:"added_on"`
 	BlobsCompleted       uint64            `json:"blobs_completed"`
 	BlobsInStream        uint64            `json:"blobs_in_stream"`
 	BlobsRemaining       uint64            `json:"blobs_remaining"`
@@ -46,12 +47,16 @@ type File struct {
 	DownloadPath         string            `json:"download_path"`
 	FileName             string            `json:"file_name"`
 	Height               int               `json:"height"`
+	IsFullyReflected     bool              `json:"is_fully_reflected"`
 	Key                  string            `json:"key"`
 	Metadata             *lbryschema.Claim `json:"protobuf"`
 	MimeType             string            `json:"mime_type"`
 	Nout                 int               `json:"nout"`
 	Outpoint             string            `json:"outpoint"`
 	PointsPaid           decimal.Decimal   `json:"points_paid"`
+	Protobuf             string            `json:"protobuf"`
+	PurchaseReceipt      interface{}       `json:"purchase_receipt"`
+	ReflectorProgress    int               `json:"reflector_progress"`
 	SdHash               string            `json:"sd_hash"`
 	Status               string            `json:"status"`
 	Stopped              bool              `json:"stopped"`
@@ -63,6 +68,7 @@ type File struct {
 	TotalBytes           uint64            `json:"total_bytes"`
 	TotalBytesLowerBound uint64            `json:"total_bytes_lower_bound"`
 	Txid                 string            `json:"txid"`
+	UploadingToReflector bool              `json:"uploading_to_reflector"`
 	WrittenBytes         uint64            `json:"written_bytes"`
 }
 
@@ -183,20 +189,6 @@ type FileListResponse struct {
 	TotalPages uint64 `json:"total_pages"`
 }
 
-type WalletListResponse []string
-
-type BlobAnnounceResponse bool
-
-type WalletPrefillAddressesResponse struct {
-	Broadcast bool   `json:"broadcast"`
-	Complete  bool   `json:"complete"`
-	Hex       string `json:"hex"`
-}
-
-type WalletNewAddressResponse string
-
-type WalletUnusedAddressResponse string
-
 type Account struct {
 	AddressGenerator struct {
 		Change struct {
@@ -220,8 +212,8 @@ type Account struct {
 	Preferences  *struct {
 		Theme string `json:"theme"`
 	} `json:"preferences,omitempty"`
-	PublicKey  string  `json:"public_key"`
 	PrivateKey *string `json:"private_key,omitempty"`
+	PublicKey  string  `json:"public_key"`
 	Seed       *string `json:"seed,omitempty"`
 	Satoshis   uint64  `json:"satoshis"`
 }
@@ -234,27 +226,37 @@ type AccountListResponse struct {
 }
 
 type AccountBalanceResponse struct {
-	Available         decimal.Decimal  `json:"available"`
-	Reserved          decimal.Decimal  `json:"reserved"`
-	ReservedSubtotals *decimal.Decimal `json:"reserved_subtotals"`
-	Total             decimal.Decimal  `json:"total"`
+	Available         decimal.Decimal `json:"available"`
+	Reserved          decimal.Decimal `json:"reserved"`
+	ReservedSubtotals struct {
+		Claims   decimal.Decimal `json:"claims"`
+		Supports decimal.Decimal `json:"supports"`
+		Tips     decimal.Decimal `json:"tips"`
+	} `json:"reserved_subtotals"`
+	Total decimal.Decimal `json:"total"`
 }
 
 type Transaction struct {
-	Address       string            `json:"address"`
-	Amount        string            `json:"amount"`
-	ClaimID       string            `json:"claim_id"`
-	Confirmations int               `json:"confirmations"`
-	Height        int               `json:"height"`
-	IsChange      bool              `json:"is_change"`
-	IsMine        bool              `json:"is_mine"`
-	Name          string            `json:"name"`
-	Nout          uint64            `json:"nout"`
-	PermanentUrl  string            `json:"permanent_url"`
-	Protobuf      string            `json:"protobuf,omitempty"`
-	Txid          string            `json:"txid"`
-	Type          string            `json:"type"`
-	Value         *lbryschema.Claim `json:"protobuf"`
+	Address            string            `json:"address"`
+	Amount             string            `json:"amount"`
+	ClaimID            string            `json:"claim_id"`
+	ClaimOp            string            `json:"claim_op"`
+	Confirmations      int               `json:"confirmations"`
+	HasSigningKey      bool              `json:"has_signing_key"`
+	Height             int               `json:"height"`
+	IsInternalTransfer bool              `json:"is_internal_transfer"`
+	IsMyInput          bool              `json:"is_my_input"`
+	IsMyOutput         bool              `json:"is_my_output"`
+	IsSpent            bool              `json:"is_spent"`
+	Name               string            `json:"name"`
+	NormalizedName     string            `json:"normalized_name"`
+	Nout               uint64            `json:"nout"`
+	PermanentUrl       string            `json:"permanent_url"`
+	TimeStamp          uint64            `json:"time_stamp"`
+	Protobuf           string            `json:"protobuf,omitempty"`
+	Txid               string            `json:"txid"`
+	Type               string            `json:"type"`
+	Value              *lbryschema.Claim `json:"protobuf"`
 }
 
 type TransactionSummary struct {
@@ -313,6 +315,10 @@ type Claim struct {
 	Height                  int              `json:"height"`
 	IsChange                bool             `json:"is_change,omitempty"`
 	IsChannelSignatureValid bool             `json:"is_channel_signature_valid,omitempty"`
+	IsInternalTransfer      bool             `json:"is_internal_transfer"`
+	IsMyInput               bool             `json:"is_my_input"`
+	IsMyOutput              bool             `json:"is_my_output"`
+	IsSpent                 bool             `json:"is_spent"`
 	Meta                    Meta             `json:"meta,omitempty"`
 	Name                    string           `json:"name"`
 	NormalizedName          string           `json:"normalized_name"`
@@ -431,7 +437,15 @@ type SupportListResponse struct {
 
 type StatusResponse struct {
 	BlobManager struct {
-		FinishedBlobs uint64 `json:"finished_blobs"`
+		Connections struct {
+			MaxIncomingMbs   float64 `json:"max_incoming_mbs"`
+			MaxOutgoingMbs   float64 `json:"max_outgoing_mbs"`
+			TotalIncomingMbs float64 `json:"total_incoming_mbs"`
+			TotalOutgoingMbs float64 `json:"total_outgoing_mbs"`
+			TotalReceived    int64   `json:"total_received"`
+			TotalSent        int64   `json:"total_sent"`
+		} `json:"connections"`
+		FinishedBlobs int64 `json:"finished_blobs"`
 	} `json:"blob_manager"`
 	ConnectionStatus struct {
 		Code    string `json:"code"`
@@ -441,28 +455,33 @@ type StatusResponse struct {
 		NodeID              string `json:"node_id"`
 		PeersInRoutingTable uint64 `json:"peers_in_routing_table"`
 	} `json:"dht"`
+	FfmpegStatus struct {
+		AnalyzeAudioVolume bool   `json:"analyze_audio_volume"`
+		Available          bool   `json:"available"`
+		Which              string `json:"which"`
+	} `json:"ffmpeg_status"`
+	FileManager struct {
+		ManagedFiles int64 `json:"managed_files"`
+	} `json:"file_manager"`
 	HashAnnouncer struct {
 		AnnounceQueueSize uint64 `json:"announce_queue_size"`
 	} `json:"hash_announcer"`
 	InstallationID    string   `json:"installation_id"`
-	IsFirstRun        bool     `json:"is_first_run"`
 	IsRunning         bool     `json:"is_running"`
 	SkippedComponents []string `json:"skipped_components"`
 	StartupStatus     struct {
-		BlobManager         bool `json:"blob_manager"`
-		BlockchainHeaders   bool `json:"blockchain_headers"`
-		Database            bool `json:"database"`
-		Dht                 bool `json:"dht"`
-		ExchangeRateManager bool `json:"exchange_rate_manager"`
-		HashAnnouncer       bool `json:"hash_announcer"`
-		PeerProtocolServer  bool `json:"peer_protocol_server"`
-		StreamManager       bool `json:"stream_manager"`
-		Upnp                bool `json:"upnp"`
-		Wallet              bool `json:"wallet"`
+		BlobManager          bool `json:"blob_manager"`
+		Database             bool `json:"database"`
+		Dht                  bool `json:"dht"`
+		ExchangeRateManager  bool `json:"exchange_rate_manager"`
+		FileManager          bool `json:"file_manager"`
+		HashAnnouncer        bool `json:"hash_announcer"`
+		LibtorrentComponent  bool `json:"libtorrent_component"`
+		PeerProtocolServer   bool `json:"peer_protocol_server"`
+		Upnp                 bool `json:"upnp"`
+		Wallet               bool `json:"wallet"`
+		WalletServerPayments bool `json:"wallet_server_payments"`
 	} `json:"startup_status"`
-	StreamManager struct {
-		ManagedFiles int64 `json:"managed_files"`
-	} `json:"stream_manager"`
 	Upnp struct {
 		AioupnpVersion  string   `json:"aioupnp_version"`
 		DhtRedirectSet  bool     `json:"dht_redirect_set"`
@@ -470,14 +489,41 @@ type StatusResponse struct {
 		Gateway         string   `json:"gateway"`
 		PeerRedirectSet bool     `json:"peer_redirect_set"`
 		Redirects       struct{} `json:"redirects"`
-	}
+	} `json:"upnp"`
 	Wallet struct {
-		BestBlochash string `json:"best_blockhash"`
-		Blocks       int    `json:"blocks"`
-		BlocksBehind int    `json:"blocks_behind"`
-		IsEncrypted  bool   `json:"is_encrypted"`
-		IsLocked     bool   `json:"is_locked"`
+		AvailableServers  int    `json:"available_servers"`
+		BestBlockhash     string `json:"best_blockhash"`
+		Blocks            int    `json:"blocks"`
+		BlocksBehind      int    `json:"blocks_behind"`
+		Connected         string `json:"connected"`
+		ConnectedFeatures struct {
+			DailyFee        string `json:"daily_fee"`
+			Description     string `json:"description"`
+			DonationAddress string `json:"donation_address"`
+			GenesisHash     string `json:"genesis_hash"`
+			HashFunction    string `json:"hash_function"`
+			Hosts           struct {
+			} `json:"hosts"`
+			PaymentAddress    string      `json:"payment_address"`
+			ProtocolMax       string      `json:"protocol_max"`
+			ProtocolMin       string      `json:"protocol_min"`
+			Pruning           interface{} `json:"pruning"`
+			ServerVersion     string      `json:"server_version"`
+			TrendingAlgorithm string      `json:"trending_algorithm"`
+		} `json:"connected_features"`
+		HeadersSynchronizationProgress int `json:"headers_synchronization_progress"`
+		KnownServers                   int `json:"known_servers"`
+		Servers                        []struct {
+			Availability bool    `json:"availability"`
+			Host         string  `json:"host"`
+			Latency      float64 `json:"latency"`
+			Port         int     `json:"port"`
+		} `json:"servers"`
 	} `json:"wallet"`
+	WalletServerPayments struct {
+		MaxFee  string `json:"max_fee"`
+		Running bool   `json:"running"`
+	} `json:"wallet_server_payments"`
 }
 
 type UTXOListResponse struct {
@@ -508,6 +554,7 @@ type transactionListBlob struct {
 	BalanceDelta string `json:"balance_delta"`
 	ClaimId      string `json:"claim_id"`
 	ClaimName    string `json:"claim_name"`
+	IsSpent      bool   `json:"is_spent"`
 	Nout         int    `json:"nout"`
 }
 
@@ -519,8 +566,9 @@ type supportBlob struct {
 	BalanceDelta string `json:"balance_delta"`
 	ClaimId      string `json:"claim_id"`
 	ClaimName    string `json:"claim_name"`
-	Nout         int    `json:"nout"`
+	IsSpent      bool   `json:"is_spent"`
 	IsTip        bool   `json:"is_tip"`
+	Nout         int    `json:"nout"`
 }
 
 type TransactionListResponse struct {
@@ -555,21 +603,16 @@ type VersionResponse struct {
 			Minor       string `json:"minor"`
 		} `json:"version_parts"`
 	} `json:"distro"`
-	LbrynetVersion    string `json:"lbrynet_version"`
-	LbryschemaVersion string `json:"lbryschema_version"`
-	OsRelease         string `json:"os_release"`
-	OsSystem          string `json:"os_system"`
-	Platform          string `json:"platform"`
-	Processor         string `json:"processor"`
-	PythonVersion     string `json:"python_version"`
+	LbrynetVersion string `json:"lbrynet_version"`
+	OsRelease      string `json:"os_release"`
+	OsSystem       string `json:"os_system"`
+	Platform       string `json:"platform"`
+	Processor      string `json:"processor"`
+	PythonVersion  string `json:"python_version"`
+	Version        string `json:"version"`
 }
 
 type ResolveResponse map[string]Claim
-
-type NumClaimsInChannelResponse map[string]struct {
-	ClaimsInChannel *uint64 `json:"claims_in_channel,omitempty"`
-	Error           *string `json:"error,omitempty"`
-}
 
 type ClaimShowResponse *Claim
 
