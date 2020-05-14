@@ -53,7 +53,6 @@ type File struct {
 	MimeType             string            `json:"mime_type"`
 	Nout                 int               `json:"nout"`
 	Outpoint             string            `json:"outpoint"`
-	PointsPaid           decimal.Decimal   `json:"points_paid"`
 	Protobuf             string            `json:"protobuf"`
 	PurchaseReceipt      interface{}       `json:"purchase_receipt"`
 	ReflectorProgress    int               `json:"reflector_progress"`
