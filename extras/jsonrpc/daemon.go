@@ -473,10 +473,11 @@ func (d *Client) Status() (*StatusResponse, error) {
 	return response, d.call(response, "status", map[string]interface{}{})
 }
 
-func (d *Client) TransactionList(account *string, page uint64, pageSize uint64) (*TransactionListResponse, error) {
+func (d *Client) TransactionList(account *string, wallet *string, page uint64, pageSize uint64) (*TransactionListResponse, error) {
 	response := new(TransactionListResponse)
 	return response, d.call(response, "transaction_list", map[string]interface{}{
 		"account_id": account,
+		"wallet_id":  wallet,
 		"page":       page,
 		"page_size":  pageSize,
 	})
