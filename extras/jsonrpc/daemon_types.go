@@ -53,7 +53,6 @@ type File struct {
 	MimeType             string            `json:"mime_type"`
 	Nout                 int               `json:"nout"`
 	Outpoint             string            `json:"outpoint"`
-	PointsPaid           decimal.Decimal   `json:"points_paid"`
 	Protobuf             string            `json:"protobuf"`
 	PurchaseReceipt      interface{}       `json:"purchase_receipt"`
 	ReflectorProgress    int               `json:"reflector_progress"`
@@ -305,6 +304,18 @@ type Support struct {
 	Txid   string `json:"txid"`
 }
 
+type PurchaseReceipt struct {
+	Address       string `json:"file_name"`
+	Amount        string `json:"amount"`
+	ClaimID       string `json:"claim_id"`
+	Confirmations int    `json:"confirmations"`
+	Height        int    `json:"height"`
+	Nout          uint64 `json:"nout"`
+	Timestamp     uint64 `json:"timestamp"`
+	Txid          string `json:"txid"`
+	Type          string `json:"purchase"`
+}
+
 type Claim struct {
 	Address                 string           `json:"address"`
 	Amount                  string           `json:"amount"`
@@ -324,6 +335,7 @@ type Claim struct {
 	NormalizedName          string           `json:"normalized_name"`
 	Nout                    uint64           `json:"nout"`
 	PermanentURL            string           `json:"permanent_url"`
+	PurchaseReceipt         *PurchaseReceipt `json:"purchase_receipt,omitempty"`
 	ShortURL                string           `json:"short_url"`
 	SigningChannel          *Claim           `json:"signing_channel,omitempty"`
 	Timestamp               int              `json:"timestamp"`
