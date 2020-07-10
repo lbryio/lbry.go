@@ -87,11 +87,11 @@ func InterpolateParams(query string, args ...interface{}) (string, error) {
 
 // Qs is a shortcut for one group of positional placeholders
 func Qs(count int) string {
-	return placeholders(false, count, 1, 1)
+	return Placeholders(false, count, 1, 1)
 }
 
 // placeholders creates indexed or positional placeholders, in groups, with different starts
-func placeholders(indexPlaceholders bool, count int, start int, group int) string {
+func Placeholders(indexPlaceholders bool, count int, start int, group int) string {
 	buf := bytes.Buffer{}
 
 	if start == 0 || group == 0 {
