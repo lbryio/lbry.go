@@ -2,7 +2,7 @@ package address
 
 import (
 	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbryschema.go/address/base58"
+	"github.com/lbryio/lbry.go/v2/schema/address/base58"
 )
 
 func DecodeAddress(address string, blockchainName string) ([addressLength]byte, error) {

@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/lbryio/lbryschema.go/claim"
 	"os"
+
+	"github.com/lbryio/lbry.go/v2/schema/claim"
 )
 
 func main() {

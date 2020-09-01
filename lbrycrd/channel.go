@@ -3,7 +3,7 @@ package lbrycrd
 import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	c "github.com/lbryio/lbryschema.go/claim"
+	c "github.com/lbryio/lbry.go/v2/schema/claim"
 	pb "github.com/lbryio/types/v2/go"
 )
 

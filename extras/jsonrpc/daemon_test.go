@@ -304,7 +304,7 @@ func TestClient_StreamList(t *testing.T) {
 func TestClient_TransactionList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
-	got, err := d.TransactionList(nil, 1, 20)
+	got, err := d.TransactionList(nil, nil, 1, 20)
 	if err != nil {
 		t.Error(err)
 		return

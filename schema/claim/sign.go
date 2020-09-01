@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 
 	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbryschema.go/address"
+	"github.com/lbryio/lbry.go/v2/schema/address"
 
 	"github.com/btcsuite/btcd/btcec"
 )
