@@ -10,7 +10,7 @@ import (
 	"github.com/lbryio/lbry.go/v2/extras/stop"
 
 	"github.com/sirupsen/logrus"
-	"github.com/uber-go/atomic"
+	"go.uber.org/atomic"
 )
 
 // TODO: iterativeFindValue may be stopping early. if it gets a response with one peer, it should keep going because other nodes may know about more peers that have that blob
