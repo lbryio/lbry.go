@@ -1,7 +1,7 @@
 package address
 
 import (
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address/base58"
 )
 

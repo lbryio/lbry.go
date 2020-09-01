@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"strconv"
 
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address"
 	legacy_pb "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"

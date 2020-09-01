@@ -5,7 +5,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 
-	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 
 	"github.com/btcsuite/btcd/btcec"
 )

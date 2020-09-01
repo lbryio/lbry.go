@@ -19,7 +19,6 @@ require (
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/lbryio/lbry.go v1.1.2
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
 	github.com/lbryio/types v0.0.0-20191009145016-1bb8107e04f8
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
@@ -27,6 +26,7 @@ require (
 	github.com/nlopes/slack v0.6.0
 	github.com/onsi/ginkgo v1.10.2 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sebdah/goldie v0.0.0-20190531093107-d313ffb52c77
 	github.com/sergi/go-diff v1.0.0
 	github.com/shopspring/decimal v0.0.0-20191009025716-f1972eb1d1f5
