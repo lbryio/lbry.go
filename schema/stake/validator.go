@@ -1,10 +1,8 @@
-package claim
+package stake
 
 import (
 	"crypto/ecdsa"
 	"crypto/sha256"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/binary"
 	"encoding/hex"
 	"math/big"
@@ -12,12 +10,6 @@ import (
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address"
 )
-
-type publicKeyInfo struct {
-	Raw       asn1.RawContent
-	Algorithm pkix.AlgorithmIdentifier
-	PublicKey asn1.BitString
-}
 
 const SECP256k1 = "SECP256k1"
 
@@ -34,7 +26,7 @@ func getClaimSignatureDigest(bytes ...[]byte) [32]byte {
 	return [32]byte(digest)
 }
 
-func (c *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte, digest [32]byte) bool {
+func (c *StakeHelper) VerifyDigest(certificate *StakeHelper, signature [64]byte, digest [32]byte) bool {
 	if certificate == nil {
 		return false
 	}
@@ -50,7 +42,7 @@ func (c *ClaimHelper) VerifyDigest(certificate *ClaimHelper, signature [64]byte,
 	return ecdsa.Verify(pk.ToECDSA(), digest[:], R, S)
 }
 
-func (c *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, k string, certificateId string, blockchainName string) (bool, error) {
+func (c *StakeHelper) ValidateClaimSignature(certificate *StakeHelper, k string, certificateId string, blockchainName string) (bool, error) {
 	if c.LegacyClaim != nil {
 		return c.validateV1ClaimSignature(certificate, k, certificateId, blockchainName)
 	}
@@ -58,7 +50,7 @@ func (c *ClaimHelper) ValidateClaimSignature(certificate *ClaimHelper, k string,
 	return c.validateClaimSignature(certificate, k, certificateId, blockchainName)
 }
 
-func (c *ClaimHelper) validateClaimSignature(certificate *ClaimHelper, firstInputTxHash, certificateId string, blockchainName string) (bool, error) {
+func (c *StakeHelper) validateClaimSignature(certificate *StakeHelper, firstInputTxHash, certificateId string, blockchainName string) (bool, error) {
 	certificateIdSlice, err := hex.DecodeString(certificateId)
 	if err != nil {
 		return false, errors.Err(err)
@@ -82,7 +74,7 @@ func (c *ClaimHelper) validateClaimSignature(certificate *ClaimHelper, firstInpu
 	return c.VerifyDigest(certificate, signatureBytes, claimDigest), nil
 }
 
-func (c *ClaimHelper) validateV1ClaimSignature(certificate *ClaimHelper, claimAddy string, certificateId string, blockchainName string) (bool, error) {
+func (c *StakeHelper) validateV1ClaimSignature(certificate *StakeHelper, claimAddy string, certificateId string, blockchainName string) (bool, error) {
 	addressBytes, err := address.DecodeAddress(claimAddy, blockchainName)
 	if err != nil {
 		return false, err

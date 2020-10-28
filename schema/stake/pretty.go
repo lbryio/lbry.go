@@ -1,17 +1,21 @@
-package claim
+package stake
 
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/golang/protobuf/jsonpb"
 )
 
-func marshalToString(c *ClaimHelper) (string, error) {
+func marshalToString(c *StakeHelper) (string, error) {
 	m_pb := &jsonpb.Marshaler{}
-	return m_pb.MarshalToString(c)
+	if c.IsSupport() {
+		return m_pb.MarshalToString(c.Support)
+	}
+	return m_pb.MarshalToString(c.Claim)
 }
 
-func (c *ClaimHelper) RenderJSON() (string, error) {
+func (c *StakeHelper) RenderJSON() (string, error) {
 	r, err := marshalToString(c)
 	if err != nil {
 		fmt.Println("err")

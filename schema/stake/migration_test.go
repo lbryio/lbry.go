@@ -1,4 +1,4 @@
-package claim
+package stake
 
 import (
 	"bytes"
@@ -232,13 +232,13 @@ func TestMigrationFromV1YTSync(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, claim.GetTitle() == "Here are 5 Reasons I ❤️ Nextcloud | TLG")
-	assert.Assert(t, claim.GetDescription() == "Find out more about Nextcloud: https://nextcloud.com/\n\nYou can find me on these socials:\n * Forums: https://forum.heavyelement.io/\n * Podcast: https://offtopical.net\n * Patreon: https://patreon.com/thelinuxgamer\n * Merch: https://teespring.com/stores/official-linux-gamer\n * Twitch: https://twitch.tv/xondak\n * Twitter: https://twitter.com/thelinuxgamer\n\n...\nhttps://www.youtube.com/watch?v=FrTdBCOS_fc")
+	assert.Assert(t, claim.Claim.GetTitle() == "Here are 5 Reasons I ❤️ Nextcloud | TLG")
+	assert.Assert(t, claim.Claim.GetDescription() == "Find out more about Nextcloud: https://nextcloud.com/\n\nYou can find me on these socials:\n * Forums: https://forum.heavyelement.io/\n * Podcast: https://offtopical.net\n * Patreon: https://patreon.com/thelinuxgamer\n * Merch: https://teespring.com/stores/official-linux-gamer\n * Twitch: https://twitch.tv/xondak\n * Twitter: https://twitter.com/thelinuxgamer\n\n...\nhttps://www.youtube.com/watch?v=FrTdBCOS_fc")
 	assert.Assert(t, claim.GetStream().GetLicense() == "Copyrighted (contact author)")
 	assert.Assert(t, claim.GetStream().GetAuthor() == "The Linux Gamer")
 	//?assert.Assert(t, claim.GetStream().GetLanguages()[0])
 	assert.Assert(t, claim.GetStream().GetSource().GetMediaType() == "video/mp4")
-	assert.Assert(t, claim.GetThumbnail().GetUrl() == "https://berk.ninja/thumbnails/FrTdBCOS_fc")
+	assert.Assert(t, claim.Claim.GetThumbnail().GetUrl() == "https://berk.ninja/thumbnails/FrTdBCOS_fc")
 	sdHashBytes, err := hex.DecodeString("040e8ac6e89c061f982528c23ad33829fd7146435bf7a4cc22f0bff70c4fe0b91fd36da9a375e3e1c171db825bf5d1f3")
 	if err != nil {
 		t.Error(err)
@@ -254,7 +254,7 @@ func TestMigrationFromV1YTSync(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, bytes.Equal(pubKeyBytes, channel.GetChannel().GetPublicKey()))
+	assert.Assert(t, bytes.Equal(pubKeyBytes, channel.Claim.GetChannel().GetPublicKey()))
 }
 
 func TestMigrationFromV1UnsignedWithFee(t *testing.T) {
@@ -263,8 +263,8 @@ func TestMigrationFromV1UnsignedWithFee(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Assert(t, claim.GetTitle() == "rpg midi")
-	assert.Assert(t, claim.GetDescription() == "midi")
+	assert.Assert(t, claim.Claim.GetTitle() == "rpg midi")
+	assert.Assert(t, claim.Claim.GetDescription() == "midi")
 	assert.Assert(t, claim.GetStream().GetLicense() == "Creative Commons Attribution 4.0 International")
 	assert.Assert(t, claim.GetStream().GetAuthor() == "rpg midi")
 	//assert.Assert(t, claim.GetStream().GetLanguage() == "en")

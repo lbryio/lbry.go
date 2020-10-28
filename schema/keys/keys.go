@@ -1,4 +1,4 @@
-package claim
+package keys
 
 import (
 	"crypto/elliptic"
@@ -9,6 +9,12 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 )
+
+type publicKeyInfo struct {
+	Raw       asn1.RawContent
+	Algorithm pkix.AlgorithmIdentifier
+	PublicKey asn1.BitString
+}
 
 func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 	var publicKeyBytes []byte
@@ -35,14 +41,7 @@ func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 
 }
 
-func (c *ClaimHelper) GetPublicKey() (*btcec.PublicKey, error) {
-	if c.GetChannel() == nil {
-		return nil, errors.Err("claim is not of type channel, so there is no public key to get")
-	}
-	return getPublicKeyFromBytes(c.GetChannel().PublicKey)
-}
-
-func getPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
+func GetPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
 	PKInfo := publicKeyInfo{}
 	asn1.Unmarshal(pubKeyBytes, &PKInfo)
 	pubkeyBytes1 := []byte(PKInfo.PublicKey.Bytes)

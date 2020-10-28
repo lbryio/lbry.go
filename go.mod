@@ -20,7 +20,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04
-	github.com/lbryio/types v0.0.0-20191009145016-1bb8107e04f8
+	github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/nlopes/slack v0.6.0

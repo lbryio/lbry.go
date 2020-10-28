@@ -1,4 +1,4 @@
-package claim
+package stake
 
 import (
 	"testing"

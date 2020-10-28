@@ -1,4 +1,4 @@
-package claim
+package stake
 
 import (
 	"crypto/sha256"
@@ -10,8 +10,8 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 )
 
-func Sign(privKey btcec.PrivateKey, channel ClaimHelper, claim ClaimHelper, k string) (*Signature, error) {
-	if channel.GetChannel() == nil {
+func Sign(privKey btcec.PrivateKey, channel StakeHelper, claim StakeHelper, k string) (*Signature, error) {
+	if channel.Claim.GetChannel() == nil {
 		return nil, errors.Err("claim as channel is not of type channel")
 	}
 	if claim.LegacyClaim != nil {
@@ -21,7 +21,7 @@ func Sign(privKey btcec.PrivateKey, channel ClaimHelper, claim ClaimHelper, k st
 	return claim.sign(privKey, channel, k)
 }
 
-func (c *ClaimHelper) sign(privKey btcec.PrivateKey, channel ClaimHelper, firstInputTxID string) (*Signature, error) {
+func (c *StakeHelper) sign(privKey btcec.PrivateKey, channel StakeHelper, firstInputTxID string) (*Signature, error) {
 
 	txidBytes, err := hex.DecodeString(firstInputTxID)
 	if err != nil {
@@ -52,7 +52,7 @@ func (c *ClaimHelper) sign(privKey btcec.PrivateKey, channel ClaimHelper, firstI
 
 }
 
-func (c *ClaimHelper) signV1(privKey btcec.PrivateKey, channel ClaimHelper, claimAddress string) (*Signature, error) {
+func (c *StakeHelper) signV1(privKey btcec.PrivateKey, channel StakeHelper, claimAddress string) (*Signature, error) {
 	metadataBytes, err := c.serializedNoSignature()
 	if err != nil {
 		return nil, errors.Err(err)
