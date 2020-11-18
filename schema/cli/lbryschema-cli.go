@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lbryio/lbry.go/v2/schema/claim"
+	"github.com/lbryio/lbry.go/v2/schema/stake"
 )
 
 func main() {
 	args := os.Args[1:]
 	if len(args) == 1 {
 		claimBytes := []byte(args[0])
-		decoded, err := claim.DecodeClaimBytes(claimBytes, "lbrycrd_main")
+		decoded, err := stake.DecodeClaimBytes(claimBytes, "lbrycrd_main")
 		if err != nil {
 			fmt.Println("Decoding error:", err)
 			return
@@ -25,7 +25,7 @@ func main() {
 		return
 	} else if (len(args) == 2) && (args[1] == "--decode_hex") {
 		claimHex := args[0]
-		decoded, err := claim.DecodeClaimHex(claimHex, "lbrycrd_main")
+		decoded, err := stake.DecodeClaimHex(claimHex, "lbrycrd_main")
 		if err != nil {
 			fmt.Println("Decoding error:", err)
 			return

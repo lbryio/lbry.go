@@ -1,14 +1,29 @@
-package claim
+package keys
 
 import (
 	"crypto/elliptic"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/pem"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
 	"github.com/btcsuite/btcd/btcec"
 )
+
+type publicKeyInfo struct {
+	Raw       asn1.RawContent
+	Algorithm pkix.AlgorithmIdentifier
+	PublicKey asn1.BitString
+}
+
+//This type provides compatibility with the btcec package
+type ecPrivateKey struct {
+	Version       int
+	PrivateKey    []byte
+	NamedCurveOID asn1.ObjectIdentifier `asn1:"optional,explicit,tag:0"`
+	PublicKey     asn1.BitString        `asn1:"optional,explicit,tag:1"`
+}
 
 func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 	var publicKeyBytes []byte
@@ -35,16 +50,18 @@ func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 
 }
 
-func (c *ClaimHelper) GetPublicKey() (*btcec.PublicKey, error) {
-	if c.GetChannel() == nil {
-		return nil, errors.Err("claim is not of type channel, so there is no public key to get")
-	}
-	return getPublicKeyFromBytes(c.GetChannel().PublicKey)
-}
-
-func getPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
+func GetPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
 	PKInfo := publicKeyInfo{}
 	asn1.Unmarshal(pubKeyBytes, &PKInfo)
 	pubkeyBytes1 := []byte(PKInfo.PublicKey.Bytes)
 	return btcec.ParsePubKey(pubkeyBytes1, btcec.S256())
+}
+
+//Returns a btec.Private key object if provided a correct secp256k1 encoded pem.
+func ExtractKeyFromPem(pm string) (*btcec.PrivateKey, *btcec.PublicKey) {
+	byta := []byte(pm)
+	blck, _ := pem.Decode(byta)
+	var ecp ecPrivateKey
+	asn1.Unmarshal(blck.Bytes, &ecp)
+	return btcec.PrivKeyFromBytes(btcec.S256(), ecp.PrivateKey)
 }

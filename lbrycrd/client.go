@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	c "github.com/lbryio/lbry.go/v2/schema/claim"
+	c "github.com/lbryio/lbry.go/v2/schema/stake"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/btcjson"
@@ -271,7 +271,7 @@ const (
 	ClaimSupport
 )
 
-func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.ClaimHelper, name string, claimAmount float64, scriptType ScriptType) error {
+func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.StakeHelper, name string, claimAmount float64, scriptType ScriptType) error {
 
 	address, err := c.GetNewAddress("")
 	if err != nil {
@@ -314,7 +314,7 @@ func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.ClaimHelper, name stri
 	return nil
 }
 
-func (c *Client) CreateChannel(name string, amount float64) (*c.ClaimHelper, *btcec.PrivateKey, error) {
+func (c *Client) CreateChannel(name string, amount float64) (*c.StakeHelper, *btcec.PrivateKey, error) {
 	channel, key, err := NewChannel()
 	if err != nil {
 		return nil, nil, err

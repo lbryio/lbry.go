@@ -1,4 +1,4 @@
-package claim
+package stake
 
 import (
 	"encoding/hex"
@@ -6,9 +6,11 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address"
+	"github.com/lbryio/lbry.go/v2/schema/keys"
 	legacy_pb "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -25,8 +27,9 @@ const (
 	UNKNOWN = version(byte(2))
 )
 
-type ClaimHelper struct {
-	*pb.Claim
+type StakeHelper struct {
+	Claim       *pb.Claim
+	Support     *pb.Support
 	LegacyClaim *legacy_pb.Claim
 	ClaimID     []byte
 	Version     version
@@ -36,7 +39,7 @@ type ClaimHelper struct {
 
 const migrationErrorMessage = "migration from v1 to v2 protobuf failed with: "
 
-func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
+func (c *StakeHelper) ValidateAddresses(blockchainName string) error {
 	if c.Claim != nil { // V2
 		// check the validity of a fee address
 		if c.Claim.GetStream() != nil {
@@ -46,7 +49,7 @@ func (c *ClaimHelper) ValidateAddresses(blockchainName string) error {
 			} else {
 				return nil
 			}
-		} else if c.GetChannel() != nil {
+		} else if c.Claim.GetChannel() != nil {
 			return nil
 		}
 	}
@@ -80,8 +83,8 @@ func getVersionFromByte(versionByte byte) version {
 	return UNKNOWN
 }
 
-func (c *ClaimHelper) ValidateCertificate() error {
-	if c.GetChannel() == nil {
+func (c *StakeHelper) ValidateCertificate() error {
+	if !c.IsClaim() || c.Claim.GetChannel() == nil {
 		return nil
 	}
 	_, err := c.GetPublicKey()
@@ -91,8 +94,24 @@ func (c *ClaimHelper) ValidateCertificate() error {
 	return nil
 }
 
-func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) error {
-	if c.String() != "" {
+func (c *StakeHelper) IsClaim() bool {
+	return c.Claim != nil && c.Claim.String() != ""
+}
+
+func (c *StakeHelper) IsSupport() bool {
+	return c.Support != nil
+}
+
+func (c *StakeHelper) LoadFromBytes(raw_claim []byte, blockchainName string) error {
+	return c.loadFromBytes(raw_claim, false, blockchainName)
+}
+
+func (c *StakeHelper) LoadSupportFromBytes(raw_claim []byte, blockchainName string) error {
+	return c.loadFromBytes(raw_claim, true, blockchainName)
+}
+
+func (c *StakeHelper) loadFromBytes(raw_claim []byte, isSupport bool, blockchainName string) error {
+	if c.Claim.String() != "" && !isSupport {
 		return errors.Err("already initialized")
 	}
 	if len(raw_claim) < 1 {
@@ -101,13 +120,14 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 
 	var claim_pb *pb.Claim
 	var legacy_claim_pb *legacy_pb.Claim
+	var support_pb *pb.Support
 
 	version := getVersionFromByte(raw_claim[0]) //First byte = version
 	pbPayload := raw_claim[1:]
 	var claimID []byte
 	var signature []byte
 	if version == WithSig {
-		if len(raw_claim) < 86 {
+		if len(raw_claim) < 85 {
 			return errors.Err("signature version indicated by 1st byte but not enough bytes for valid format")
 		}
 		claimID = raw_claim[1:21]    // channel claimid = next 20 bytes
@@ -115,8 +135,17 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 		pbPayload = raw_claim[85:]   // protobuf payload = remaining bytes
 	}
 
-	claim_pb = &pb.Claim{}
-	err := proto.Unmarshal(pbPayload, claim_pb)
+	var err error
+	if !isSupport {
+		claim_pb = &pb.Claim{}
+		err = proto.Unmarshal(pbPayload, claim_pb)
+	} else {
+		support := &pb.Support{}
+		err = proto.Unmarshal(pbPayload, support)
+		if err == nil {
+			support_pb = support
+		}
+	}
 	if err != nil {
 		legacy_claim_pb = &legacy_pb.Claim{}
 		legacyErr := proto.Unmarshal(raw_claim, legacy_claim_pb)
@@ -138,8 +167,9 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 		}
 	}
 
-	*c = ClaimHelper{
+	*c = StakeHelper{
 		Claim:       claim_pb,
+		Support:     support_pb,
 		LegacyClaim: legacy_claim_pb,
 		ClaimID:     claimID,
 		Version:     version,
@@ -161,7 +191,7 @@ func (c *ClaimHelper) LoadFromBytes(raw_claim []byte, blockchainName string) err
 	return nil
 }
 
-func (c *ClaimHelper) LoadFromHexString(claim_hex string, blockchainName string) error {
+func (c *StakeHelper) LoadFromHexString(claim_hex string, blockchainName string) error {
 	buf, err := hex.DecodeString(claim_hex)
 	if err != nil {
 		return err
@@ -169,8 +199,16 @@ func (c *ClaimHelper) LoadFromHexString(claim_hex string, blockchainName string)
 	return c.LoadFromBytes(buf, blockchainName)
 }
 
-func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
-	claim := &ClaimHelper{&pb.Claim{}, nil, nil, NoSig, nil, nil}
+func (c *StakeHelper) LoadSupportFromHexString(claim_hex string, blockchainName string) error {
+	buf, err := hex.DecodeString(claim_hex)
+	if err != nil {
+		return err
+	}
+	return c.LoadSupportFromBytes(buf, blockchainName)
+}
+
+func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
+	claim := &StakeHelper{&pb.Claim{}, &pb.Support{}, nil, nil, NoSig, nil, nil}
 	err := claim.LoadFromBytes(serialized, blockchainName)
 	if err != nil {
 		return nil, err
@@ -178,7 +216,16 @@ func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*ClaimHelp
 	return claim, nil
 }
 
-func DecodeClaimHex(serialized string, blockchainName string) (*ClaimHelper, error) {
+func DecodeSupportProtoBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
+	claim := &StakeHelper{nil, &pb.Support{}, nil, nil, NoSig, nil, nil}
+	err := claim.LoadSupportFromBytes(serialized, blockchainName)
+	if err != nil {
+		return nil, err
+	}
+	return claim, nil
+}
+
+func DecodeClaimHex(serialized string, blockchainName string) (*StakeHelper, error) {
 	claim_bytes, err := hex.DecodeString(serialized)
 	if err != nil {
 		return nil, errors.Err(err)
@@ -187,12 +234,12 @@ func DecodeClaimHex(serialized string, blockchainName string) (*ClaimHelper, err
 }
 
 // DecodeClaimBytes take a byte array and tries to decode it to a protobuf claim or migrate it from either json v1,2,3 or pb v1
-func DecodeClaimBytes(serialized []byte, blockchainName string) (*ClaimHelper, error) {
+func DecodeClaimBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
 	helper, err := DecodeClaimProtoBytes(serialized, blockchainName)
 	if err == nil {
 		return helper, nil
 	}
-	helper = &ClaimHelper{}
+	helper = &StakeHelper{}
 	//If protobuf fails, try json versions before returning an error.
 	v1Claim := new(V1Claim)
 	err = v1Claim.Unmarshal(serialized)
@@ -225,14 +272,23 @@ func DecodeClaimBytes(serialized []byte, blockchainName string) (*ClaimHelper, e
 	return helper, nil
 }
 
-func (c *ClaimHelper) GetStream() *pb.Stream {
+// DecodeSupportBytes take a byte array and tries to decode it to a protobuf support
+func DecodeSupportBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
+	helper, err := DecodeSupportProtoBytes(serialized, blockchainName)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+	return helper, nil
+}
+
+func (c *StakeHelper) GetStream() *pb.Stream {
 	if c != nil {
 		return c.Claim.GetStream()
 	}
 	return nil
 }
 
-func (c *ClaimHelper) CompileValue() ([]byte, error) {
+func (c *StakeHelper) CompileValue() ([]byte, error) {
 	payload, err := c.serialized()
 	if err != nil {
 		return nil, err
@@ -246,4 +302,16 @@ func (c *ClaimHelper) CompileValue() ([]byte, error) {
 	value = append(value, payload...)
 
 	return value, nil
+}
+
+func (c *StakeHelper) GetPublicKey() (*btcec.PublicKey, error) {
+	if c.IsClaim() {
+		if c.Claim.GetChannel() == nil {
+			return nil, errors.Err("claim is not of type channel, so there is no public key to get")
+		}
+
+	} else if c.IsSupport() {
+		return nil, errors.Err("stake is a support and does not come with a public key to get")
+	}
+	return keys.GetPublicKeyFromBytes(c.Claim.GetChannel().PublicKey)
 }

@@ -3,11 +3,12 @@ package lbrycrd
 import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	c "github.com/lbryio/lbry.go/v2/schema/claim"
+	"github.com/lbryio/lbry.go/v2/schema/keys"
+	c "github.com/lbryio/lbry.go/v2/schema/stake"
 	pb "github.com/lbryio/types/v2/go"
 )
 
-func NewChannel() (*c.ClaimHelper, *btcec.PrivateKey, error) {
+func NewChannel() (*c.StakeHelper, *btcec.PrivateKey, error) {
 	claimChannel := new(pb.Claim_Channel)
 	channel := new(pb.Channel)
 	claimChannel.Channel = channel
@@ -19,21 +20,21 @@ func NewChannel() (*c.ClaimHelper, *btcec.PrivateKey, error) {
 	if err != nil {
 		return nil, nil, errors.Err(err)
 	}
-	pubkeyBytes, err := c.PublicKeyToDER(privateKey.PubKey())
+	pubkeyBytes, err := keys.PublicKeyToDER(privateKey.PubKey())
 	if err != nil {
 		return nil, nil, errors.Err(err)
 	}
 
-	helper := c.ClaimHelper{Claim: pbClaim}
+	helper := c.StakeHelper{Claim: pbClaim}
 	helper.Version = c.NoSig
-	helper.GetChannel().PublicKey = pubkeyBytes
-	helper.Tags = []string{}
+	helper.Claim.GetChannel().PublicKey = pubkeyBytes
+	helper.Claim.Tags = []string{}
 	coverSrc := new(pb.Source)
-	helper.GetChannel().Cover = coverSrc
-	helper.Languages = []*pb.Language{}
+	helper.Claim.GetChannel().Cover = coverSrc
+	helper.Claim.Languages = []*pb.Language{}
 	thumbnailSrc := new(pb.Source)
-	helper.Thumbnail = thumbnailSrc
-	helper.Locations = []*pb.Location{}
+	helper.Claim.Thumbnail = thumbnailSrc
+	helper.Claim.Locations = []*pb.Location{}
 
 	return &helper, privateKey, nil
 }

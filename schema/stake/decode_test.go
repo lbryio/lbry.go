@@ -1,8 +1,10 @@
-package claim
+package stake
 
 import (
 	"encoding/hex"
 	"testing"
+
+	"github.com/lbryio/lbry.go/v2/schema/keys"
 
 	pb "github.com/lbryio/types/v2/go"
 
@@ -71,20 +73,20 @@ func TestCreateChannelClaim(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	pubKeyBytes, err := PublicKeyToDER(private.PubKey())
+	pubKeyBytes, err := keys.PublicKeyToDER(private.PubKey())
 	if err != nil {
 		t.Error(err)
 	}
-	claim := &ClaimHelper{Claim: newChannelClaim(), Version: NoSig}
-	claim.GetChannel().PublicKey = pubKeyBytes
-	claim.Title = "Test Channel Title"
-	claim.Description = "Test Channel Description"
-	claim.GetChannel().Cover = &pb.Source{Url: "http://testcoverurl.com"}
-	claim.Tags = []string{"TagA", "TagB", "TagC"}
-	claim.Languages = []*pb.Language{{Language: pb.Language_en}, {Language: pb.Language_es}}
-	claim.Thumbnail = &pb.Source{Url: "http://thumbnailurl.com"}
-	claim.GetChannel().WebsiteUrl = "http://homepageurl.com"
-	claim.Locations = []*pb.Location{{Country: pb.Location_AD}, {Country: pb.Location_US, State: "NJ", City: "some city"}}
+	claim := &StakeHelper{Claim: newChannelClaim(), Version: NoSig}
+	claim.Claim.GetChannel().PublicKey = pubKeyBytes
+	claim.Claim.Title = "Test Channel Title"
+	claim.Claim.Description = "Test Channel Description"
+	claim.Claim.GetChannel().Cover = &pb.Source{Url: "http://testcoverurl.com"}
+	claim.Claim.Tags = []string{"TagA", "TagB", "TagC"}
+	claim.Claim.Languages = []*pb.Language{{Language: pb.Language_en}, {Language: pb.Language_es}}
+	claim.Claim.Thumbnail = &pb.Source{Url: "http://thumbnailurl.com"}
+	claim.Claim.GetChannel().WebsiteUrl = "http://homepageurl.com"
+	claim.Claim.Locations = []*pb.Location{{Country: pb.Location_AD}, {Country: pb.Location_US, State: "NJ", City: "some city"}}
 
 	rawClaim, err := claim.CompileValue()
 	if err != nil {
