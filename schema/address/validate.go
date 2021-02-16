@@ -24,9 +24,9 @@ const lbrycrdTestnet = "lbrycrd_testnet"
 const lbrycrdRegtest = "lbrycrd_regtest"
 
 var addressPrefixes = map[string][2]byte{
-	lbrycrdMain:    [2]byte{lbrycrdMainPubkeyPrefix, lbrycrdMainScriptPrefix},
-	lbrycrdTestnet: [2]byte{lbrycrdTestnetPubkeyPrefix, lbrycrdTestnetScriptPrefix},
-	lbrycrdRegtest: [2]byte{lbrycrdRegtestPubkeyPrefix, lbrycrdRegtestScriptPrefix},
+	lbrycrdMain:    {lbrycrdMainPubkeyPrefix, lbrycrdMainScriptPrefix},
+	lbrycrdTestnet: {lbrycrdTestnetPubkeyPrefix, lbrycrdTestnetScriptPrefix},
+	lbrycrdRegtest: {lbrycrdRegtestPubkeyPrefix, lbrycrdRegtestScriptPrefix},
 }
 
 func PrefixIsValid(address [addressLength]byte, blockchainName string) bool {
