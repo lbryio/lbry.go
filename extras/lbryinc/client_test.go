@@ -7,24 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestUserMeWrongToken(t *testing.T) {
-	c := NewClient("abc", nil)
-	r, err := c.UserMe()
-	require.NotNil(t, err)
-	assert.Equal(t, "could not authenticate user", err.Error())
-	assert.Nil(t, r)
-}
-
-func TestUserHasVerifiedEmailWrongToken(t *testing.T) {
-	c := NewClient("abc", nil)
-	r, err := c.UserHasVerifiedEmail()
-	require.NotNil(t, err)
-	assert.Equal(t, "could not authenticate user", err.Error())
-	assert.Nil(t, r)
-}
 
 func launchDummyServer(lastReq **http.Request, path, response string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +55,23 @@ func TestRemoteIP(t *testing.T) {
 	_, err := c.UserMe()
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"8.8.8.8"}, req.Header["X-Forwarded-For"])
+}
+
+func TestWrongToken(t *testing.T) {
+	c := NewClient("zcasdasc", nil)
+
+	r, err := c.UserHasVerifiedEmail()
+	assert.Nil(t, r)
+	assert.EqualError(t, err, "api error: could not authenticate user")
+	assert.ErrorAs(t, err, &APIError{})
+}
+
+func TestHTTPError(t *testing.T) {
+	c := NewClient("zcasdasc", &ClientOpts{ServerAddress: "http://lolcathost"})
+
+	r, err := c.UserHasVerifiedEmail()
+	assert.Nil(t, r)
+	assert.EqualError(t, err, `Post "http://lolcathost/user/has_verified_email": dial tcp: lookup lolcathost: no such host`)
 }
 
 const userMeResponse = `{
