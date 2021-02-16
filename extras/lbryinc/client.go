@@ -119,6 +119,9 @@ func (c Client) doCall(url string, payload string) ([]byte, error) {
 	if err != nil {
 		return body, err
 	}
+	if r.StatusCode >= 500 {
+		return body, fmt.Errorf("server returned non-OK status: %v", r.StatusCode)
+	}
 	defer r.Body.Close()
 	return ioutil.ReadAll(r.Body)
 }
