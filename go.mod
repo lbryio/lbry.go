@@ -34,7 +34,7 @@ require (
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/spf13/cast v1.3.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.7.0
 	github.com/ybbus/jsonrpc v0.0.0-20180411222309-2a548b7d822d
 	go.uber.org/atomic v1.4.0
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc
@@ -51,4 +51,4 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-go 1.13
+go 1.15

@@ -7,42 +7,26 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestUserMeWrongToken(t *testing.T) {
-	c := NewClient("abc", nil)
-	r, err := c.UserMe()
-	require.NotNil(t, err)
-	assert.Equal(t, "could not authenticate user", err.Error())
-	assert.Nil(t, r)
-}
-
-func TestUserHasVerifiedEmailWrongToken(t *testing.T) {
-	c := NewClient("abc", nil)
-	r, err := c.UserHasVerifiedEmail()
-	require.NotNil(t, err)
-	assert.Equal(t, "could not authenticate user", err.Error())
-	assert.Nil(t, r)
-}
-
-func launchDummyServer(lastReq **http.Request, path, response string) *httptest.Server {
+func launchDummyServer(lastReq **http.Request, path, response string, status int) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		*lastReq = &*r
+		if lastReq != nil {
+			*lastReq = &*r
+		}
 		if r.URL.Path != path {
 			fmt.Printf("path doesn't match: %v != %v", r.URL.Path, path)
 			w.WriteHeader(http.StatusNotFound)
 		} else {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(status)
 			w.Write([]byte(response))
 		}
 	}))
 }
 
 func TestUserMe(t *testing.T) {
-	var req *http.Request
-	ts := launchDummyServer(&req, makeMethodPath(userObjectPath, userMeMethod), userMeResponse)
+	ts := launchDummyServer(nil, makeMethodPath(userObjectPath, userMeMethod), userMeResponse, http.StatusOK)
 	defer ts.Close()
 
 	c := NewClient("realToken", &ClientOpts{ServerAddress: ts.URL})
@@ -52,8 +36,7 @@ func TestUserMe(t *testing.T) {
 }
 
 func TestUserHasVerifiedEmail(t *testing.T) {
-	var req *http.Request
-	ts := launchDummyServer(&req, makeMethodPath(userObjectPath, userHasVerifiedEmailMethod), userHasVerifiedEmailResponse)
+	ts := launchDummyServer(nil, makeMethodPath(userObjectPath, userHasVerifiedEmailMethod), userHasVerifiedEmailResponse, http.StatusOK)
 	defer ts.Close()
 
 	c := NewClient("realToken", &ClientOpts{ServerAddress: ts.URL})
@@ -65,13 +48,41 @@ func TestUserHasVerifiedEmail(t *testing.T) {
 
 func TestRemoteIP(t *testing.T) {
 	var req *http.Request
-	ts := launchDummyServer(&req, makeMethodPath(userObjectPath, userMeMethod), userMeResponse)
+	ts := launchDummyServer(&req, makeMethodPath(userObjectPath, userMeMethod), userMeResponse, http.StatusOK)
 	defer ts.Close()
 
 	c := NewClient("realToken", &ClientOpts{ServerAddress: ts.URL, RemoteIP: "8.8.8.8"})
 	_, err := c.UserMe()
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"8.8.8.8"}, req.Header["X-Forwarded-For"])
+}
+
+func TestWrongToken(t *testing.T) {
+	c := NewClient("zcasdasc", nil)
+
+	r, err := c.UserHasVerifiedEmail()
+	assert.Nil(t, r)
+	assert.EqualError(t, err, "api error: could not authenticate user")
+	assert.ErrorAs(t, err, &APIError{})
+}
+
+func TestHTTPError(t *testing.T) {
+	c := NewClient("zcasdasc", &ClientOpts{ServerAddress: "http://lolcathost"})
+
+	r, err := c.UserHasVerifiedEmail()
+	assert.Nil(t, r)
+	assert.EqualError(t, err, `Post "http://lolcathost/user/has_verified_email": dial tcp: lookup lolcathost: no such host`)
+}
+
+func TestGatewayError(t *testing.T) {
+	var req *http.Request
+	ts := launchDummyServer(&req, makeMethodPath(userObjectPath, userHasVerifiedEmailMethod), "", http.StatusBadGateway)
+	defer ts.Close()
+	c := NewClient("zcasdasc", &ClientOpts{ServerAddress: ts.URL})
+
+	r, err := c.UserHasVerifiedEmail()
+	assert.Nil(t, r)
+	assert.EqualError(t, err, `server returned non-OK status: 502`)
 }
 
 const userMeResponse = `{

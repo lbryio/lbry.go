@@ -46,6 +46,15 @@ type APIResponse struct {
 	Data    *ResponseData `json:"data"`
 }
 
+// APIError wraps errors returned by LBRY API server to discern them from other kinds (like http errors).
+type APIError struct {
+	Err error
+}
+
+func (e APIError) Error() string {
+	return fmt.Sprintf("api error: %v", e.Err)
+}
+
 // ResponseData is a map containing parsed json response.
 type ResponseData map[string]interface{}
 
@@ -110,6 +119,9 @@ func (c Client) doCall(url string, payload string) ([]byte, error) {
 	if err != nil {
 		return body, err
 	}
+	if r.StatusCode >= 500 {
+		return body, fmt.Errorf("server returned non-OK status: %v", r.StatusCode)
+	}
 	defer r.Body.Close()
 	return ioutil.ReadAll(r.Body)
 }
@@ -133,16 +145,17 @@ func (c Client) Call(object, method string, params map[string]interface{}) (Resp
 		return rd, err
 	}
 	if !ar.Success {
-		return rd, errors.New(*ar.Error)
+		return rd, APIError{errors.New(*ar.Error)}
 	}
 	return *ar.Data, err
 }
 
-// UserMe returns user details for the user associated with the current auth_token
+// UserMe returns user details for the user associated with the current auth_token.
 func (c Client) UserMe() (ResponseData, error) {
 	return c.Call(userObjectPath, userMeMethod, map[string]interface{}{})
 }
 
+// UserHasVerifiedEmail calls has_verified_email method.
 func (c Client) UserHasVerifiedEmail() (ResponseData, error) {
 	return c.Call(userObjectPath, userHasVerifiedEmailMethod, map[string]interface{}{})
 }
