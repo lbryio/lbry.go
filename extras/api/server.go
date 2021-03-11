@@ -20,6 +20,9 @@ var ResponseHeaders map[string]string
 // CorsDomains Allowed domains for CORS Policy
 var CorsDomains []string
 
+// CorsAllowLocalhost if true localhost connections are always allowed
+var CorsAllowLocalhost bool
+
 // Log allows logging of events and errors
 var Log = func(*http.Request, *Response, error) {}
 
@@ -80,9 +83,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(key, value)
 		}
 	}
-
+	origin := r.Header.Get("origin")
 	for _, d := range CorsDomains {
-		if d == r.Header.Get("origin") {
+		if d == origin {
 			w.Header().Set("Access-Control-Allow-Origin", d)
 			vary := w.Header().Get("Vary")
 			if vary != "*" {
@@ -93,6 +96,18 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Header().Set("Vary", vary)
 		}
+	}
+
+	if CorsAllowLocalhost && strings.HasPrefix(origin, "http://localhost:") {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		vary := w.Header().Get("Vary")
+		if vary != "*" {
+			if vary != "" {
+				vary += ", "
+			}
+			vary += "Origin"
+		}
+		w.Header().Set("Vary", vary)
 	}
 
 	// Stop here if its a preflighted OPTIONS request
