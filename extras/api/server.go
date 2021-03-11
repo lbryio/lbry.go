@@ -17,6 +17,9 @@ import (
 // ResponseHeaders are returned with each response
 var ResponseHeaders map[string]string
 
+// CorsDomains Allowed domains for CORS Policy
+var CorsDomains []string
+
 // Log allows logging of events and errors
 var Log = func(*http.Request, *Response, error) {}
 
@@ -75,6 +78,20 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		//Multiple readers, no writers is okay
 		for key, value := range ResponseHeaders {
 			w.Header().Set(key, value)
+		}
+	}
+
+	for _, d := range CorsDomains {
+		if d == r.Header.Get("origin") {
+			w.Header().Set("Access-Control-Allow-Origin", d)
+			vary := w.Header().Get("Vary")
+			if vary != "*" {
+				if vary != "" {
+					vary += ", "
+				}
+				vary += "Origin"
+			}
+			w.Header().Set("Vary", vary)
 		}
 	}
 
