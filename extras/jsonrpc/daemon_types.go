@@ -320,6 +320,7 @@ type Claim struct {
 	Address                 string           `json:"address"`
 	Amount                  string           `json:"amount"`
 	CanonicalURL            string           `json:"canonical_url"`
+	ChannelID               string           `json:"channel_id"`
 	ClaimID                 string           `json:"claim_id"`
 	ClaimOp                 string           `json:"claim_op,omitempty"`
 	Confirmations           int              `json:"confirmations"`

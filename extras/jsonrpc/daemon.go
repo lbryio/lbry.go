@@ -220,7 +220,7 @@ func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) 
 	})
 }
 
-func (d *Client) ChannelList(account *string, page uint64, pageSize uint64, wid *string) (*ChannelListResponse, error) {
+func (d *Client) ChannelList(account *string, page uint64, pageSize uint64, wid *string, isSpent bool) (*ChannelListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")
 	}
@@ -228,6 +228,7 @@ func (d *Client) ChannelList(account *string, page uint64, pageSize uint64, wid 
 	return response, d.call(response, "channel_list", map[string]interface{}{
 		"account_id":       account,
 		"page":             page,
+		"is_spent":         isSpent,
 		"page_size":        pageSize,
 		"include_protobuf": true,
 		"wallet_id":        wid,
@@ -437,11 +438,12 @@ func (d *Client) AddressList(account *string, address *string, page uint64, page
 	return response, d.call(response, "address_list", structs.Map(args))
 }
 
-func (d *Client) StreamList(account *string, page uint64, pageSize uint64) (*StreamListResponse, error) {
+func (d *Client) StreamList(account *string, page uint64, pageSize uint64, isSpent bool) (*StreamListResponse, error) {
 	response := new(StreamListResponse)
 	err := d.call(response, "stream_list", map[string]interface{}{
 		"account_id":       account,
 		"include_protobuf": true,
+		"is_spent":         isSpent,
 		"page":             page,
 		"page_size":        pageSize,
 	})

@@ -107,7 +107,7 @@ func TestClient_AddressUnused(t *testing.T) {
 
 func TestClient_ChannelList(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ChannelList(nil, 1, 50, nil)
+	got, err := d.ChannelList(nil, 1, 50, nil, false)
 	if err != nil {
 		t.Error(err)
 		return
@@ -293,7 +293,7 @@ func TestClient_ClaimList(t *testing.T) {
 func TestClient_StreamList(t *testing.T) {
 	_ = os.Setenv("BLOCKCHAIN_NAME", "lbrycrd_regtest")
 	d := NewClient("")
-	got, err := d.StreamList(nil, 1, 20)
+	got, err := d.StreamList(nil, 1, 20, false)
 	if err != nil {
 		t.Error(err)
 		return
@@ -648,7 +648,7 @@ func TestClient_ChannelImport(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	channels, err := d.ChannelList(nil, 1, 50, nil)
+	channels, err := d.ChannelList(nil, 1, 50, nil, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -690,7 +690,7 @@ func TestClient_ChannelImportWithWalletID(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	channels, err := d.ChannelList(nil, 1, 50, &wallet.ID)
+	channels, err := d.ChannelList(nil, 1, 50, &wallet.ID, false)
 	if err != nil {
 		t.Error(err)
 	}
