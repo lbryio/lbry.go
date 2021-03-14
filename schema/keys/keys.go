@@ -50,28 +50,35 @@ type ecPrivateKey struct {
 	PublicKey     asn1.BitString        `asn1:"optional,explicit,tag:1"`
 }
 
-func PrivateKeyToDER(privateKey *btcec.PrivateKey) ([]byte, error) {
-	priv := privateKey.ToECDSA()
-	privateKeyBytes := elliptic.Marshal(priv.Curve, priv.X, priv.Y)
-	pub := privateKey.PubKey().ToECDSA()
-	publicKeyBytes := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+func PrivateKeyToDER(key *btcec.PrivateKey) ([]byte, error) {
+	privateKey := make([]byte, (key.Curve.Params().N.BitLen()+7)/8)
+	oid := asn1.ObjectIdentifier{1, 3, 132, 0, 10}
 	return asn1.Marshal(ecPrivateKey{
-		Version:    1,
-		PrivateKey: priv.D.FillBytes(privateKeyBytes),
-		//asn1 encoding oid for secp256k1 https://github.com/bitpay/bitpay-go/blob/v2.2.2/key_utils/key_utils.go#L30
-		NamedCurveOID: asn1.ObjectIdentifier{1, 3, 132, 0, 10},
-		PublicKey: asn1.BitString{
-			Bytes:     publicKeyBytes,
-			BitLength: 8 * len(publicKeyBytes),
-		},
+		Version:       1,
+		PrivateKey:    key.D.FillBytes(privateKey),
+		NamedCurveOID: oid,
+		PublicKey:     asn1.BitString{Bytes: elliptic.Marshal(key.Curve, key.X, key.Y)},
 	})
 }
 
 func GetPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
 	PKInfo := publicKeyInfo{}
-	asn1.Unmarshal(pubKeyBytes, &PKInfo)
+	_, err := asn1.Unmarshal(pubKeyBytes, &PKInfo)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
 	pubkeyBytes1 := []byte(PKInfo.PublicKey.Bytes)
 	return btcec.ParsePubKey(pubkeyBytes1, btcec.S256())
+}
+
+func GetPrivateKeyFromBytes(privKeyBytes []byte) (*btcec.PrivateKey, *btcec.PublicKey, error) {
+	ecPK := ecPrivateKey{}
+	_, err := asn1.Unmarshal(privKeyBytes, &ecPK)
+	if err != nil {
+		return nil, nil, errors.Err(err)
+	}
+	priv, publ := btcec.PrivKeyFromBytes(btcec.S256(), ecPK.PrivateKey)
+	return priv, publ, nil
 }
 
 //Returns a btec.Private key object if provided a correct secp256k1 encoded pem.

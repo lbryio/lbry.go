@@ -1,9 +1,12 @@
 package keys
 
 import (
+	"bytes"
 	"encoding/hex"
+	"encoding/pem"
 	"testing"
 
+	"github.com/btcsuite/btcd/btcec"
 	"gotest.tools/assert"
 )
 
@@ -35,4 +38,58 @@ func TestPublicKeyToDER(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Assert(t, p1.IsEqual(p2), "The keys produced must be the same key!")
+}
+
+func TestPrivateKeyToDER(t *testing.T) {
+	private1, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes, err := PrivateKeyToDER(private1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	private2, _, err := GetPrivateKeyFromBytes(bytes)
+	if err != nil {
+		t.Error(err)
+	}
+	if !private1.ToECDSA().Equal(private2.ToECDSA()) {
+		t.Error("private keys dont match")
+	}
+}
+
+func TestGetPrivateKeyFromBytes(t *testing.T) {
+	private, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes, err := PrivateKeyToDER(private)
+	private2, _, err := GetPrivateKeyFromBytes(bytes)
+	if !private.ToECDSA().Equal(private2.ToECDSA()) {
+		t.Error("private keys dont match")
+	}
+}
+
+func TestEncodePEMAndBack(t *testing.T) {
+	private1, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := bytes.NewBuffer(nil)
+	derBytes, err := PrivateKeyToDER(private1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = pem.Encode(b, &pem.Block{Type: "PRIVATE KEY", Bytes: derBytes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	println(string(b.Bytes()))
+	private2, _ := ExtractKeyFromPem(string(b.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !private1.ToECDSA().Equal(private2.ToECDSA()) {
+		t.Error("private keys dont match")
+	}
 }
