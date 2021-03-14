@@ -17,14 +17,6 @@ type publicKeyInfo struct {
 	PublicKey asn1.BitString
 }
 
-//This type provides compatibility with the btcec package
-type ecPrivateKey struct {
-	Version       int
-	PrivateKey    []byte
-	NamedCurveOID asn1.ObjectIdentifier `asn1:"optional,explicit,tag:0"`
-	PublicKey     asn1.BitString        `asn1:"optional,explicit,tag:1"`
-}
-
 func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 	var publicKeyBytes []byte
 	var publicKeyAlgorithm pkix.AlgorithmIdentifier
@@ -48,6 +40,31 @@ func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 		},
 	})
 
+}
+
+//This type provides compatibility with the btcec package
+type ecPrivateKey struct {
+	Version       int
+	PrivateKey    []byte
+	NamedCurveOID asn1.ObjectIdentifier `asn1:"optional,explicit,tag:0"`
+	PublicKey     asn1.BitString        `asn1:"optional,explicit,tag:1"`
+}
+
+func PrivateKeyToDER(privateKey *btcec.PrivateKey) ([]byte, error) {
+	priv := privateKey.ToECDSA()
+	privateKeyBytes := elliptic.Marshal(priv.Curve, priv.X, priv.Y)
+	pub := privateKey.PubKey().ToECDSA()
+	publicKeyBytes := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+	return asn1.Marshal(ecPrivateKey{
+		Version:    1,
+		PrivateKey: priv.D.FillBytes(privateKeyBytes),
+		//asn1 encoding oid for secp256k1 https://github.com/bitpay/bitpay-go/blob/v2.2.2/key_utils/key_utils.go#L30
+		NamedCurveOID: asn1.ObjectIdentifier{1, 3, 132, 0, 10},
+		PublicKey: asn1.BitString{
+			Bytes:     publicKeyBytes,
+			BitLength: 8 * len(publicKeyBytes),
+		},
+	})
 }
 
 func GetPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
