@@ -6,11 +6,12 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address"
+	"github.com/lbryio/lbry.go/v2/schema/keys"
 
 	"github.com/btcsuite/btcd/btcec"
 )
 
-func Sign(privKey btcec.PrivateKey, channel StakeHelper, claim StakeHelper, k string) (*Signature, error) {
+func Sign(privKey btcec.PrivateKey, channel StakeHelper, claim StakeHelper, k string) (*keys.Signature, error) {
 	if channel.Claim.GetChannel() == nil {
 		return nil, errors.Err("claim as channel is not of type channel")
 	}
@@ -21,7 +22,7 @@ func Sign(privKey btcec.PrivateKey, channel StakeHelper, claim StakeHelper, k st
 	return claim.sign(privKey, channel, k)
 }
 
-func (c *StakeHelper) sign(privKey btcec.PrivateKey, channel StakeHelper, firstInputTxID string) (*Signature, error) {
+func (c *StakeHelper) sign(privKey btcec.PrivateKey, channel StakeHelper, firstInputTxID string) (*keys.Signature, error) {
 
 	txidBytes, err := hex.DecodeString(firstInputTxID)
 	if err != nil {
@@ -48,11 +49,11 @@ func (c *StakeHelper) sign(privKey btcec.PrivateKey, channel StakeHelper, firstI
 		return nil, errors.Err(err)
 	}
 
-	return &Signature{*sig}, nil
+	return &keys.Signature{*sig}, nil
 
 }
 
-func (c *StakeHelper) signV1(privKey btcec.PrivateKey, channel StakeHelper, claimAddress string) (*Signature, error) {
+func (c *StakeHelper) signV1(privKey btcec.PrivateKey, channel StakeHelper, claimAddress string) (*keys.Signature, error) {
 	metadataBytes, err := c.serializedNoSignature()
 	if err != nil {
 		return nil, errors.Err(err)
@@ -85,21 +86,7 @@ func (c *StakeHelper) signV1(privKey btcec.PrivateKey, channel StakeHelper, clai
 		return nil, errors.Err(err)
 	}
 
-	return &Signature{*sig}, nil
-}
-
-type Signature struct {
-	btcec.Signature
-}
-
-func (s *Signature) LBRYSDKEncode() ([]byte, error) {
-	if s.R == nil || s.S == nil {
-		return nil, errors.Err("invalid signature, both S & R are nil")
-	}
-	rBytes := s.R.Bytes()
-	sBytes := s.S.Bytes()
-
-	return append(rBytes, sBytes...), nil
+	return &keys.Signature{Signature: *sig}, nil
 }
 
 // rev reverses a byte slice. useful for switching endian-ness

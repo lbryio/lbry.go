@@ -89,3 +89,17 @@ func ExtractKeyFromPem(pm string) (*btcec.PrivateKey, *btcec.PublicKey) {
 	asn1.Unmarshal(blck.Bytes, &ecp)
 	return btcec.PrivKeyFromBytes(btcec.S256(), ecp.PrivateKey)
 }
+
+type Signature struct {
+	btcec.Signature
+}
+
+func (s *Signature) LBRYSDKEncode() ([]byte, error) {
+	if s.R == nil || s.S == nil {
+		return nil, errors.Err("invalid signature, both S & R are nil")
+	}
+	rBytes := s.R.Bytes()
+	sBytes := s.S.Bytes()
+
+	return append(rBytes, sBytes...), nil
+}
