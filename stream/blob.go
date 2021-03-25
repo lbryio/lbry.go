@@ -35,7 +35,7 @@ func (b Blob) Hash() []byte {
 	return hashBytes[:]
 }
 
-// HashHex returns th blob hash as a hex string
+// HashHex returns the blob hash as a hex string
 func (b Blob) HashHex() string {
 	return hex.EncodeToString(b.Hash())
 }

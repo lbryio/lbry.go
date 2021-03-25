@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"strconv"
+	"strings"
 )
 
 const streamTypeLBRYFile = "lbryfile"
@@ -44,39 +45,35 @@ type SDBlob struct {
 	StreamHash        []byte     `json:"-"`
 }
 
+// Hash returns a hash of the SD blob data
+func (s SDBlob) Hash() []byte {
+	hashBytes := sha512.Sum384(s.ToBlob())
+	return hashBytes[:]
+}
+
+// HashHex returns the SD blob hash as a hex string
+func (s SDBlob) HashHex() string {
+	return hex.EncodeToString(s.Hash())
+}
+
 // ToBlob converts the SDBlob to a normal data Blob
-func (s SDBlob) ToBlob() (Blob, error) {
-	b, err := json.Marshal(s)
-	return Blob(b), err
+func (s SDBlob) ToBlob() Blob {
+	jsonSD, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+
+	// COMPATIBILITY HACK to make json output match python's json. this can be
+	// removed when we implement canonical JSON encoding
+	jsonSD = []byte(strings.Replace(string(jsonSD), ",", ", ", -1))
+	jsonSD = []byte(strings.Replace(string(jsonSD), ":", ": ", -1))
+
+	return jsonSD
 }
 
 // FromBlob unmarshals a data Blob that should contain SDBlob data
 func (s *SDBlob) FromBlob(b Blob) error {
 	return json.Unmarshal(b, s)
-}
-
-func newSdBlob(blobs []Blob, key []byte, ivs [][]byte, streamName, suggestedFilename string) *SDBlob {
-	if len(ivs) != len(blobs)+1 { // +1 for terminating 0-length blob
-		panic("wrong number of IVs provided")
-	}
-
-	sd := &SDBlob{
-		StreamType:        streamTypeLBRYFile,
-		StreamName:        streamName,
-		SuggestedFileName: suggestedFilename,
-		Key:               key,
-	}
-
-	for i, b := range blobs {
-		sd.addBlob(b, ivs[i])
-	}
-
-	// terminating blob
-	sd.addBlob(Blob{}, ivs[len(ivs)-1])
-
-	sd.updateStreamHash()
-
-	return sd
 }
 
 // addBlob adds the blob's info to stream
