@@ -8,7 +8,7 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
-	github.com/go-errors/errors v1.0.1
+	github.com/go-errors/errors v1.1.1
 	github.com/go-ini/ini v1.48.0
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
 	github.com/golang/protobuf v1.3.2
