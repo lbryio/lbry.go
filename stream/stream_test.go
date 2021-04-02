@@ -6,7 +6,10 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"io"
 	"testing"
+
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 )
 
 var testdataBlobHashes = []string{
@@ -132,6 +135,52 @@ func TestMakeStream(t *testing.T) {
 		if !bytes.Equal(stream[i], reconstructedStream[i]) {
 			t.Errorf("blob %d of reconstructed stream does not match original stream", i)
 		}
+	}
+}
+
+func TestEmptyStream(t *testing.T) {
+	enc := NewEncoder(bytes.NewBuffer(nil))
+	_, err := enc.Next()
+	if !errors.Is(err, io.EOF) {
+		t.Errorf("expected io.EOF, got %v", err)
+	}
+	sd := enc.SDBlob()
+	if len(sd.BlobInfos) != 1 {
+		t.Errorf("expected 1 blobinfos in sd blob, got %d", len(sd.BlobInfos))
+	}
+	if sd.BlobInfos[0].Length != 0 {
+		t.Errorf("first and only blob to be the terminator blob")
+	}
+}
+
+func TestTermination(t *testing.T) {
+	b := make([]byte, 12)
+
+	enc := NewEncoder(bytes.NewBuffer(b))
+
+	_, err := enc.Next()
+	if err != nil {
+		t.Error(err)
+	}
+	if enc.isTerminated() {
+		t.Errorf("stream should not terminate until after EOF")
+	}
+
+	_, err = enc.Next()
+	if !errors.Is(err, io.EOF) {
+		t.Errorf("expected io.EOF, got %v", err)
+	}
+	if !enc.isTerminated() {
+		t.Errorf("stream should be terminated after EOF")
+	}
+
+	_, err = enc.Next()
+	if !errors.Is(err, io.EOF) {
+		t.Errorf("expected io.EOF on all subsequent reads, got %v", err)
+	}
+	sd := enc.SDBlob()
+	if len(sd.BlobInfos) != 2 {
+		t.Errorf("expected 2 blobinfos in sd blob, got %d", len(sd.BlobInfos))
 	}
 }
 

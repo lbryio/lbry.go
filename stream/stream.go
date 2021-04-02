@@ -143,10 +143,15 @@ func NewEncoderFromSD(src io.Reader, sdBlob *SDBlob) *Encoder {
 // TODO: consider making a NewPartialEncoder that also copies blobinfos from sdBlobs and seeks forward in the data
 // this would avoid re-creating blobs that were created in the past
 
-// Next returns the next blob in the stream
+// Next reads the next chunk of data, encodes it into a blob, and adds it to the stream
+// When the source is fully consumed, Next() makes sure the stream is terminated (i.e. the sd blob
+// ends with an empty terminating blob) and returns io.EOF
 func (e *Encoder) Next() (Blob, error) {
 	n, err := e.src.Read(e.buf)
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			e.ensureTerminated()
+		}
 		return nil, err
 	}
 
@@ -171,16 +176,10 @@ func (e *Encoder) Stream() (Stream, error) {
 	for {
 		blob, err := e.Next()
 		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return nil, err
+			if errors.Is(err, io.EOF) {
+				break
 			}
-
-			// if stream is not terminated, terminate it
-			if e.sd.BlobInfos[len(e.sd.BlobInfos)-1].Length > 0 {
-				e.sd.addBlob(Blob{}, e.nextIV())
-			}
-
-			break
+			return nil, err
 		}
 
 		s = append(s, blob)
@@ -219,6 +218,16 @@ func (e *Encoder) SourceHash() []byte {
 func (e *Encoder) SourceSizeHint(size int) *Encoder {
 	e.srcSizeHint = size
 	return e
+}
+
+func (e *Encoder) isTerminated() bool {
+	return len(e.sd.BlobInfos) >= 1 && e.sd.BlobInfos[len(e.sd.BlobInfos)-1].Length == 0
+}
+
+func (e *Encoder) ensureTerminated() {
+	if !e.isTerminated() {
+		e.sd.addBlob(Blob{}, e.nextIV())
+	}
 }
 
 // nextIV returns the next preset IV if there is one
