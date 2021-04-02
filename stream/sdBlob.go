@@ -56,6 +56,15 @@ func (s SDBlob) HashHex() string {
 	return hex.EncodeToString(s.Hash())
 }
 
+// ToJson returns the SD blob hash as JSON
+func (s SDBlob) ToJson() string {
+	j, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return string(j)
+}
+
 // ToBlob converts the SDBlob to a normal data Blob
 func (s SDBlob) ToBlob() Blob {
 	jsonSD, err := json.Marshal(s)
