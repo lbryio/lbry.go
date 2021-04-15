@@ -220,6 +220,13 @@ func (d *Client) AddressUnused(account *string) (*AddressUnusedResponse, error) 
 	})
 }
 
+func (d *Client) TransactionShow(txid string) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	return response, d.call(response, "transaction_show", map[string]interface{}{
+		"txid": txid,
+	})
+}
+
 func (d *Client) ChannelList(account *string, page uint64, pageSize uint64, wid *string) (*ChannelListResponse, error) {
 	if page == 0 {
 		return nil, errors.Err("pages start from 1")

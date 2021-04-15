@@ -791,3 +791,17 @@ func TestClient_WalletRemoveWalletAdd(t *testing.T) {
 		t.Fatalf("wallet ID mismatch, expected %q, got %q", wallet.ID, addedWallet.Name)
 	}
 }
+
+func TestClient_TransactionSummary(t *testing.T) {
+	d := NewClient("")
+	r, err := d.TransactionShow("d104a1616c6af581e2046819de678f370d624e97cf176f95acaec4b183a42db6")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(r.Outputs) != 2 {
+		t.Fatal("found wrong transaction")
+	}
+	if r.Outputs[0].Amount != "5.0" {
+		t.Error("found wrong lbc amount for transaction.")
+	}
+}
