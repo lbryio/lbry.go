@@ -251,6 +251,7 @@ type Transaction struct {
 	NormalizedName     string            `json:"normalized_name"`
 	Nout               uint64            `json:"nout"`
 	PermanentUrl       string            `json:"permanent_url"`
+	SigningChannel     *Claim            `json:"signing_channel,omitempty"`
 	TimeStamp          uint64            `json:"time_stamp"`
 	Protobuf           string            `json:"protobuf,omitempty"`
 	Txid               string            `json:"txid"`

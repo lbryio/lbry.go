@@ -793,7 +793,7 @@ func TestClient_WalletRemoveWalletAdd(t *testing.T) {
 }
 
 func TestClient_TransactionSummary(t *testing.T) {
-	d := NewClient("")
+	d := NewClient("https://api.lbry.tv/api/v1/proxy")
 	r, err := d.TransactionShow("d104a1616c6af581e2046819de678f370d624e97cf176f95acaec4b183a42db6")
 	if err != nil {
 		t.Error(err)
