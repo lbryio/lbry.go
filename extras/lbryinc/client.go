@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -26,6 +28,7 @@ const (
 // Client stores data about internal-apis call it is about to make.
 type Client struct {
 	AuthToken     string
+	OAuthToken    oauth2.TokenSource
 	Logger        *log.Logger
 	serverAddress string
 	extraHeaders  map[string]string
@@ -83,13 +86,38 @@ func NewClient(authToken string, opts *ClientOpts) Client {
 	return c
 }
 
+// NewOauthClient returns a client instance for internal-apis. It requires Oauth Token Source to be provided
+// for authentication.
+func NewOauthClient(token oauth2.TokenSource, opts *ClientOpts) Client {
+	c := Client{
+		serverAddress: defaultServerAddress,
+		extraHeaders:  make(map[string]string),
+		OAuthToken:    token,
+		Logger:        log.StandardLogger(),
+	}
+	if opts != nil {
+		if opts.ServerAddress != "" {
+			c.serverAddress = opts.ServerAddress
+		}
+		if opts.RemoteIP != "" {
+			c.extraHeaders[headerForwardedFor] = opts.RemoteIP
+		}
+	}
+
+	return c
+}
+
 func (c Client) getEndpointURL(object, method string) string {
 	return fmt.Sprintf("%s%s", c.serverAddress, makeMethodPath(object, method))
 }
 
 func (c Client) prepareParams(params map[string]interface{}) (string, error) {
 	form := url.Values{}
-	form.Add("auth_token", c.AuthToken)
+	if c.AuthToken != "" {
+		form.Add("auth_token", c.AuthToken)
+	} else if c.OAuthToken == nil {
+		return "", errors.New("oauth token source must be supplied")
+	}
 	for k, v := range params {
 		if k == "auth_token" {
 			return "", errors.New("extra auth_token supplied in request params")
@@ -109,6 +137,16 @@ func (c Client) doCall(url string, payload string) ([]byte, error) {
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	if c.OAuthToken != nil {
+		t, err := c.OAuthToken.Token()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type() != "Bearer" {
+			return nil, errors.New("internal-apis requires an oAuth token of type 'Bearer'")
+		}
+		t.SetAuthHeader(req)
+	}
 
 	for k, v := range c.extraHeaders {
 		req.Header.Set(k, v)

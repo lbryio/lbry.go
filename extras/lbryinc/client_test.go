@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"golang.org/x/oauth2"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,6 +15,14 @@ func launchDummyServer(lastReq **http.Request, path, response string, status int
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if lastReq != nil {
 			*lastReq = &*r
+		}
+		authT := r.FormValue("auth_token")
+		if authT == "" {
+			accessT := r.Header.Get("Authorization")
+			if accessT == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 		}
 		if r.URL.Path != path {
 			fmt.Printf("path doesn't match: %v != %v", r.URL.Path, path)
@@ -40,6 +50,17 @@ func TestUserHasVerifiedEmail(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient("realToken", &ClientOpts{ServerAddress: ts.URL})
+	r, err := c.UserHasVerifiedEmail()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 12345, r["user_id"])
+	assert.Equal(t, true, r["has_verified_email"])
+}
+
+func TestUserHasVerifiedEmailOAuth(t *testing.T) {
+	ts := launchDummyServer(nil, makeMethodPath(userObjectPath, userHasVerifiedEmailMethod), userHasVerifiedEmailResponse, http.StatusOK)
+	defer ts.Close()
+
+	c := NewOauthClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "Test-Access-Token"}), &ClientOpts{ServerAddress: ts.URL})
 	r, err := c.UserHasVerifiedEmail()
 	assert.Nil(t, err)
 	assert.EqualValues(t, 12345, r["user_id"])
