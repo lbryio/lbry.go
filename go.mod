@@ -24,7 +24,6 @@ require (
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/nlopes/slack v0.6.0
-	github.com/onsi/ginkgo v1.10.2 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sebdah/goldie v0.0.0-20190531093107-d313ffb52c77
@@ -52,4 +51,4 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-go 1.15
+go 1.16

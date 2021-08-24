@@ -370,7 +370,7 @@ type Meta struct {
 	TrendingMixed     float64 `json:"trending_mixed,omitempty"`
 }
 
-const reflectorURL = "http://blobs.lbry.io/"
+const coldStorageURL = "https://s3.wasabisys.com/blobs.lbry.com/"
 
 // GetStreamSizeByMagic uses "magic" to not just estimate, but actually return the exact size of a stream
 // It does so by fetching the sd blob and the last blob from our S3 bucket, decrypting and unpadding the last blob
@@ -380,7 +380,7 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 	if c.Value.GetStream() == nil {
 		return 0, errors.Err("this claim is not a stream")
 	}
-	resp, err := http.Get(reflectorURL + hex.EncodeToString(c.Value.GetStream().Source.SdHash))
+	resp, err := http.Get(coldStorageURL + hex.EncodeToString(c.Value.GetStream().Source.SdHash))
 	if err != nil {
 		return 0, errors.Err(err)
 	}
@@ -403,7 +403,7 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 		streamSize = uint64(stream.MaxBlobSize-1) * uint64(len(sdb.BlobInfos)-2)
 	}
 
-	resp2, err := http.Get(reflectorURL + hex.EncodeToString(lastBlobHash))
+	resp2, err := http.Get(coldStorageURL + hex.EncodeToString(lastBlobHash))
 	if err != nil {
 		return 0, errors.Err(err)
 	}
