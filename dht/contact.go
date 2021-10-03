@@ -2,6 +2,7 @@ package dht
 
 import (
 	"bytes"
+	"encoding/json"
 	"net"
 	"sort"
 	"strconv"
@@ -39,6 +40,20 @@ func (c Contact) String() string {
 		str += "(" + strconv.Itoa(c.PeerPort) + ")"
 	}
 	return str
+}
+
+func (c Contact) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		ID string
+		IP string
+		Port int
+		PeerPort int
+	}{
+		ID: c.ID.Hex(),
+		IP: c.IP.String(),
+		Port: c.Port,
+		PeerPort: c.PeerPort,
+	})
 }
 
 // MarshalCompact returns a compact byteslice representation of the contact
