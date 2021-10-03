@@ -17,7 +17,7 @@ const (
 
 	// TODO: all these constants should be defaults, and should be used to set values in the standard Config. then the code should use values in the config
 	// TODO: alternatively, have a global Config for constants. at least that way tests can modify the values
-	alpha           = 3             // this is the constant alpha in the spec
+	alpha           = 5             // this is the constant alpha in the spec
 	bucketSize      = 8             // this is the constant k in the spec
 	nodeIDLength    = bits.NumBytes // bytes. this is the constant B in the spec
 	messageIDLength = 20            // bytes.
