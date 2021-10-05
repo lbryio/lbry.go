@@ -102,6 +102,7 @@ type RpcIterativeFindValueArgs struct {
 type RpcIterativeFindValueResult struct {
 	Contacts   []Contact
 	FoundValue bool
+	Values     []Contact
 }
 
 func (rpc *rpcReceiver) IterativeFindValue(r *http.Request, args *RpcIterativeFindValueArgs, result *RpcIterativeFindValueResult) error {
@@ -109,12 +110,19 @@ func (rpc *rpcReceiver) IterativeFindValue(r *http.Request, args *RpcIterativeFi
 	if err != nil {
 		return err
 	}
-	foundContacts, found, err := FindContacts(rpc.dht.node, key, false, nil)
+	foundContacts, found, err := FindContacts(rpc.dht.node, key, true, nil)
 	if err != nil {
 		return err
 	}
 	result.Contacts = foundContacts
 	result.FoundValue = found
+	if found {
+		for _, contact := range foundContacts {
+			if contact.PeerPort > 0 {
+				result.Values = append(result.Values, contact)
+			}
+		}
+	}
 	return nil
 }
 

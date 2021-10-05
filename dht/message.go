@@ -40,6 +40,7 @@ const (
 	headerPayloadField   = "3"
 	headerArgsField      = "4"
 	contactsField        = "contacts"
+	pageField            = "p"
 	tokenField           = "token"
 	protocolVersionField = "protocolVersion"
 )
@@ -270,6 +271,7 @@ type Response struct {
 	FindValueKey    string
 	Token           string
 	ProtocolVersion int
+	Page            uint8
 }
 
 func (r Response) argsDebug() string {
@@ -390,27 +392,34 @@ func (r *Response) UnmarshalBencode(b []byte) error {
 
 	if contacts, ok := rawData[contactsField]; ok {
 		err = bencode.DecodeBytes(contacts, &r.Contacts)
+		delete(rawData, contactsField) // so it doesnt mess up findValue key finding below
 		if err != nil {
 			return err
 		}
-	} else {
-		for k, v := range rawData {
-			r.FindValueKey = k
-			var compactContacts [][]byte
-			err = bencode.DecodeBytes(v, &compactContacts)
+	}
+	if page, ok := rawData[pageField]; ok {
+		err = bencode.DecodeBytes(page, &r.Page)
+		delete(rawData, pageField) // so it doesnt mess up findValue key finding below
+		if err != nil {
+			return err
+		}
+	}
+	for k, v := range rawData {
+		r.FindValueKey = k
+		var compactContacts [][]byte
+		err = bencode.DecodeBytes(v, &compactContacts)
+		if err != nil {
+			return err
+		}
+		for _, compact := range compactContacts {
+			var c Contact
+			err = c.UnmarshalCompact(compact)
 			if err != nil {
 				return err
 			}
-			for _, compact := range compactContacts {
-				var c Contact
-				err = c.UnmarshalCompact(compact)
-				if err != nil {
-					return err
-				}
-				r.Contacts = append(r.Contacts, c)
-			}
-			break
+			r.Contacts = append(r.Contacts, c)
 		}
+		break
 	}
 
 	return nil
