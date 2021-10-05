@@ -21,6 +21,7 @@ func NormalizeName(s string) string {
 	c := cases.Fold()
 	return c.String(norm.NFD.String(s))
 }
+
 // ReverseBytesInPlace reverse the bytes. thanks, Satoshi 😒
 func ReverseBytesInPlace(s []byte) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {

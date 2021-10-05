@@ -44,14 +44,14 @@ func (c Contact) String() string {
 
 func (c Contact) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		ID string
-		IP string
-		Port int
+		ID       string
+		IP       string
+		Port     int
 		PeerPort int
 	}{
-		ID: c.ID.Hex(),
-		IP: c.IP.String(),
-		Port: c.Port,
+		ID:       c.ID.Hex(),
+		IP:       c.IP.String(),
+		Port:     c.Port,
 		PeerPort: c.PeerPort,
 	})
 }

@@ -102,7 +102,7 @@ type RpcIterativeFindValueArgs struct {
 type RpcIterativeFindValueResult struct {
 	Contacts   []Contact
 	FoundValue bool
-	Values      []Contact
+	Values     []Contact
 }
 
 func (rpc *rpcReceiver) IterativeFindValue(r *http.Request, args *RpcIterativeFindValueArgs, result *RpcIterativeFindValueResult) error {
