@@ -1,7 +1,7 @@
 package address
 
 import (
-	"github.com/lbryio/lbry.go/v2/schema/address/base58"
+	"github.com/lbryio/lbry.go/v3/schema/address/base58"
 )
 
 func EncodeAddress(address [addressLength]byte, blockchainName string) (string, error) {

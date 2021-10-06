@@ -7,15 +7,15 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 )
 
-func marshalToString(c *StakeHelper) (string, error) {
-	m_pb := &jsonpb.Marshaler{}
+func marshalToString(c *Helper) (string, error) {
+	mPb := &jsonpb.Marshaler{}
 	if c.IsSupport() {
-		return m_pb.MarshalToString(c.Support)
+		return mPb.MarshalToString(c.Support)
 	}
-	return m_pb.MarshalToString(c.Claim)
+	return mPb.MarshalToString(c.Claim)
 }
 
-func (c *StakeHelper) RenderJSON() (string, error) {
+func (c *Helper) RenderJSON() (string, error) {
 	r, err := marshalToString(c)
 	if err != nil {
 		fmt.Println("err")

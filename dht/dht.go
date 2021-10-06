@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/extras/stop"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
+	"github.com/lbryio/lbry.go/v3/extras/stop"
 
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 )
@@ -76,7 +76,7 @@ func (dht *DHT) connect(conn UDPConn) error {
 func (dht *DHT) Start() error {
 	listener, err := net.ListenPacket(Network, dht.conf.Address)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 	conn := listener.(*net.UDPConn)
 
@@ -117,7 +117,7 @@ func (dht *DHT) join() {
 	for _, addr := range dht.conf.SeedNodes {
 		err := dht.Ping(addr)
 		if err != nil {
-			log.Error(errors.Prefix(fmt.Sprintf("[%s] join", dht.node.id.HexShort()), err))
+			log.Error(errors.WithMessage(err, fmt.Sprintf("[%s] join", dht.node.id.HexShort())))
 		} else {
 			atLeastOneNodeResponded = true
 		}
@@ -165,7 +165,7 @@ func (dht *DHT) Ping(addr string) error {
 	tmpNode := Contact{ID: bits.Rand(), IP: raddr.IP, Port: raddr.Port}
 	res := dht.node.Send(tmpNode, Request{Method: pingMethod}, SendOptions{skipIDCheck: true})
 	if res == nil {
-		return errors.Err("no response from node %s", addr)
+		return errors.WithStack(errors.Newf("no response from node %s", addr))
 	}
 
 	return nil
@@ -210,21 +210,21 @@ func getContact(nodeID, addr string) (Contact, error) {
 
 	ip, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		return c, errors.Err(err)
+		return c, errors.WithStack(err)
 	} else if ip == "" {
-		return c, errors.Err("address does not contain an IP")
+		return c, errors.WithStack(errors.New("address does not contain an IP"))
 	} else if port == "" {
-		return c, errors.Err("address does not contain a port")
+		return c, errors.WithStack(errors.New("address does not contain a port"))
 	}
 
 	c.IP = net.ParseIP(ip)
 	if c.IP == nil {
-		return c, errors.Err("invalid ip")
+		return c, errors.WithStack(errors.New("invalid ip"))
 	}
 
 	c.Port, err = cast.ToIntE(port)
 	if err != nil {
-		return c, errors.Err(err)
+		return c, errors.WithStack(err)
 	}
 
 	return c, nil

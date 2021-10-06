@@ -3,7 +3,7 @@ package stake
 import (
 	"encoding/json"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // V1Claim is the first version of claim metadata used by lbry.
@@ -88,8 +88,7 @@ func (c *V1Claim) Unmarshal(value []byte) error {
 		return err
 	} //Version can be blank for version 1
 	if c.Version != "" && c.Version != "0.0.1" {
-		err = errors.Base("Incorrect version, expected 0.0.1 found " + c.Version)
-		return err
+		return errors.New("Incorrect version, expected 0.0.1 found " + c.Version)
 	}
 	//ToDo - restrict to required fields?
 
@@ -103,8 +102,7 @@ func (c *V2Claim) Unmarshal(value []byte) error {
 		return err
 	}
 	if c.Version != "0.0.2" {
-		err = errors.Base("Incorrect version, expected 0.0.2 found " + c.Version)
-		return err
+		return errors.New("Incorrect version, expected 0.0.2 found " + c.Version)
 	}
 
 	return nil
@@ -117,8 +115,7 @@ func (c *V3Claim) Unmarshal(value []byte) error {
 		return err
 	}
 	if c.Version != "0.0.3" {
-		err = errors.Base("Incorrect version, expected 0.0.3 found " + c.Version)
-		return err
+		return errors.New("Incorrect version, expected 0.0.3 found " + c.Version)
 	}
 
 	return nil

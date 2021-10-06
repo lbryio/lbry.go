@@ -4,11 +4,10 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/lbryio/lbcd/btcec"
+	"github.com/lbryio/lbry.go/v3/schema/keys"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/lbryio/lbry.go/v2/schema/keys"
-
-	"github.com/btcsuite/btcd/btcec"
 	"gotest.tools/assert"
 )
 
@@ -18,7 +17,7 @@ func TestSign(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	channel := &StakeHelper{newChannelClaim(), nil, nil, nil, NoSig, nil, nil}
+	channel := &Helper{newChannelClaim(), nil, nil, nil, NoSig, nil, nil}
 	pubkeyBytes, err := keys.PublicKeyToDER(privateKey.PubKey())
 	if err != nil {
 		t.Error(err)
@@ -33,7 +32,7 @@ func TestSign(t *testing.T) {
 		return
 	}
 
-	claim := &StakeHelper{newStreamClaim(), nil, nil, reverseBytes(claimIDHexBytes), WithSig, nil, nil}
+	claim := &Helper{newStreamClaim(), nil, nil, reverseBytes(claimIDHexBytes), WithSig, nil, nil}
 	claim.Claim.Title = "Test title"
 	claim.Claim.Description = "Test description"
 	sig, err := Sign(*privateKey, *channel, *claim, txid)
@@ -108,7 +107,7 @@ func TestSignSupportWithChannel(t *testing.T) {
 		return
 	}
 
-	support := &StakeHelper{nil, &pb.Support{}, nil, reverseBytes(claimIDHexBytes), WithSig, nil, nil}
+	support := &Helper{nil, &pb.Support{}, nil, reverseBytes(claimIDHexBytes), WithSig, nil, nil}
 	sig, err := Sign(*privateKey, *channel, *support, txid)
 	if err != nil {
 		t.Error(err)
@@ -163,7 +162,7 @@ func TestSignWithV1Channel(t *testing.T) {
 		return
 	}
 
-	claim := &StakeHelper{newStreamClaim(), nil, nil, reverseBytes(claimIDHexBytes), WithSig, nil, nil}
+	claim := &Helper{newStreamClaim(), nil, nil, reverseBytes(claimIDHexBytes), WithSig, nil, nil}
 	claim.Claim.Title = "Test title"
 	claim.Claim.Description = "Test description"
 	sig, err := Sign(*privateKey, *channel, *claim, txid)

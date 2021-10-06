@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lbryio/lbry.go/v2/schema/address"
+	"github.com/lbryio/lbry.go/v3/schema/address"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/lbryio/lbcutil/base58"
 	"gotest.tools/assert"
 )
 

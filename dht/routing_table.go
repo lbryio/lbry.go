@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/extras/stop"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
+	"github.com/lbryio/lbry.go/v3/extras/stop"
+
+	"github.com/cockroachdb/errors"
 )
 
 // TODO: if routing table is ever empty (aka the node is isolated), it should re-bootstrap
@@ -40,7 +41,7 @@ func (p *peer) Touch() {
 	p.NumFailures = 0
 }
 
-// ActiveSince returns whether a peer has responded in the last `d` duration
+// ActiveInLast returns whether a peer has responded in the last `d` duration
 // this is used to check if the peer is "good", meaning that we believe the peer will respond to our requests
 func (p *peer) ActiveInLast(d time.Duration) bool {
 	return time.Since(p.LastActivity) < d
@@ -106,7 +107,7 @@ func (b *bucket) UpdatePeer(p peer, insertIfNew bool) error {
 	defer b.lock.Unlock()
 
 	if !b.Range.Contains(p.Distance) {
-		return errors.Err("this bucket range does not cover this peer")
+		return errors.WithStack(errors.New("this bucket range does not cover this peer"))
 	}
 
 	peerIndex := find(p.Contact.ID, b.peers)
@@ -404,27 +405,27 @@ func (rt *routingTable) UnmarshalJSON(b []byte) error {
 
 	rt.id, err = bits.FromHex(data.ID)
 	if err != nil {
-		return errors.Prefix("decoding ID", err)
+		return errors.WithMessage(err, "decoding ID")
 	}
 	rt.reset()
 
 	for _, s := range data.Contacts {
 		parts := strings.Split(s, rtContactSep)
 		if len(parts) != 3 {
-			return errors.Err("decoding contact %s: wrong number of parts", s)
+			return errors.WithStack(errors.Newf("decoding contact %s: wrong number of parts", s))
 		}
 		var c Contact
 		c.ID, err = bits.FromHex(parts[0])
 		if err != nil {
-			return errors.Err("decoding contact %s: invalid ID: %s", s, err)
+			return errors.WithStack(errors.Newf("decoding contact %s: invalid ID: %s", s, err))
 		}
 		c.IP = net.ParseIP(parts[1])
 		if c.IP == nil {
-			return errors.Err("decoding contact %s: invalid IP", s)
+			return errors.WithStack(errors.Newf("decoding contact %s: invalid IP", s))
 		}
 		c.Port, err = strconv.Atoi(parts[2])
 		if err != nil {
-			return errors.Err("decoding contact %s: invalid port: %s", s, err)
+			return errors.WithStack(errors.Newf("decoding contact %s: invalid port: %s", s, err))
 		}
 		rt.Update(c)
 	}

@@ -1,14 +1,15 @@
 package dht
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/crypto"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/extras/stop"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
+	"github.com/lbryio/lbry.go/v3/extras/stop"
 
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 )
@@ -78,7 +79,10 @@ func (cf *contactFinder) Find() ([]Contact, bool, error) {
 
 	cf.appendNewToShortlist(cf.node.rt.GetClosest(cf.target, alpha))
 	if len(cf.shortlist) == 0 {
-		return nil, false, errors.Err("[%s] find %s: no contacts in routing table", cf.node.id.HexShort(), cf.target.HexShort())
+		return nil, false, errors.WithStack(errors.Newf(
+			"[%s] find %s: no contacts in routing table",
+			cf.node.id.HexShort(), cf.target.HexShort(),
+		))
 	}
 
 	go cf.cycle(false)
@@ -113,7 +117,7 @@ CycleLoop:
 
 // cycle does a single cycle of sending alpha probes and checking results against closestNode
 func (cf *contactFinder) cycle(bigCycle bool) {
-	cycleID := crypto.RandString(6)
+	cycleID := randString(6)
 	if bigCycle {
 		cf.debug("LAUNCHING CYCLE %s, AND ITS A BIG CYCLE", cycleID)
 	} else {
@@ -335,4 +339,20 @@ func (cf *contactFinder) closest(contacts ...Contact) *Contact {
 		}
 	}
 	return &closest
+}
+
+// randString returns a random alphanumeric string of a given length
+func randString(length int) string {
+	buf := make([]byte, length/2)
+	_, err := rand.Reader.Read(buf)
+	if err != nil {
+		panic(err)
+	}
+
+	randStr := hex.EncodeToString(buf)[:length]
+	if len(randStr) < length {
+		panic("Could not create random string that is long enough")
+	}
+
+	return randStr
 }

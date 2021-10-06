@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // inspired by https://blog.gopheracademy.com/advent-2016/advanced-encoding-decoding/
@@ -36,31 +36,31 @@ func (s *SDBlob) UnmarshalJSON(b []byte) error {
 	var tmp JSONSDBlob
 	err := json.Unmarshal(b, &tmp)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	*s = SDBlob(tmp.SDBlobAlias)
 
 	str, err := hex.DecodeString(tmp.StreamName)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 	s.StreamName = string(str)
 
 	str, err = hex.DecodeString(tmp.SuggestedFileName)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 	s.SuggestedFileName = string(str)
 
 	s.StreamHash, err = hex.DecodeString(tmp.StreamHash)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	s.Key, err = hex.DecodeString(tmp.Key)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -91,19 +91,19 @@ func (bi *BlobInfo) UnmarshalJSON(b []byte) error {
 	var tmp JSONBlobInfo
 	err := json.Unmarshal(b, &tmp)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	*bi = BlobInfo(tmp.BlobInfoAlias)
 
 	bi.BlobHash, err = hex.DecodeString(tmp.BlobHash)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	bi.IV, err = hex.DecodeString(tmp.IV)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	return nil

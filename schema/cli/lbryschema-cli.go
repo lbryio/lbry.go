@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lbryio/lbry.go/v2/schema/stake"
+	"github.com/lbryio/lbry.go/v3/schema/stake"
 )
 
 func main() {

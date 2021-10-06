@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
 
+	"github.com/cockroachdb/errors"
 	"github.com/lyoshenka/bencode"
 	"github.com/spf13/cast"
 )
@@ -68,7 +68,7 @@ func (m *messageID) UnmarshalBencode(encoded []byte) error {
 	return nil
 }
 
-// MarshallBencode returns the encoded byte slice of the message id.
+// MarshalBencode returns the encoded byte slice of the message id.
 func (m messageID) MarshalBencode() ([]byte, error) {
 	str := string(m[:])
 	return bencode.EncodeBytes(str)
@@ -122,7 +122,7 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	}
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {
-		return errors.Prefix("request unmarshal", err)
+		return errors.WithMessage(err, "request unmarshal")
 	}
 
 	r.ID = raw.ID
@@ -133,12 +133,12 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 		r.StoreArgs = &storeArgs{} // bencode wont find the unmarshaler on a null pointer. need to fix it.
 		err = bencode.DecodeBytes(raw.Args, &r.StoreArgs)
 		if err != nil {
-			return errors.Prefix("request unmarshal", err)
+			return errors.WithMessage(err, "request unmarshal")
 		}
 	} else if len(raw.Args) > 2 { // 2 because an empty list is `le`
 		r.Arg, r.ProtocolVersion, err = processArgsAndProtoVersion(raw.Args)
 		if err != nil {
-			return errors.Prefix("request unmarshal", err)
+			return errors.WithMessage(err, "request unmarshal")
 		}
 	}
 
@@ -224,39 +224,39 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	var argsInt []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &argsInt)
 	if err != nil {
-		return errors.Prefix("storeArgs unmarshal", err)
+		return errors.WithMessage(err, "storeArgs unmarshal")
 	}
 
 	if len(argsInt) != 4 {
-		return errors.Err("unexpected number of fields for store args. got " + cast.ToString(len(argsInt)))
+		return errors.WithStack(errors.Newf("unexpected number of fields for store args. got %d", len(argsInt)))
 	}
 
 	err = bencode.DecodeBytes(argsInt[0], &s.BlobHash)
 	if err != nil {
-		return errors.Prefix("storeArgs unmarshal", err)
+		return errors.WithMessage(err, "storeArgs unmarshal")
 	}
 
 	err = bencode.DecodeBytes(argsInt[1], &s.Value)
 	if err != nil {
-		return errors.Prefix("storeArgs unmarshal", err)
+		return errors.WithMessage(err, "storeArgs unmarshal")
 	}
 
 	err = bencode.DecodeBytes(argsInt[2], &s.NodeID)
 	if err != nil {
-		return errors.Prefix("storeArgs unmarshal", err)
+		return errors.WithMessage(err, "storeArgs unmarshal")
 	}
 
 	var selfStore int
 	err = bencode.DecodeBytes(argsInt[3], &selfStore)
 	if err != nil {
-		return errors.Prefix("storeArgs unmarshal", err)
+		return errors.WithMessage(err, "storeArgs unmarshal")
 	}
 	if selfStore == 0 {
 		s.SelfStore = false
 	} else if selfStore == 1 {
 		s.SelfStore = true
 	} else {
-		return errors.Err("selfstore must be 1 or 0")
+		return errors.WithStack(errors.New("selfstore must be 1 or 0"))
 	}
 
 	return nil
@@ -311,7 +311,7 @@ func (r Response) MarshalBencode() ([]byte, error) {
 	} else if r.FindValueKey != "" {
 		// findValue success
 		if r.Token == "" {
-			return nil, errors.Err("response to findValue must have a token")
+			return nil, errors.WithStack(errors.New("response to findValue must have a token"))
 		}
 
 		var contacts [][]byte

@@ -7,7 +7,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/cockroachdb/errors"
 )
 
 type Stream []Blob
@@ -32,7 +32,7 @@ func (s Stream) Data() ([]byte, error) {
 // TODO: this should use io.Writer instead of returning bytes
 func (s Stream) Decode() ([]byte, error) {
 	if len(s) < 2 {
-		return nil, errors.Err("stream must be at least 2 blobs long") // sd blob and content blob
+		return nil, errors.WithStack(errors.New("stream must be at least 2 blobs long")) // sd blob and content blob
 	}
 
 	sdBlob := &SDBlob{}
@@ -42,34 +42,34 @@ func (s Stream) Decode() ([]byte, error) {
 	}
 
 	if !sdBlob.IsValid() {
-		return nil, errors.Err("sd blob is not valid")
+		return nil, errors.WithStack(errors.New("sd blob is not valid"))
 	}
 
 	if sdBlob.BlobInfos[len(sdBlob.BlobInfos)-1].Length != 0 {
-		return nil, errors.Err("sd blob is missing the terminating 0-length blob")
+		return nil, errors.WithStack(errors.New("sd blob is missing the terminating 0-length blob"))
 	}
 
 	if len(s[1:]) != len(sdBlob.BlobInfos)-1 { // -1 for terminating 0-length blob
-		return nil, errors.Err("number of blobs in stream does not match number of blobs in sd info")
+		return nil, errors.WithStack(errors.New("number of blobs in stream does not match number of blobs in sd info"))
 	}
 
 	var file []byte
 	for i, blobInfo := range sdBlob.BlobInfos {
 		if blobInfo.Length == 0 {
 			if i != len(sdBlob.BlobInfos)-1 {
-				return nil, errors.Err("got 0-length blob before end of stream")
+				return nil, errors.WithStack(errors.New("got 0-length blob before end of stream"))
 			}
 			break
 		}
 
 		if blobInfo.BlobNum != i {
-			return nil, errors.Err("blobs are out of order in sd blob")
+			return nil, errors.WithStack(errors.New("blobs are out of order in sd blob"))
 		}
 
 		blob := s[i+1]
 
 		if !bytes.Equal(blob.Hash(), blobInfo.BlobHash) {
-			return nil, errors.Err("blob hash doesn't match hash in blobInfo")
+			return nil, errors.WithStack(errors.New("blob hash doesn't match hash in blobInfo"))
 		}
 
 		data, err := blob.Plaintext(sdBlob.Key, blobInfo.IV)
@@ -152,7 +152,7 @@ func (e *Encoder) Next() (Blob, error) {
 		if errors.Is(err, io.EOF) {
 			e.ensureTerminated()
 		}
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	e.srcLen += n
@@ -207,7 +207,7 @@ func (e *Encoder) SourceLen() int {
 	return e.srcLen
 }
 
-// SourceLen returns a hash of the bytes read from source
+// SourceHash returns a hash of the bytes read from source
 func (e *Encoder) SourceHash() []byte {
 	return e.srcHash.Sum(nil)
 }

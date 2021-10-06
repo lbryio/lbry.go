@@ -23,7 +23,7 @@ import (
 // Chan is a receive-only channel
 type Chan <-chan struct{}
 
-// Stopper extends sync.WaitGroup to add a convenient way to stop running goroutines
+// Group extends sync.WaitGroup to add a convenient way to stop running goroutines
 type Group struct {
 	sync.WaitGroup
 	ctx    context.Context

@@ -3,17 +3,17 @@ package stake
 import (
 	"encoding/hex"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
 	legacy "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
+	"github.com/cockroachdb/errors"
 	"github.com/golang/protobuf/proto"
 )
 
-func (c *StakeHelper) serialized() ([]byte, error) {
+func (c *Helper) serialized() ([]byte, error) {
 	serialized := c.Claim.String() + c.Support.String()
 	if serialized == "" {
-		return nil, errors.Err("not initialized")
+		return nil, errors.WithStack(errors.New("not initialized"))
 	}
 
 	if c.LegacyClaim != nil {
@@ -25,7 +25,7 @@ func (c *StakeHelper) serialized() ([]byte, error) {
 	return proto.Marshal(c.getClaimProtobuf())
 }
 
-func (c *StakeHelper) getClaimProtobuf() *pb.Claim {
+func (c *Helper) getClaimProtobuf() *pb.Claim {
 	claim := &pb.Claim{
 		Title:       c.Claim.GetTitle(),
 		Description: c.Claim.GetDescription(),
@@ -47,7 +47,7 @@ func (c *StakeHelper) getClaimProtobuf() *pb.Claim {
 	return claim
 }
 
-func (c *StakeHelper) getSupportProtobuf() *pb.Support {
+func (c *Helper) getSupportProtobuf() *pb.Support {
 	return &pb.Support{
 		Emoji:                c.Support.GetEmoji(),
 		XXX_NoUnkeyedLiteral: struct{}{},
@@ -56,7 +56,7 @@ func (c *StakeHelper) getSupportProtobuf() *pb.Support {
 	}
 }
 
-func (c *StakeHelper) getLegacyProtobuf() *legacy.Claim {
+func (c *Helper) getLegacyProtobuf() *legacy.Claim {
 	v := c.LegacyClaim.GetVersion()
 	t := c.LegacyClaim.GetClaimType()
 	return &legacy.Claim{
@@ -67,18 +67,17 @@ func (c *StakeHelper) getLegacyProtobuf() *legacy.Claim {
 		PublisherSignature: c.LegacyClaim.GetPublisherSignature()}
 }
 
-func (c *StakeHelper) serializedHexString() (string, error) {
+func (c *Helper) serializedHexString() (string, error) {
 	serialized, err := c.serialized()
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
-	serialized_hex := hex.EncodeToString(serialized)
-	return serialized_hex, nil
+	return hex.EncodeToString(serialized), nil
 }
 
-func (c *StakeHelper) serializedNoSignature() ([]byte, error) {
+func (c *Helper) serializedNoSignature() ([]byte, error) {
 	if c.Claim.String() == "" && c.Support.String() == "" {
-		return nil, errors.Err("not initialized")
+		return nil, errors.WithStack(errors.New("not initialized"))
 	}
 	if c.Signature == nil {
 		serialized, err := c.serialized()

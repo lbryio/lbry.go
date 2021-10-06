@@ -3,12 +3,13 @@ package lbrycrd
 import (
 	"encoding/hex"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/base58"
 	"golang.org/x/crypto/ripemd160"
+
+	"github.com/lbryio/lbcd/chaincfg"
+	"github.com/lbryio/lbcutil"
+	"github.com/lbryio/lbcutil/base58"
+
+	"github.com/cockroachdb/errors"
 )
 
 // DecodeAddress decodes the string encoding of an address and returns
@@ -17,7 +18,7 @@ import (
 // The bitcoin network the address is associated with is extracted if possible.
 // When the address does not encode the network, such as in the case of a raw
 // public key, the address will be associated with the passed defaultNet.
-func DecodeAddress(addr string, defaultNet *chaincfg.Params) (btcutil.Address, error) {
+func DecodeAddress(addr string, defaultNet *chaincfg.Params) (lbcutil.Address, error) {
 	// Serialized public keys are either 65 bytes (130 hex chars) if
 	// uncompressed/hybrid or 33 bytes (66 hex chars) if compressed.
 	if len(addr) == 130 || len(addr) == 66 {
@@ -25,16 +26,16 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (btcutil.Address, e
 		if err != nil {
 			return nil, err
 		}
-		return btcutil.NewAddressPubKey(serializedPubKey, defaultNet)
+		return lbcutil.NewAddressPubKey(serializedPubKey, defaultNet)
 	}
 
 	// Switch on decoded length to determine the type.
 	decoded, netID, err := base58.CheckDecode(addr)
 	if err != nil {
 		if err == base58.ErrChecksum {
-			return nil, btcutil.ErrChecksumMismatch
+			return nil, lbcutil.ErrChecksumMismatch
 		}
-		return nil, errors.Err("decoded address[%s] is of unknown format even with default chainparams[%s]", addr, defaultNet.Name)
+		return nil, errors.WithStack(errors.Newf("decoded address[%s] is of unknown format even with default chainparams[%s]", addr, defaultNet.Name))
 	}
 
 	switch len(decoded) {
@@ -43,16 +44,16 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (btcutil.Address, e
 		isP2SH := chaincfg.IsScriptHashAddrID(netID)
 		switch hash160 := decoded; {
 		case isP2PKH && isP2SH:
-			return nil, btcutil.ErrAddressCollision
+			return nil, lbcutil.ErrAddressCollision
 		case isP2PKH:
-			return btcutil.NewAddressPubKeyHash(hash160, &chaincfg.Params{PubKeyHashAddrID: netID})
+			return lbcutil.NewAddressPubKeyHash(hash160, &chaincfg.Params{PubKeyHashAddrID: netID})
 		case isP2SH:
-			return btcutil.NewAddressScriptHashFromHash(hash160, &chaincfg.Params{ScriptHashAddrID: netID})
+			return lbcutil.NewAddressScriptHashFromHash(hash160, &chaincfg.Params{ScriptHashAddrID: netID})
 		default:
-			return nil, btcutil.ErrUnknownAddressType
+			return nil, lbcutil.ErrUnknownAddressType
 		}
 
 	default:
-		return nil, errors.Err("decoded address is of unknown size")
+		return nil, errors.WithStack(errors.New("decoded address is of unknown size"))
 	}
 }

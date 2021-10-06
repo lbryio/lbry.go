@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address"
 )
 
@@ -26,7 +26,7 @@ func getClaimSignatureDigest(bytes ...[]byte) [32]byte {
 	return [32]byte(digest)
 }
 
-func (c *StakeHelper) VerifyDigest(certificate *StakeHelper, signature [64]byte, digest [32]byte) bool {
+func (c *Helper) VerifyDigest(certificate *Helper, signature [64]byte, digest [32]byte) bool {
 	if certificate == nil {
 		return false
 	}
@@ -42,7 +42,7 @@ func (c *StakeHelper) VerifyDigest(certificate *StakeHelper, signature [64]byte,
 	return ecdsa.Verify(pk.ToECDSA(), digest[:], R, S)
 }
 
-func (c *StakeHelper) ValidateClaimSignature(certificate *StakeHelper, k string, certificateId string, blockchainName string) (bool, error) {
+func (c *Helper) ValidateClaimSignature(certificate *Helper, k string, certificateId string, blockchainName string) (bool, error) {
 	if c.LegacyClaim != nil {
 		return c.validateV1ClaimSignature(certificate, k, certificateId, blockchainName)
 	}
@@ -50,20 +50,20 @@ func (c *StakeHelper) ValidateClaimSignature(certificate *StakeHelper, k string,
 	return c.validateClaimSignature(certificate, k, certificateId, blockchainName)
 }
 
-func (c *StakeHelper) validateClaimSignature(certificate *StakeHelper, firstInputTxHash, certificateId string, blockchainName string) (bool, error) {
+func (c *Helper) validateClaimSignature(certificate *Helper, firstInputTxHash, certificateId string, blockchainName string) (bool, error) {
 	certificateIdSlice, err := hex.DecodeString(certificateId)
 	if err != nil {
-		return false, errors.Err(err)
+		return false, errors.WithStack(err)
 	}
 	certificateIdSlice = reverseBytes(certificateIdSlice)
 	firstInputTxIDBytes, err := hex.DecodeString(firstInputTxHash)
 	if err != nil {
-		return false, errors.Err(err)
+		return false, errors.WithStack(err)
 	}
 
 	signature := c.Signature
 	if signature == nil {
-		return false, errors.Err("claim does not have a signature")
+		return false, errors.WithStack(errors.New("claim does not have a signature"))
 	}
 	signatureBytes := [64]byte{}
 	for i, b := range signature {
@@ -74,7 +74,7 @@ func (c *StakeHelper) validateClaimSignature(certificate *StakeHelper, firstInpu
 	return c.VerifyDigest(certificate, signatureBytes, claimDigest), nil
 }
 
-func (c *StakeHelper) validateV1ClaimSignature(certificate *StakeHelper, claimAddy string, certificateId string, blockchainName string) (bool, error) {
+func (c *Helper) validateV1ClaimSignature(certificate *Helper, claimAddy string, certificateId string, blockchainName string) (bool, error) {
 	addressBytes, err := address.DecodeAddress(claimAddy, blockchainName)
 	if err != nil {
 		return false, err
@@ -88,7 +88,7 @@ func (c *StakeHelper) validateV1ClaimSignature(certificate *StakeHelper, claimAd
 
 	signature := c.Signature
 	if signature == nil {
-		return false, errors.Err("claim does not have a signature")
+		return false, errors.WithStack(errors.New("claim does not have a signature"))
 	}
 	signatureBytes := [64]byte{}
 	for i := range signatureBytes {
@@ -97,12 +97,12 @@ func (c *StakeHelper) validateV1ClaimSignature(certificate *StakeHelper, claimAd
 
 	claimAddress, err := address.ValidateAddress(addressBytes, blockchainName)
 	if err != nil {
-		return false, errors.Err("invalid address")
+		return false, errors.WithStack(errors.New("invalid address"))
 	}
 
 	serializedNoSig, err := c.serializedNoSignature()
 	if err != nil {
-		return false, errors.Err("serialization error")
+		return false, errors.WithStack(errors.New("serialization error"))
 	}
 
 	claimDigest := getClaimSignatureDigest(claimAddress[:], serializedNoSig, certificateIdSlice)
@@ -112,7 +112,7 @@ func (c *StakeHelper) validateV1ClaimSignature(certificate *StakeHelper, claimAd
 func GetOutpointHash(txid string, vout uint32) (string, error) {
 	txidBytes, err := hex.DecodeString(txid)
 	if err != nil {
-		return "", errors.Err(err)
+		return "", errors.WithStack(err)
 	}
 	var voutBytes = make([]byte, 4)
 	binary.LittleEndian.PutUint32(voutBytes, vout)

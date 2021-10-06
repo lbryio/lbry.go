@@ -3,7 +3,7 @@ package stake
 import "testing"
 
 func TestClaimHelper(t *testing.T) {
-	for _, rawClaim := range raw_claims {
+	for _, rawClaim := range rawClaims {
 		helper, err := DecodeClaimHex(rawClaim, "lbrycrd_main")
 		if err != nil {
 			t.Error(err)

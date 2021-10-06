@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
+
+	"github.com/cockroachdb/errors"
 )
 
 var testingDHTIP = "127.0.0.1"
@@ -121,12 +122,12 @@ func (t testUDPConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	select {
 	case packet, ok := <-t.toRead:
 		if !ok {
-			return 0, nil, errors.Err("conn closed")
+			return 0, nil, errors.WithStack(errors.New("conn closed"))
 		}
 		n := copy(b, packet.data)
 		return n, packet.addr, nil
 	case <-timeoutCh:
-		return 0, nil, timeoutErr{errors.Err("timeout")}
+		return 0, nil, timeoutErr{errors.WithStack(errors.New("timeout"))}
 	}
 }
 
