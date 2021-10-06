@@ -4,15 +4,14 @@ import (
 	"encoding/hex"
 	"strconv"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/schema/address"
-	"github.com/lbryio/lbry.go/v2/schema/keys"
+	"github.com/lbryio/lbry.go/v3/schema/address"
+	"github.com/lbryio/lbry.go/v3/schema/keys"
+	v1PB "github.com/lbryio/types/v1/go"
+	v2PB "github.com/lbryio/types/v2/go"
 
-	legacy_pb "github.com/lbryio/types/v1/go"
-	pb "github.com/lbryio/types/v2/go"
-
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/cockroachdb/errors"
 	"github.com/golang/protobuf/proto"
+	"github.com/lbryio/lbcd/btcec"
 )
 
 type version byte
@@ -28,19 +27,17 @@ const (
 	UNKNOWN = version(byte(2))
 )
 
-type StakeHelper struct {
-	Claim       *pb.Claim
-	Support     *pb.Support
-	LegacyClaim *legacy_pb.Claim
+type Helper struct {
+	Claim       *v2PB.Claim
+	Support     *v2PB.Support
+	LegacyClaim *v1PB.Claim
 	ClaimID     []byte
 	Version     version
 	Signature   []byte
 	Payload     []byte
 }
 
-const migrationErrorMessage = "migration from v1 to v2 protobuf failed with: "
-
-func (c *StakeHelper) ValidateAddresses(blockchainName string) error {
+func (c *Helper) ValidateAddresses(blockchainName string) error {
 	if c.Claim != nil { // V2
 		// check the validity of a fee address
 		if c.Claim.GetStream() != nil {
@@ -55,20 +52,20 @@ func (c *StakeHelper) ValidateAddresses(blockchainName string) error {
 		}
 	}
 
-	return errors.Err("claim helper created with migrated v2 protobuf claim 'invalid state'")
+	return errors.WithStack(errors.New("claim helper created with migrated v2 protobuf claim 'invalid state'"))
 }
 
-func validateAddress(tmp_addr []byte, blockchainName string) error {
-	if len(tmp_addr) != 25 {
-		return errors.Err("invalid address length: " + strconv.FormatInt(int64(len(tmp_addr)), 10) + "!")
+func validateAddress(tmpAddr []byte, blockchainName string) error {
+	if len(tmpAddr) != 25 {
+		return errors.WithStack(errors.New("invalid address length: " + strconv.FormatInt(int64(len(tmpAddr)), 10)))
 	}
 	addr := [25]byte{}
 	for i := range addr {
-		addr[i] = tmp_addr[i]
+		addr[i] = tmpAddr[i]
 	}
 	_, err := address.EncodeAddress(addr, blockchainName)
 	if err != nil {
-		return errors.Err(err)
+		return err
 	}
 
 	return nil
@@ -84,83 +81,83 @@ func getVersionFromByte(versionByte byte) version {
 	return UNKNOWN
 }
 
-func (c *StakeHelper) ValidateCertificate() error {
+func (c *Helper) ValidateCertificate() error {
 	if !c.IsClaim() || c.Claim.GetChannel() == nil {
 		return nil
 	}
 	_, err := c.GetPublicKey()
 	if err != nil {
-		return errors.Err(err)
+		return err
 	}
 	return nil
 }
 
-func (c *StakeHelper) IsClaim() bool {
+func (c *Helper) IsClaim() bool {
 	return c.Claim != nil && c.Claim.String() != ""
 }
 
-func (c *StakeHelper) IsSupport() bool {
+func (c *Helper) IsSupport() bool {
 	return c.Support != nil
 }
 
-func (c *StakeHelper) LoadFromBytes(raw_claim []byte, blockchainName string) error {
-	return c.loadFromBytes(raw_claim, false, blockchainName)
+func (c *Helper) LoadFromBytes(rawClaim []byte, blockchainName string) error {
+	return c.loadFromBytes(rawClaim, false, blockchainName)
 }
 
-func (c *StakeHelper) LoadSupportFromBytes(raw_claim []byte, blockchainName string) error {
-	return c.loadFromBytes(raw_claim, true, blockchainName)
+func (c *Helper) LoadSupportFromBytes(rawClaim []byte, blockchainName string) error {
+	return c.loadFromBytes(rawClaim, true, blockchainName)
 }
 
-func (c *StakeHelper) loadFromBytes(raw_claim []byte, isSupport bool, blockchainName string) error {
+func (c *Helper) loadFromBytes(rawClaim []byte, isSupport bool, blockchainName string) error {
 	if c.Claim.String() != "" && !isSupport {
-		return errors.Err("already initialized")
+		return errors.WithStack(errors.New("already initialized"))
 	}
-	if len(raw_claim) < 1 {
-		return errors.Err("there is nothing to decode")
+	if len(rawClaim) < 1 {
+		return errors.WithStack(errors.New("there is nothing to decode"))
 	}
 
-	var claim_pb *pb.Claim
-	var legacy_claim_pb *legacy_pb.Claim
-	var support_pb *pb.Support
+	var claimPb *v2PB.Claim
+	var legacyClaimPb *v1PB.Claim
+	var supportPb *v2PB.Support
 
-	version := getVersionFromByte(raw_claim[0]) //First byte = version
-	pbPayload := raw_claim[1:]
+	version := getVersionFromByte(rawClaim[0]) //First byte = version
+	pbPayload := rawClaim[1:]
 	var claimID []byte
 	var signature []byte
 	if version == WithSig {
-		if len(raw_claim) < 85 {
-			return errors.Err("signature version indicated by 1st byte but not enough bytes for valid format")
+		if len(rawClaim) < 85 {
+			return errors.WithStack(errors.New("signature version indicated by 1st byte but not enough bytes for valid format"))
 		}
-		claimID = raw_claim[1:21]    // channel claimid = next 20 bytes
-		signature = raw_claim[21:85] // signature = next 64 bytes
-		pbPayload = raw_claim[85:]   // protobuf payload = remaining bytes
+		claimID = rawClaim[1:21]    // channel claimid = next 20 bytes
+		signature = rawClaim[21:85] // signature = next 64 bytes
+		pbPayload = rawClaim[85:]   // protobuf payload = remaining bytes
 	}
 
 	var err error
 	if !isSupport {
-		claim_pb = &pb.Claim{}
-		err = proto.Unmarshal(pbPayload, claim_pb)
+		claimPb = &v2PB.Claim{}
+		err = proto.Unmarshal(pbPayload, claimPb)
 	} else {
-		support := &pb.Support{}
+		support := &v2PB.Support{}
 		err = proto.Unmarshal(pbPayload, support)
 		if err == nil {
-			support_pb = support
+			supportPb = support
 		}
 	}
 	if err != nil {
-		legacy_claim_pb = &legacy_pb.Claim{}
-		legacyErr := proto.Unmarshal(raw_claim, legacy_claim_pb)
+		legacyClaimPb = &v1PB.Claim{}
+		legacyErr := proto.Unmarshal(rawClaim, legacyClaimPb)
 		if legacyErr == nil {
-			claim_pb, err = migrateV1PBClaim(*legacy_claim_pb)
+			claimPb, err = migrateV1PBClaim(*legacyClaimPb)
 			if err != nil {
-				return errors.Prefix(migrationErrorMessage, err)
+				return errors.WithMessage(err, "migration from v1 to v2 protobuf failed")
 			}
-			if legacy_claim_pb.GetPublisherSignature() != nil {
+			if legacyClaimPb.GetPublisherSignature() != nil {
 				version = WithSig
-				claimID = legacy_claim_pb.GetPublisherSignature().GetCertificateId()
-				signature = legacy_claim_pb.GetPublisherSignature().GetSignature()
+				claimID = legacyClaimPb.GetPublisherSignature().GetCertificateId()
+				signature = legacyClaimPb.GetPublisherSignature().GetSignature()
 			}
-			if legacy_claim_pb.GetCertificate() != nil {
+			if legacyClaimPb.GetCertificate() != nil {
 				version = NoSig
 			}
 		} else {
@@ -168,10 +165,10 @@ func (c *StakeHelper) loadFromBytes(raw_claim []byte, isSupport bool, blockchain
 		}
 	}
 
-	*c = StakeHelper{
-		Claim:       claim_pb,
-		Support:     support_pb,
-		LegacyClaim: legacy_claim_pb,
+	*c = Helper{
+		Claim:       claimPb,
+		Support:     supportPb,
+		LegacyClaim: legacyClaimPb,
 		ClaimID:     claimID,
 		Version:     version,
 		Signature:   signature,
@@ -192,7 +189,7 @@ func (c *StakeHelper) loadFromBytes(raw_claim []byte, isSupport bool, blockchain
 	return nil
 }
 
-func (c *StakeHelper) LoadFromHexString(claim_hex string, blockchainName string) error {
+func (c *Helper) LoadFromHexString(claim_hex string, blockchainName string) error {
 	buf, err := hex.DecodeString(claim_hex)
 	if err != nil {
 		return err
@@ -200,7 +197,7 @@ func (c *StakeHelper) LoadFromHexString(claim_hex string, blockchainName string)
 	return c.LoadFromBytes(buf, blockchainName)
 }
 
-func (c *StakeHelper) LoadSupportFromHexString(claim_hex string, blockchainName string) error {
+func (c *Helper) LoadSupportFromHexString(claim_hex string, blockchainName string) error {
 	buf, err := hex.DecodeString(claim_hex)
 	if err != nil {
 		return err
@@ -208,8 +205,8 @@ func (c *StakeHelper) LoadSupportFromHexString(claim_hex string, blockchainName 
 	return c.LoadSupportFromBytes(buf, blockchainName)
 }
 
-func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
-	claim := &StakeHelper{&pb.Claim{}, &pb.Support{}, nil, nil, NoSig, nil, nil}
+func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*Helper, error) {
+	claim := &Helper{&v2PB.Claim{}, &v2PB.Support{}, nil, nil, NoSig, nil, nil}
 	err := claim.LoadFromBytes(serialized, blockchainName)
 	if err != nil {
 		return nil, err
@@ -217,8 +214,8 @@ func DecodeClaimProtoBytes(serialized []byte, blockchainName string) (*StakeHelp
 	return claim, nil
 }
 
-func DecodeSupportProtoBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
-	claim := &StakeHelper{nil, &pb.Support{}, nil, nil, NoSig, nil, nil}
+func DecodeSupportProtoBytes(serialized []byte, blockchainName string) (*Helper, error) {
+	claim := &Helper{nil, &v2PB.Support{}, nil, nil, NoSig, nil, nil}
 	err := claim.LoadSupportFromBytes(serialized, blockchainName)
 	if err != nil {
 		return nil, err
@@ -226,21 +223,21 @@ func DecodeSupportProtoBytes(serialized []byte, blockchainName string) (*StakeHe
 	return claim, nil
 }
 
-func DecodeClaimHex(serialized string, blockchainName string) (*StakeHelper, error) {
-	claim_bytes, err := hex.DecodeString(serialized)
+func DecodeClaimHex(serialized string, blockchainName string) (*Helper, error) {
+	claimBytes, err := hex.DecodeString(serialized)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
-	return DecodeClaimBytes(claim_bytes, blockchainName)
+	return DecodeClaimBytes(claimBytes, blockchainName)
 }
 
 // DecodeClaimBytes take a byte array and tries to decode it to a protobuf claim or migrate it from either json v1,2,3 or pb v1
-func DecodeClaimBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
+func DecodeClaimBytes(serialized []byte, blockchainName string) (*Helper, error) {
 	helper, err := DecodeClaimProtoBytes(serialized, blockchainName)
 	if err == nil {
 		return helper, nil
 	}
-	helper = &StakeHelper{}
+	helper = &Helper{}
 	//If protobuf fails, try json versions before returning an error.
 	v1Claim := new(V1Claim)
 	err = v1Claim.Unmarshal(serialized)
@@ -251,45 +248,41 @@ func DecodeClaimBytes(serialized []byte, blockchainName string) (*StakeHelper, e
 			v3Claim := new(V3Claim)
 			err := v3Claim.Unmarshal(serialized)
 			if err != nil {
-				return nil, errors.Prefix("Claim value has no matching version", err)
+				return nil, errors.WithMessage(err, "vlaim value has no matching version")
 			}
 			helper.Claim, err = migrateV3Claim(*v3Claim)
 			if err != nil {
-				return nil, errors.Prefix("V3 Metadata Migration Error", err)
+				return nil, errors.WithMessage(err, "v3 metadata migration")
 			}
 			return helper, nil
 		}
 		helper.Claim, err = migrateV2Claim(*v2Claim)
 		if err != nil {
-			return nil, errors.Prefix("V2 Metadata Migration Error ", err)
+			return nil, errors.WithMessage(err, "v2 metadata migration")
 		}
 		return helper, nil
 	}
 
 	helper.Claim, err = migrateV1Claim(*v1Claim)
 	if err != nil {
-		return nil, errors.Prefix("V1 Metadata Migration Error ", err)
+		return nil, errors.WithMessage(err, "v1 metadata migration")
 	}
 	return helper, nil
 }
 
 // DecodeSupportBytes take a byte array and tries to decode it to a protobuf support
-func DecodeSupportBytes(serialized []byte, blockchainName string) (*StakeHelper, error) {
-	helper, err := DecodeSupportProtoBytes(serialized, blockchainName)
-	if err != nil {
-		return nil, errors.Err(err)
-	}
-	return helper, nil
+func DecodeSupportBytes(serialized []byte, blockchainName string) (*Helper, error) {
+	return DecodeSupportProtoBytes(serialized, blockchainName)
 }
 
-func (c *StakeHelper) GetStream() *pb.Stream {
+func (c *Helper) GetStream() *v2PB.Stream {
 	if c != nil {
 		return c.Claim.GetStream()
 	}
 	return nil
 }
 
-func (c *StakeHelper) CompileValue() ([]byte, error) {
+func (c *Helper) CompileValue() ([]byte, error) {
 	payload, err := c.serialized()
 	if err != nil {
 		return nil, err
@@ -305,14 +298,14 @@ func (c *StakeHelper) CompileValue() ([]byte, error) {
 	return value, nil
 }
 
-func (c *StakeHelper) GetPublicKey() (*btcec.PublicKey, error) {
+func (c *Helper) GetPublicKey() (*btcec.PublicKey, error) {
 	if c.IsClaim() {
 		if c.Claim.GetChannel() == nil {
-			return nil, errors.Err("claim is not of type channel, so there is no public key to get")
+			return nil, errors.WithStack(errors.New("claim is not of type channel, so there is no public key to get"))
 		}
 
 	} else if c.IsSupport() {
-		return nil, errors.Err("stake is a support and does not come with a public key to get")
+		return nil, errors.WithStack(errors.New("stake is a support and does not come with a public key to get"))
 	}
 	return keys.GetPublicKeyFromBytes(c.Claim.GetChannel().PublicKey)
 }

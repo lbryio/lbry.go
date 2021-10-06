@@ -3,7 +3,7 @@ package bits
 import (
 	"math/big"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // Range has a start and end
@@ -24,7 +24,7 @@ func MaxRange() Range {
 // the first interval always starts at the beginning of the range, and the last interval always ends at the end
 func (r Range) IntervalP(n, num int) Range {
 	if num < 1 || n < 1 || n > num {
-		panic(errors.Err("invalid interval %d of %d", n, num))
+		panic(errors.WithStack(errors.Newf("invalid interval %d of %d", n, num)))
 	}
 
 	start := r.intervalStart(n, num)

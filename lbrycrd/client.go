@@ -6,17 +6,18 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	c "github.com/lbryio/lbry.go/v2/schema/stake"
+	c "github.com/lbryio/lbry.go/v3/schema/stake"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"gopkg.in/ini.v1"
+	"github.com/lbryio/lbcd/btcec"
+	"github.com/lbryio/lbcd/btcjson"
+	"github.com/lbryio/lbcd/chaincfg"
+	"github.com/lbryio/lbcd/chaincfg/chainhash"
+	"github.com/lbryio/lbcd/rpcclient"
+	"github.com/lbryio/lbcd/wire"
+	"github.com/lbryio/lbcutil"
+
+	"github.com/cockroachdb/errors"
+	"github.com/go-ini/ini"
 )
 
 const DefaultPort = 9245
@@ -99,11 +100,11 @@ func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
 
 	u, err := url.Parse(lbrycrdURL)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if u.User == nil {
-		return nil, errors.Err("no userinfo")
+		return nil, errors.WithStack(errors.New("no userinfo"))
 	}
 
 	password, _ := u.User.Password()
@@ -124,13 +125,13 @@ func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
 	// Notice the notification parameter is nil since notifications are not supported in HTTP POST mode.
 	client, err := rpcclient.New(connCfg, nil)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 
 	// make sure lbrycrd is running and responsive
 	_, err = client.GetBlockChainInfo()
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 
 	return &Client{client}, nil
@@ -144,33 +145,33 @@ func NewWithDefaultURL(chainParams *chaincfg.Params) (*Client, error) {
 	return New(url, chainParams)
 }
 
-var errInsufficientFunds = errors.Base("insufficient funds")
+var errInsufficientFunds = errors.New("insufficient funds")
 
 // SimpleSend is a convenience function to send credits to an address (0 min confirmations)
 func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, error) {
 	decodedAddress, err := DecodeAddress(toAddress, &MainNetParams)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 
-	lbcAmount, err := btcutil.NewAmount(amount)
+	lbcAmount, err := lbcutil.NewAmount(amount)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 
 	hash, err := c.Client.SendToAddress(decodedAddress, lbcAmount)
 	if err != nil {
 		if err.Error() == "-6: Insufficient funds" {
-			err = errors.Err(errInsufficientFunds)
+			err = errors.WithStack(errInsufficientFunds)
 		}
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	return hash, nil
 }
 
 func getLbrycrdURLFromConfFile() (string, error) {
 	if os.Getenv("HOME") == "" {
-		return "", errors.Err("no $HOME var found")
+		return "", errors.WithStack(errors.New("no $HOME var found"))
 	}
 
 	defaultConfFile := os.Getenv("HOME") + "/.lbrycrd/lbrycrd.conf"
@@ -178,17 +179,17 @@ func getLbrycrdURLFromConfFile() (string, error) {
 		defaultConfFile = os.Getenv("HOME") + "/.lbrycrd_regtest/lbrycrd.conf"
 	}
 	if _, err := os.Stat(defaultConfFile); os.IsNotExist(err) {
-		return "", errors.Err("default lbrycrd conf file not found")
+		return "", errors.WithStack(errors.New("default lbrycrd conf file not found"))
 	}
 
 	cfg, err := ini.Load(defaultConfFile)
 	if err != nil {
-		return "", errors.Err(err)
+		return "", errors.WithStack(err)
 	}
 
 	section, err := cfg.GetSection("")
 	if err != nil {
-		return "", errors.Err(err)
+		return "", errors.WithStack(err)
 	}
 
 	username := section.Key("rpcuser").String()
@@ -211,14 +212,14 @@ func getLbrycrdURLFromConfFile() (string, error) {
 }
 
 func (c *Client) CreateBaseRawTx(inputs []btcjson.TransactionInput, change float64) (*wire.MsgTx, error) {
-	addresses := make(map[btcutil.Address]btcutil.Amount)
+	addresses := make(map[lbcutil.Address]lbcutil.Amount)
 	changeAddress, err := c.GetNewAddress("")
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
-	changeAmount, err := btcutil.NewAmount(change)
+	changeAmount, err := lbcutil.NewAmount(change)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	addresses[changeAddress] = changeAmount
 	lockTime := int64(0)
@@ -229,7 +230,7 @@ func (c *Client) GetEmptyTx(totalOutputSpend float64) (*wire.MsgTx, error) {
 	totalFees := 0.1
 	unspentResults, err := c.ListUnspentMin(1)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	finder := newOutputFinder(unspentResults)
 
@@ -238,7 +239,7 @@ func (c *Client) GetEmptyTx(totalOutputSpend float64) (*wire.MsgTx, error) {
 		return nil, err
 	}
 	if len(outputs) == 0 {
-		return nil, errors.Err("Not enough spendable outputs to create transaction")
+		return nil, errors.WithStack(errors.New("Not enough spendable outputs to create transaction"))
 	}
 	inputs := make([]btcjson.TransactionInput, len(outputs))
 	var totalInputSpend float64
@@ -254,10 +255,10 @@ func (c *Client) GetEmptyTx(totalOutputSpend float64) (*wire.MsgTx, error) {
 func (c *Client) SignTxAndSend(rawTx *wire.MsgTx) (*chainhash.Hash, error) {
 	signedTx, allInputsSigned, err := c.SignRawTransaction(rawTx)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	if !allInputsSigned {
-		return nil, errors.Err("Not all inputs for the tx could be signed!")
+		return nil, errors.WithStack(errors.New("Not all inputs for the tx could be signed!"))
 	}
 
 	return c.SendRawTransaction(signedTx, false)
@@ -271,20 +272,20 @@ const (
 	ClaimSupport
 )
 
-func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.StakeHelper, name string, claimAmount float64, scriptType ScriptType) error {
+func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.Helper, name string, claimAmount float64, scriptType ScriptType) error {
 
 	address, err := c.GetNewAddress("")
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
-	amount, err := btcutil.NewAmount(claimAmount)
+	amount, err := lbcutil.NewAmount(claimAmount)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	value, err := claim.CompileValue()
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 	var claimID string
 	if len(claim.ClaimID) > 0 {
@@ -293,19 +294,19 @@ func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.StakeHelper, name stri
 	var script []byte
 	switch scriptType {
 	case ClaimName:
-		script, err = getClaimNamePayoutScript(name, value, address)
+		script, err = GetClaimNamePayoutScript(name, value, address)
 		if err != nil {
-			return errors.Err(err)
+			return errors.WithStack(err)
 		}
 	case ClaimUpdate:
-		script, err = getUpdateClaimPayoutScript(name, claimID, value, address)
+		script, err = GetUpdateClaimPayoutScript(name, claimID, value, address)
 		if err != nil {
-			return errors.Err(err)
+			return errors.WithStack(err)
 		}
 	case ClaimSupport:
-		script, err = getUpdateClaimPayoutScript(name, claimID, value, address)
+		script, err = GetUpdateClaimPayoutScript(name, claimID, value, address)
 		if err != nil {
-			return errors.Err(err)
+			return errors.WithStack(err)
 		}
 	}
 
@@ -314,7 +315,7 @@ func (c *Client) AddStakeToTx(rawTx *wire.MsgTx, claim *c.StakeHelper, name stri
 	return nil
 }
 
-func (c *Client) CreateChannel(name string, amount float64) (*c.StakeHelper, *btcec.PrivateKey, error) {
+func (c *Client) CreateChannel(name string, amount float64) (*c.Helper, *btcec.PrivateKey, error) {
 	channel, key, err := NewChannel()
 	if err != nil {
 		return nil, nil, err
@@ -341,7 +342,7 @@ func (c *Client) SupportClaim(name, claimID, address, blockchainName string, cla
 	const DefaultFeePerSupport = float64(0.0001)
 	unspentResults, err := c.ListUnspentMin(1)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 
 	finder := newOutputFinder(unspentResults)
@@ -350,7 +351,7 @@ func (c *Client) SupportClaim(name, claimID, address, blockchainName string, cla
 		return nil, err
 	}
 	if len(outputs) == 0 {
-		return nil, errors.Err("Not enough spendable outputs to create transaction")
+		return nil, errors.WithStack(errors.New("Not enough spendable outputs to create transaction"))
 	}
 	inputs := make([]btcjson.TransactionInput, len(outputs))
 
@@ -367,19 +368,19 @@ func (c *Client) SupportClaim(name, claimID, address, blockchainName string, cla
 	}
 	chainParams, ok := ChainParamsMap[blockchainName]
 	if !ok {
-		return nil, errors.Err("invalid blockchain name %s", blockchainName)
+		return nil, errors.WithStack(errors.Newf("invalid blockchain name %s", blockchainName))
 	}
 	decodedAddress, err := DecodeAddress(address, &chainParams)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
-	amount, err := btcutil.NewAmount(claimAmount)
+	amount, err := lbcutil.NewAmount(claimAmount)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
-	script, err := getClaimSupportPayoutScript(name, claimID, decodedAddress)
+	script, err := GetClaimSupportPayoutScript(name, claimID, decodedAddress)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	rawTx.AddTxOut(wire.NewTxOut(int64(amount), script))
 

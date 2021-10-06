@@ -8,10 +8,10 @@ func EncodeBase58(data []byte) string {
 	longValue := big.NewInt(0)
 	result := ""
 	for i := 0; i < len(data); i++ {
-		to_add := big.NewInt(0)
-		to_add = to_add.Exp(big.NewInt(256), big.NewInt(int64(i)), to_add)
-		to_add = to_add.Mul(big.NewInt(int64(data[24-i])), to_add)
-		longValue = longValue.Add(to_add, longValue)
+		toAdd := big.NewInt(0)
+		toAdd = toAdd.Exp(big.NewInt(256), big.NewInt(int64(i)), toAdd)
+		toAdd = toAdd.Mul(big.NewInt(int64(data[24-i])), toAdd)
+		longValue = longValue.Add(toAdd, longValue)
 	}
 	i := 0
 	for {

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
 )
 
 const (

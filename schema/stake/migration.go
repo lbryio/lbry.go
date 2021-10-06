@@ -3,12 +3,11 @@ package stake
 import (
 	"encoding/hex"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-
+	"github.com/cockroachdb/errors"
 	v1pb "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/lbryio/lbcutil/base58"
 )
 
 const lbrySDHash = "lbry_sd_hash"
@@ -64,7 +63,7 @@ func migrateV1PBClaim(vClaim v1pb.Claim) (*pb.Claim, error) {
 	if *vClaim.ClaimType == v1pb.Claim_certificateType {
 		return migrateV1PBChannel(vClaim)
 	}
-	return nil, errors.Err("Could not migrate v1 protobuf claim due to unknown type '%s'.", vClaim.ClaimType.String())
+	return nil, errors.WithStack(errors.Newf("Could not migrate v1 protobuf claim due to unknown type '%s'.", vClaim.ClaimType.String()))
 }
 
 func migrateV1PBStream(vClaim v1pb.Claim) (*pb.Claim, error) {
@@ -119,7 +118,7 @@ func migrateV1Claim(vClaim V1Claim) (*pb.Claim, error) {
 
 	src, err := hex.DecodeString(vClaim.Sources.LbrySDHash)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	source.SdHash = src
 	pbClaim.GetStream().Source = source
@@ -141,7 +140,7 @@ func migrateV2Claim(vClaim V2Claim) (*pb.Claim, error) {
 	source.MediaType = vClaim.ContentType
 	src, err := hex.DecodeString(vClaim.Sources.LbrySDHash)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	source.SdHash = src
 	pbClaim.GetStream().Source = source
@@ -163,7 +162,7 @@ func migrateV3Claim(vClaim V3Claim) (*pb.Claim, error) {
 	source.MediaType = vClaim.ContentType
 	src, err := hex.DecodeString(vClaim.Sources.LbrySDHash)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	source.SdHash = src
 	pbClaim.GetStream().Source = source

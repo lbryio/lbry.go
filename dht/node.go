@@ -7,12 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/extras/stop"
-	"github.com/lbryio/lbry.go/v2/extras/util"
-
+	"github.com/cockroachdb/errors"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
+	"github.com/lbryio/lbry.go/v3/extras/stop"
 	"github.com/lyoshenka/bencode"
 )
 
@@ -163,7 +161,8 @@ func (n *Node) Shutdown() {
 func (n *Node) handlePacket(pkt packet) {
 	//log.Debugf("[%s] Received message from %s (%d bytes) %s", n.id.HexShort(), pkt.raddr.String(), len(pkt.data), hex.EncodeToString(pkt.data))
 
-	if !util.InSlice(string(pkt.data[0:5]), []string{"d1:0i", "di0ei"}) {
+	firstFive := string(pkt.data[0:5])
+	if firstFive != "d1:0i" && firstFive != "di0ei" {
 		log.Errorf("[%s] data is not a well-formatted dict: (%d bytes) %s", n.id.HexShort(), len(pkt.data), hex.EncodeToString(pkt.data))
 		return
 	}
@@ -318,7 +317,7 @@ func (n *Node) handleError(addr *net.UDPAddr, e Error) {
 func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 	encoded, err := bencode.EncodeBytes(data)
 	if err != nil {
-		return errors.Err(err)
+		return errors.WithStack(err)
 	}
 
 	if req, ok := data.(Request); ok {
@@ -340,7 +339,7 @@ func (n *Node) sendMessage(addr *net.UDPAddr, data Message) error {
 	}
 
 	_, err = n.conn.WriteToUDP(encoded, addr)
-	return errors.Err(err)
+	return errors.WithStack(err)
 }
 
 // transaction represents a single query to the dht. it stores the queried contact, the request, and the response channel

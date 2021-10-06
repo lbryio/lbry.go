@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
 
 	"github.com/sebdah/goldie"
 )

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/cockroachdb/errors"
 
 	"github.com/lyoshenka/bencode"
 )
@@ -253,7 +253,7 @@ func (b *Bitmap) UnmarshalBencode(encoded []byte) error {
 		return err
 	}
 	if len(str) != NumBytes {
-		return errors.Err("invalid bitmap length")
+		return errors.WithStack(errors.New("invalid bitmap length"))
 	}
 	copy(b[:], str)
 	return nil
@@ -264,7 +264,7 @@ func FromBytes(data []byte) (Bitmap, error) {
 	var bmp Bitmap
 
 	if len(data) != len(bmp) {
-		return bmp, errors.Err("invalid bitmap of length %d", len(data))
+		return bmp, errors.WithStack(errors.Newf("invalid bitmap of length %d", len(data)))
 	}
 
 	copy(bmp[:], data)
@@ -302,7 +302,7 @@ func FromStringP(data string) Bitmap {
 func FromHex(hexStr string) (Bitmap, error) {
 	decoded, err := hex.DecodeString(hexStr)
 	if err != nil {
-		return Bitmap{}, errors.Err(err)
+		return Bitmap{}, errors.WithStack(err)
 	}
 	return FromBytes(decoded)
 }

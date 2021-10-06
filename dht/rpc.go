@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v3/dht/bits"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gorilla/mux"
 	rpc2 "github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json"
@@ -25,7 +25,7 @@ type RpcPingArgs struct {
 
 func (rpc *rpcReceiver) Ping(r *http.Request, args *RpcPingArgs, result *string) error {
 	if args.Address == "" {
-		return errors.Err("no address given")
+		return errors.WithStack(errors.New("no address given"))
 	}
 
 	err := rpc.dht.Ping(args.Address)
@@ -92,7 +92,7 @@ func (rpc *rpcReceiver) FindValue(r *http.Request, args *RpcFindArgs, result *Rp
 		return nil
 	}
 
-	return errors.Err("not sure what happened")
+	return errors.WithStack(errors.New("not sure what happened"))
 }
 
 type RpcIterativeFindValueArgs struct {
@@ -166,7 +166,7 @@ func (dht *DHT) runRPCServer(port int) {
 	s.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
 	err := s.RegisterService(&rpcReceiver{dht: dht}, "rpc")
 	if err != nil {
-		log.Error(errors.Prefix("registering rpc service", err))
+		log.Error(errors.WithMessage(err, "registering rpc service"))
 		return
 	}
 
@@ -188,7 +188,7 @@ func (dht *DHT) runRPCServer(port int) {
 	<-dht.grp.Ch()
 	err = server.Shutdown(context.Background())
 	if err != nil {
-		log.Error(errors.Prefix("shutting down rpc service", err))
+		log.Error(errors.WithMessage(err, "shutting down rpc service"))
 		return
 	}
 	wg.Wait()

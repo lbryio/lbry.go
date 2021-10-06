@@ -1,16 +1,16 @@
 package lbrycrd
 
 import (
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/schema/keys"
-	c "github.com/lbryio/lbry.go/v2/schema/stake"
+	"github.com/lbryio/lbry.go/v3/schema/keys"
+	c "github.com/lbryio/lbry.go/v3/schema/stake"
 
+	"github.com/lbryio/lbcd/btcec"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/cockroachdb/errors"
 )
 
-func NewChannel() (*c.StakeHelper, *btcec.PrivateKey, error) {
+func NewChannel() (*c.Helper, *btcec.PrivateKey, error) {
 	claimChannel := new(pb.Claim_Channel)
 	channel := new(pb.Channel)
 	claimChannel.Channel = channel
@@ -20,14 +20,14 @@ func NewChannel() (*c.StakeHelper, *btcec.PrivateKey, error) {
 
 	privateKey, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
-		return nil, nil, errors.Err(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	pubkeyBytes, err := keys.PublicKeyToDER(privateKey.PubKey())
 	if err != nil {
-		return nil, nil, errors.Err(err)
+		return nil, nil, errors.WithStack(err)
 	}
 
-	helper := c.StakeHelper{Claim: pbClaim}
+	helper := c.Helper{Claim: pbClaim}
 	helper.Version = c.NoSig
 	helper.Claim.GetChannel().PublicKey = pubkeyBytes
 	helper.Claim.Tags = []string{}

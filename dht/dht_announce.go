@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/dht/bits"
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-
 	"golang.org/x/time/rate"
+
+	"github.com/lbryio/lbry.go/v3/dht/bits"
+
+	"github.com/cockroachdb/errors"
 )
 
 type queueEdit struct {
@@ -60,7 +61,7 @@ func (dht *DHT) runAnnouncer() {
 		for {
 			err := limiter.Wait(context.Background()) // TODO: should use grp.ctx somehow? so when grp is closed, wait returns
 			if err != nil {
-				log.Error(errors.Prefix("rate limiter", err))
+				log.Error(errors.WithMessage(err, "rate limiter"))
 				continue
 			}
 			select {
@@ -145,7 +146,7 @@ func (dht *DHT) runAnnouncer() {
 				defer dht.grp.Done()
 				err := dht.announce(hash)
 				if err != nil {
-					log.Error(errors.Prefix("announce", err))
+					log.Error(errors.WithMessage(err, "announce"))
 				}
 
 				if dht.conf.AnnounceNotificationCh != nil {

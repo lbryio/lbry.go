@@ -6,9 +6,8 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/cockroachdb/errors"
+	"github.com/lbryio/lbcd/btcec"
 )
 
 type publicKeyInfo struct {
@@ -20,7 +19,7 @@ type publicKeyInfo struct {
 func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 	var publicKeyBytes []byte
 	var publicKeyAlgorithm pkix.AlgorithmIdentifier
-	var err error
+
 	pub := publicKey.ToECDSA()
 	publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
 	//ans1 encoding oid for ecdsa public key https://github.com/golang/go/blob/release-branch.go1.12/src/crypto/x509/x509.go#L457
@@ -28,7 +27,7 @@ func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 	//asn1 encoding oid for secp256k1 https://github.com/bitpay/bitpay-go/blob/v2.2.2/key_utils/key_utils.go#L30
 	paramBytes, err := asn1.Marshal(asn1.ObjectIdentifier{1, 3, 132, 0, 10})
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	publicKeyAlgorithm.Parameters.FullBytes = paramBytes
 
@@ -42,7 +41,7 @@ func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 
 }
 
-// This type provides compatibility with the btcec package
+//This type provides compatibility with the btcec package
 type ecPrivateKey struct {
 	Version       int
 	PrivateKey    []byte
@@ -62,13 +61,10 @@ func PrivateKeyToDER(key *btcec.PrivateKey) ([]byte, error) {
 }
 
 func GetPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
-	if len(pubKeyBytes) == 33 {
-		return btcec.ParsePubKey(pubKeyBytes, btcec.S256())
-	}
 	PKInfo := publicKeyInfo{}
 	_, err := asn1.Unmarshal(pubKeyBytes, &PKInfo)
 	if err != nil {
-		return nil, errors.Err(err)
+		return nil, errors.WithStack(err)
 	}
 	pubkeyBytes1 := PKInfo.PublicKey.Bytes
 	return btcec.ParsePubKey(pubkeyBytes1, btcec.S256())
@@ -78,13 +74,13 @@ func GetPrivateKeyFromBytes(privKeyBytes []byte) (*btcec.PrivateKey, *btcec.Publ
 	ecPK := ecPrivateKey{}
 	_, err := asn1.Unmarshal(privKeyBytes, &ecPK)
 	if err != nil {
-		return nil, nil, errors.Err(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	priv, publ := btcec.PrivKeyFromBytes(btcec.S256(), ecPK.PrivateKey)
 	return priv, publ, nil
 }
 
-// Returns a btec.Private key object if provided a correct secp256k1 encoded pem.
+//ExtractKeyFromPem returns a btec.Private key object if provided a correct secp256k1 encoded pem.
 func ExtractKeyFromPem(pm string) (*btcec.PrivateKey, *btcec.PublicKey) {
 	byta := []byte(pm)
 	blck, _ := pem.Decode(byta)
@@ -99,7 +95,7 @@ type Signature struct {
 
 func (s *Signature) LBRYSDKEncode() ([]byte, error) {
 	if s.R == nil || s.S == nil {
-		return nil, errors.Err("invalid signature, both S & R are nil")
+		return nil, errors.WithStack(errors.New("invalid signature, both S & R are nil"))
 	}
 	rBytes := s.R.Bytes()
 	sBytes := s.S.Bytes()
