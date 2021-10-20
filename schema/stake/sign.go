@@ -4,11 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/cockroachdb/errors"
 	"github.com/lbryio/lbry.go/v3/schema/address"
 	"github.com/lbryio/lbry.go/v3/schema/keys"
 
 	"github.com/lbryio/lbcd/btcec"
+
+	"github.com/cockroachdb/errors"
 )
 
 func Sign(privKey btcec.PrivateKey, channel Helper, claim Helper, k string) (*keys.Signature, error) {
@@ -23,7 +24,6 @@ func Sign(privKey btcec.PrivateKey, channel Helper, claim Helper, k string) (*ke
 }
 
 func (c *Helper) sign(privKey btcec.PrivateKey, channel Helper, firstInputTxID string) (*keys.Signature, error) {
-
 	txidBytes, err := hex.DecodeString(firstInputTxID)
 	if err != nil {
 		return nil, errors.WithStack(err)

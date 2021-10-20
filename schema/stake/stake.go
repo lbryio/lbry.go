@@ -44,10 +44,11 @@ func (c *Helper) ValidateAddresses(blockchainName string) error {
 			fee := c.GetStream().GetFee()
 			if fee != nil {
 				return validateAddress(fee.GetAddress(), blockchainName)
-			} else {
-				return nil
 			}
-		} else if c.Claim.GetChannel() != nil {
+			return nil
+		}
+
+		if c.Claim.GetChannel() != nil {
 			return nil
 		}
 	}
