@@ -95,7 +95,7 @@ type Client struct {
 }
 
 // New initializes a new Client
-func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
+func New(lbrycrdURL string, chainParams string) (*Client, error) {
 	// Connect to local bitcoin core RPC server using HTTP POST mode.
 
 	u, err := url.Parse(lbrycrdURL)
@@ -109,16 +109,11 @@ func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
 
 	password, _ := u.User.Password()
 
-	chain := MainNetParams
-	if chainParams != nil {
-		chain = *chainParams
-	}
-
 	connCfg := &rpcclient.ConnConfig{
 		Host:         u.Host,
 		User:         u.User.Username(),
 		Pass:         password,
-		Params:       chain,
+		Params:       chainParams,
 		HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
 		DisableTLS:   true, // Bitcoin core does not provide TLS by default
 	}
@@ -137,12 +132,12 @@ func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
 	return &Client{client}, nil
 }
 
-func NewWithDefaultURL(chainParams *chaincfg.Params) (*Client, error) {
+func NewWithDefaultURL() (*Client, error) {
 	url, err := getLbrycrdURLFromConfFile()
 	if err != nil {
 		return nil, err
 	}
-	return New(url, chainParams)
+	return New(url, "")
 }
 
 var errInsufficientFunds = errors.New("insufficient funds")
