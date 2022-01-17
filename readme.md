@@ -2,6 +2,8 @@
 
 lbry.go is a set of tools and projects implemented in Golang. See each subfolder for more details
 
+**there are significant updates in the [v3 branch](https://github.com/lbryio/lbry.go/tree/v3). if you're starting a new project, strongly consider using that version instead**
+
 [![Build Status](https://travis-ci.org/lbryio/lbry.go.svg?branch=master)](https://travis-ci.org/lbryio/lbry.go)
 
 This project uses Go modules. Make sure you have Go 1.11+ installed.
