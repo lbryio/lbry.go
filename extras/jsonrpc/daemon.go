@@ -536,24 +536,35 @@ func (d *Client) Resolve(urls string) (*ResolveResponse, error) {
 	})
 }
 
-func (d *Client) ClaimSearch(claimName, claimID, txid *string, nout *uint, page uint64, pageSize uint64) (*ClaimSearchResponse, error) {
+type ClaimSearchArgs struct {
+	ClaimID               *string  `json:"claim_id,omitempty"`
+	TXID                  *string  `json:"txid,omitempty"`
+	Nout                  *uint    `json:"nout,omitempty"`
+	Name                  *string  `json:"name,omitempty"`
+	ClaimType             []string `json:"claim_type,omitempty"`
+	OrderBy               []string `json:"order_by,omitempty"`
+	LimitClaimsPerChannel *int     `json:"limit_claims_per_channel,omitempty"`
+	HasNoSource           *bool    `json:"has_no_source,omitempty"`
+	ReleaseTime           string   `json:"release_time,omitempty"`
+	ChannelIDs            []string `json:"channel_ids,omitempty"`
+	NoTotals              *bool    `json:"no_totals,omitempty"`
+	IncludeProtobuf       *bool    `json:"include_protobuf,omitempty"`
+	AnyTags               []string `json:"any_tags,omitempty"`
+
+	Page     uint64 `json:"page"`
+	PageSize uint64 `json:"page_size"`
+}
+
+func (d *Client) ClaimSearch(args ClaimSearchArgs) (*ClaimSearchResponse, error) {
 	response := new(ClaimSearchResponse)
-	args := struct {
-		ClaimID         *string `json:"claim_id,omitempty"`
-		TXID            *string `json:"txid,omitempty"`
-		Nout            *uint   `json:"nout,omitempty"`
-		Name            *string `json:"name,omitempty"`
-		IncludeProtobuf bool    `json:"include_protobuf"`
-		Page            uint64  `json:"page"`
-		PageSize        uint64  `json:"page_size"`
-	}{
-		ClaimID:         claimID,
-		TXID:            txid,
-		Nout:            nout,
-		Name:            claimName,
-		IncludeProtobuf: true,
-		Page:            page,
-		PageSize:        pageSize,
+	if args.NoTotals == nil {
+		nototals := true
+		args.NoTotals = &nototals
+	}
+
+	if args.IncludeProtobuf == nil {
+		include := true
+		args.IncludeProtobuf = &include
 	}
 	structs.DefaultTagName = "json"
 	return response, d.call(response, "claim_search", structs.Map(args))

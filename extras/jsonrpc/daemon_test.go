@@ -463,7 +463,14 @@ func TestClient_TxoSpendTest(t *testing.T) {
 
 func TestClient_ClaimSearch(t *testing.T) {
 	d := NewClient("")
-	got, err := d.ClaimSearch(nil, util.PtrToString(channelID), nil, nil, 1, 20)
+	got, err := d.ClaimSearch(ClaimSearchArgs{
+		ChannelIDs:  []string{channelID},
+		ReleaseTime: ">1633350820",
+		HasNoSource: util.PtrToBool(true),
+		OrderBy:     []string{"^release_time"},
+		Page:        1,
+		PageSize:    20,
+	})
 	if err != nil {
 		t.Error(err)
 		return
