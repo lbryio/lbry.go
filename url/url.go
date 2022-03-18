@@ -311,7 +311,7 @@ func parseModifier(modSeparator string, modValue string) (*UriModifier, error) {
 		if modSeparator == "#" {
 			claimId = modValue
 		} else if modSeparator == ":" {
-			claimSequence = parseInt(modValue, -1)
+			claimId = modValue
 		} else if modSeparator == "$" {
 			bidPosition = parseInt(modValue, -1)
 		}
