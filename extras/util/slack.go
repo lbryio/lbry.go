@@ -6,8 +6,8 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
-	"github.com/nlopes/slack"
 	log "github.com/sirupsen/logrus"
+	"github.com/slack-go/slack"
 )
 
 var defaultChannel string
