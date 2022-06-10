@@ -49,11 +49,10 @@ type File struct {
 	Height               int               `json:"height"`
 	IsFullyReflected     bool              `json:"is_fully_reflected"`
 	Key                  string            `json:"key"`
-	Metadata             *lbryschema.Claim `json:"protobuf"`
+	Value                *lbryschema.Claim `json:"protobuf"`
 	MimeType             string            `json:"mime_type"`
 	Nout                 int               `json:"nout"`
 	Outpoint             string            `json:"outpoint"`
-	Protobuf             string            `json:"protobuf"`
 	PurchaseReceipt      interface{}       `json:"purchase_receipt"`
 	ReflectorProgress    int               `json:"reflector_progress"`
 	SdHash               string            `json:"sd_hash"`
@@ -253,10 +252,9 @@ type Transaction struct {
 	PermanentUrl       string            `json:"permanent_url"`
 	SigningChannel     *Claim            `json:"signing_channel,omitempty"`
 	TimeStamp          uint64            `json:"time_stamp"`
-	Protobuf           string            `json:"protobuf,omitempty"`
 	Txid               string            `json:"txid"`
 	Type               string            `json:"type"`
-	Value              *lbryschema.Claim `json:"protobuf"`
+	Value              *lbryschema.Claim `json:"protobuf,omitempty"`
 }
 
 type TransactionSummary struct {

@@ -62,12 +62,15 @@ func PrivateKeyToDER(key *btcec.PrivateKey) ([]byte, error) {
 }
 
 func GetPublicKeyFromBytes(pubKeyBytes []byte) (*btcec.PublicKey, error) {
+	if len(pubKeyBytes) == 33 {
+		return btcec.ParsePubKey(pubKeyBytes, btcec.S256())
+	}
 	PKInfo := publicKeyInfo{}
 	_, err := asn1.Unmarshal(pubKeyBytes, &PKInfo)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
-	pubkeyBytes1 := []byte(PKInfo.PublicKey.Bytes)
+	pubkeyBytes1 := PKInfo.PublicKey.Bytes
 	return btcec.ParsePubKey(pubkeyBytes1, btcec.S256())
 }
 
