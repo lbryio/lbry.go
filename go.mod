@@ -52,7 +52,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
-	github.com/stretchr/objx v0.1.0 // indirect
 	golang.org/x/sys v0.0.0-20191026070338-33540a1f6037 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20191009194640-548a555dbc03 // indirect

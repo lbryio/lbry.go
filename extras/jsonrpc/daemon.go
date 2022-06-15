@@ -20,9 +20,22 @@ import (
 
 const DefaultPort = 5279
 
+const (
+	ErrorWalletNotLoaded     = "WalletNotLoadedError"
+	ErrorWalletAlreadyLoaded = "WalletAlreadyLoadedError"
+	ErrorWalletNotFound      = "WalletNotFoundError"
+	ErrorWalletAlreadyExists = "WalletAlreadyExistsError"
+)
+
 type Client struct {
 	conn    jsonrpc.RPCClient
 	address string
+}
+
+type Error struct {
+	Code    int
+	Name    string
+	Message string
 }
 
 func NewClient(address string) *Client {
@@ -70,6 +83,15 @@ func Decode(data interface{}, targetStruct interface{}) error {
 	return nil
 }
 
+// WrapError adds error metadata from JSONRPC error response for clients to access
+func WrapError(rpcError *jsonrpc.RPCError) Error {
+	e := Error{Code: rpcError.Code, Message: rpcError.Message}
+	if d, ok := rpcError.Data.(map[string]interface{}); ok {
+		e.Name = d["name"].(string)
+	}
+	return e
+}
+
 func decodeNumber(data interface{}) (decimal.Decimal, error) {
 	var number string
 
@@ -106,6 +128,10 @@ func debugParams(params map[string]interface{}) string {
 	return strings.Join(s, " ")
 }
 
+func (e Error) Error() string {
+	return fmt.Sprintf("Error in daemon: %s", e.Message)
+}
+
 func (d *Client) callNoDecode(command string, params map[string]interface{}) (interface{}, error) {
 	log.Debugln("jsonrpc: " + command + " " + debugParams(params))
 	r, err := d.conn.Call(command, params)
@@ -114,7 +140,7 @@ func (d *Client) callNoDecode(command string, params map[string]interface{}) (in
 	}
 
 	if r.Error != nil {
-		return nil, errors.Err("Error in daemon: " + r.Error.Message)
+		return nil, WrapError(r.Error)
 	}
 
 	return r.Result, nil

@@ -750,11 +750,15 @@ func TestClient_WalletList(t *testing.T) {
 	d := NewClient("")
 
 	id := "lbry#wallet#id:" + fmt.Sprintf("%d", rand.Int())
-	wList, err := d.WalletList(id, 1, 20)
+	_, err := d.WalletList(id, 1, 20)
 	if err == nil {
 		t.Fatalf("wallet %v was unexpectedly found", id)
 	}
-	if !strings.Contains(err.Error(), fmt.Sprintf("Couldn't find wallet: %v.", id)) {
+	derr, ok := err.(Error)
+	if !ok {
+		t.Fatalf("unknown error returned: %s", err)
+	}
+	if derr.Name != ErrorWalletNotLoaded {
 		t.Fatal(err)
 	}
 
@@ -763,7 +767,7 @@ func TestClient_WalletList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wList, err = d.WalletList(id, 1, 20)
+	wList, err := d.WalletList(id, 1, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -800,7 +804,7 @@ func TestClient_WalletRemoveWalletAdd(t *testing.T) {
 }
 
 func TestClient_TransactionSummary(t *testing.T) {
-	d := NewClient("https://api.lbry.tv/api/v1/proxy")
+	d := NewClient("https://api.na-backend.odysee.com/api/v1/proxy")
 	r, err := d.TransactionShow("d104a1616c6af581e2046819de678f370d624e97cf176f95acaec4b183a42db6")
 	if err != nil {
 		t.Error(err)
