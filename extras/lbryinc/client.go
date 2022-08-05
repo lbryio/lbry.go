@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	defaultServerAddress = "https://api.lbry.com"
+	defaultServerAddress = "https://api.odysee.tv"
 	timeout              = 5 * time.Second
 	headerForwardedFor   = "X-Forwarded-For"
 
@@ -44,9 +44,36 @@ type ClientOpts struct {
 
 // APIResponse reflects internal-apis JSON response format.
 type APIResponse struct {
-	Success bool          `json:"success"`
-	Error   *string       `json:"error"`
-	Data    *ResponseData `json:"data"`
+	Success bool        `json:"success"`
+	Error   *string     `json:"error"`
+	Data    interface{} `json:"data"`
+}
+
+type data struct {
+	obj   map[string]interface{}
+	array []interface{}
+}
+
+func (d data) IsObject() bool {
+	return d.obj != nil
+}
+
+func (d data) IsArray() bool {
+	return d.array != nil
+}
+
+func (d data) Object() (map[string]interface{}, error) {
+	if d.obj == nil {
+		return nil, errors.New("no object data found")
+	}
+	return d.obj, nil
+}
+
+func (d data) Array() ([]interface{}, error) {
+	if d.array == nil {
+		return nil, errors.New("no array data found")
+	}
+	return d.array, nil
 }
 
 // APIError wraps errors returned by LBRY API server to discern them from other kinds (like http errors).
@@ -59,7 +86,12 @@ func (e APIError) Error() string {
 }
 
 // ResponseData is a map containing parsed json response.
-type ResponseData map[string]interface{}
+type ResponseData interface {
+	IsObject() bool
+	IsArray() bool
+	Object() (map[string]interface{}, error)
+	Array() ([]interface{}, error)
+}
 
 func makeMethodPath(obj, method string) string {
 	return fmt.Sprintf("/%s/%s", obj, method)
@@ -109,6 +141,10 @@ func NewOauthClient(token oauth2.TokenSource, opts *ClientOpts) Client {
 
 func (c Client) getEndpointURL(object, method string) string {
 	return fmt.Sprintf("%s%s", c.serverAddress, makeMethodPath(object, method))
+}
+
+func (c Client) getEndpointURLFromPath(path string) string {
+	return fmt.Sprintf("%s%s", c.serverAddress, path)
 }
 
 func (c Client) prepareParams(params map[string]interface{}) (string, error) {
@@ -164,36 +200,70 @@ func (c Client) doCall(url string, payload string) ([]byte, error) {
 	return ioutil.ReadAll(r.Body)
 }
 
-// Call calls a remote internal-apis server, returning a response,
+// CallResource calls a remote internal-apis server resource, returning a response,
 // wrapped into standardized API Response struct.
-func (c Client) Call(object, method string, params map[string]interface{}) (ResponseData, error) {
-	var rd ResponseData
+func (c Client) CallResource(object, method string, params map[string]interface{}) (ResponseData, error) {
+	var d data
 	payload, err := c.prepareParams(params)
 	if err != nil {
-		return rd, err
+		return d, err
 	}
 
 	body, err := c.doCall(c.getEndpointURL(object, method), payload)
 	if err != nil {
-		return rd, err
+		return d, err
 	}
 	var ar APIResponse
 	err = json.Unmarshal(body, &ar)
 	if err != nil {
-		return rd, err
+		return d, err
 	}
 	if !ar.Success {
-		return rd, APIError{errors.New(*ar.Error)}
+		return d, APIError{errors.New(*ar.Error)}
 	}
-	return *ar.Data, err
+	if v, ok := ar.Data.([]interface{}); ok {
+		d.array = v
+	} else if v, ok := ar.Data.(map[string]interface{}); ok {
+		d.obj = v
+	}
+	return d, err
+}
+
+// Call calls a remote internal-apis server, returning a response,
+// wrapped into standardized API Response struct.
+func (c Client) Call(path string, params map[string]interface{}) (ResponseData, error) {
+	var d data
+	payload, err := c.prepareParams(params)
+	if err != nil {
+		return d, err
+	}
+
+	body, err := c.doCall(c.getEndpointURLFromPath(path), payload)
+	if err != nil {
+		return d, err
+	}
+	var ar APIResponse
+	err = json.Unmarshal(body, &ar)
+	if err != nil {
+		return d, err
+	}
+	if !ar.Success {
+		return d, APIError{errors.New(*ar.Error)}
+	}
+	if v, ok := ar.Data.([]interface{}); ok {
+		d.array = v
+	} else if v, ok := ar.Data.(map[string]interface{}); ok {
+		d.obj = v
+	}
+	return d, err
 }
 
 // UserMe returns user details for the user associated with the current auth_token.
 func (c Client) UserMe() (ResponseData, error) {
-	return c.Call(userObjectPath, userMeMethod, map[string]interface{}{})
+	return c.CallResource(userObjectPath, userMeMethod, map[string]interface{}{})
 }
 
 // UserHasVerifiedEmail calls has_verified_email method.
 func (c Client) UserHasVerifiedEmail() (ResponseData, error) {
-	return c.Call(userObjectPath, userHasVerifiedEmailMethod, map[string]interface{}{})
+	return c.CallResource(userObjectPath, userHasVerifiedEmailMethod, map[string]interface{}{})
 }
