@@ -303,6 +303,7 @@ type ChannelCreateOptions struct {
 	CoverURL           *string  `json:"cover_url,omitempty"`
 	Featured           []string `json:"featured,omitempty"`
 	AccountID          *string  `json:"account_id,omitempty"`
+	FundingAccountIDs  []string `json:"funding_account_ids,omitempty"`
 }
 
 func (d *Client) ChannelCreate(name string, bid float64, options ChannelCreateOptions) (*TransactionSummary, error) {
