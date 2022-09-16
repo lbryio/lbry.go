@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -423,6 +424,28 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 
 	streamSize += uint64(len(lastBlob))
 	return streamSize, nil
+}
+
+const (
+	ProtectedContentTag      = SpecialContentType("c:members-only")
+	PurchaseContentTag       = SpecialContentType("c:purchase:")
+	RentalContentTag         = SpecialContentType("c:rental:")
+	PreorderContentTag       = SpecialContentType("c:preorder:")
+	LegacyPurchaseContentTag = SpecialContentType("purchase:")
+	LegacyRentalContentTag   = SpecialContentType("rental:")
+	LegacyPreorderContentTag = SpecialContentType("preorder:")
+)
+
+type SpecialContentType string
+
+//IsContentSpecial returns true if the claim is of a special content type
+func (c *Claim) IsContentSpecial(specialTag SpecialContentType) bool {
+	for _, t := range c.Value.GetTags() {
+		if strings.Contains(t, string(specialTag)) {
+			return true
+		}
+	}
+	return false
 }
 
 type StreamListResponse struct {
