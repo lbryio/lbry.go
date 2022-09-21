@@ -164,6 +164,21 @@ func (d *Client) SetRPCTimeout(timeout time.Duration) {
 //				NEW SDK
 //============================================
 
+func (d *Client) AccountSend(accountID *string, amount, toAddress string) (*TransactionSummary, error) {
+	response := new(TransactionSummary)
+	args := struct {
+		AccountID *string `json:"account_id"`
+		Amount    string  `json:"amount"`
+		Addresses string  `json:"addresses"`
+	}{
+		AccountID: accountID,
+		Amount:    amount,
+		Addresses: toAddress,
+	}
+	structs.DefaultTagName = "json"
+	return response, d.call(response, "account_send", structs.Map(args))
+}
+
 func (d *Client) AccountList(page uint64, pageSize uint64) (*AccountListResponse, error) {
 	response := new(AccountListResponse)
 	return response, d.call(response, "account_list", map[string]interface{}{

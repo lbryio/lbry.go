@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
@@ -49,6 +50,32 @@ func TestClient_AccountFund(t *testing.T) {
 	got, err := d.AccountFund(account, account, fmt.Sprintf("%f", balance/2.0), 40, false)
 	if err != nil {
 		t.Error(err)
+		return
+	}
+	prettyPrint(*got)
+}
+
+func TestClient_AccountSend(t *testing.T) {
+	d := NewClient("")
+	accounts, err := d.AccountList(1, 20)
+	if !assert.NoError(t, err) {
+		return
+	}
+	if !assert.NotEmpty(t, accounts.Items[1].ID) {
+		return
+	}
+	account := (accounts.Items)[1].ID
+
+	addressess, err := d.AddressList(&account, nil, 1, 20)
+	if !assert.NoError(t, err) {
+		return
+	}
+	if !assert.NotEmpty(t, addressess.Items) {
+		return
+	}
+
+	got, err := d.AccountSend(&account, "0.01", string(addressess.Items[0].Address))
+	if !assert.NoError(t, err) {
 		return
 	}
 	prettyPrint(*got)
@@ -130,11 +157,11 @@ func TestClient_ChannelCreate(t *testing.T) {
 				State:   util.PtrToString("Ticino"),
 				City:    util.PtrToString("Lugano"),
 			}},
-			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+			ThumbnailURL: util.PtrToString("https://scrn.storni.info/2022-06-10_17-18-29-409175881.png"),
 		},
 		Email:      util.PtrToString("niko@lbry.com"),
 		WebsiteURL: util.PtrToString("https://lbry.com"),
-		CoverURL:   util.PtrToString("https://scrn.storni.info/2019-04-12_15-43-25-001592625.png"),
+		CoverURL:   util.PtrToString("https://scrn.storni.info/2022-06-10_17-18-29-409175881.png"),
 	})
 	if err != nil {
 		t.Error(err)

@@ -264,6 +264,7 @@ type TransactionSummary struct {
 	Inputs      []Transaction `json:"inputs"`
 	Outputs     []Transaction `json:"outputs"`
 	TotalFee    string        `json:"total_fee"`
+	TotalInput  string        `json:"total_input"`
 	TotalOutput string        `json:"total_output"`
 	Txid        string        `json:"txid"`
 }
