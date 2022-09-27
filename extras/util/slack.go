@@ -81,7 +81,7 @@ func sendToSlack(channel, username, message string) error {
 		log.Debugln("slack: " + channel + ": " + message)
 		for {
 			_, _, err = slackApi.PostMessage(channel, slack.MsgOptionText(message, false), slack.MsgOptionUsername(username))
-			if strings.Contains(err.Error(), "timeout awaiting response headers") {
+			if err != nil && strings.Contains(err.Error(), "timeout awaiting response headers") {
 				continue
 			}
 			break
