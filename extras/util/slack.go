@@ -19,7 +19,18 @@ var slackApi *slack.Client
 
 // InitSlack Initializes a slack client with the given token and sets the default channel.
 func InitSlack(token string, channel string, username string) {
-	slackApi = slack.New(token)
+	c := &http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+	slackApi = slack.New(token, slack.OptionHTTPClient(c))
 	defaultChannel = channel
 	defaultUsername = username
 }
@@ -64,18 +75,6 @@ func SendToSlack(format string, a ...interface{}) error {
 func sendToSlack(channel, username, message string) error {
 	var err error
 
-	c := &http.Client{
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-	slack.OptionHTTPClient(c)
 	if slackApi == nil {
 		err = errors.Err("no slack token provided")
 	} else {
