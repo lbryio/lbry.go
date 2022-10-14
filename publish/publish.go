@@ -197,7 +197,7 @@ func makeStream(path string) (stream.Stream, *pb.Stream, error) {
 	}
 	defer file.Close()
 
-	enc := stream.NewEncoder(file)
+	enc := stream.NewEncoderFromFile(file)
 
 	s, err := enc.Stream()
 	if err != nil {

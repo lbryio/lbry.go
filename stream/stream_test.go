@@ -7,6 +7,8 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cockroachdb/errors"
@@ -199,4 +201,18 @@ func TestSizeHint(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Skip("TODO: test new stream creation and decryption")
+}
+
+func TestNewEncoderFromFile(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", `new "encoder" from file.whatever`))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	e := NewEncoderFromFile(f)
+
+	if e.sd.SuggestedFileName != "new encoder from file.whatever" {
+		t.Error("wrong or missing suggested_file_name in sd blob")
+	}
 }

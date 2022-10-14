@@ -6,6 +6,8 @@ import (
 	"hash"
 	"io"
 	"math"
+	"os"
+	"path"
 
 	"github.com/cockroachdb/errors"
 )
@@ -117,11 +119,10 @@ func NewEncoder(src io.Reader) *Encoder {
 }
 
 // NewEncoderWithIVs creates a new encoder that uses preset cryptographic material
+//
+// Deprecated: use NewEncoder().WithIVs() instead
 func NewEncoderWithIVs(src io.Reader, key []byte, ivs [][]byte) *Encoder {
-	e := NewEncoder(src)
-	e.sd.Key = key
-	e.ivs = ivs
-	return e
+	return NewEncoder(src).WithIVs(key, ivs)
 }
 
 // NewEncoderFromSD creates a new encoder that reuses cryptographic material from an sd blob
@@ -134,10 +135,27 @@ func NewEncoderFromSD(src io.Reader, sdBlob *SDBlob) *Encoder {
 		ivs[i] = sdBlob.BlobInfos[i].IV
 	}
 
-	e := NewEncoderWithIVs(src, sdBlob.Key, ivs)
+	e := NewEncoder(src).WithIVs(sdBlob.Key, ivs)
 	e.sd.StreamName = sdBlob.StreamName
 	e.sd.SuggestedFileName = sdBlob.SuggestedFileName
 	return e
+}
+
+// NewEncoderFromFile creates a new encoder for a file
+func NewEncoderFromFile(file *os.File) *Encoder {
+	e := NewEncoder(file)
+	filename := path.Base(file.Name()) // todo: is path.Base() needed here?
+	e.sd.StreamName = filename
+	e.sd.SuggestedFileName = sanitizeFilename(filename)
+	return e
+}
+
+// WithIVs sets preset cryptographic material for encoding
+func (e *Encoder) WithIVs(key []byte, ivs [][]byte) *Encoder {
+	e.sd.Key = key
+	e.ivs = ivs
+	return e
+
 }
 
 // TODO: consider making a NewPartialEncoder that also copies blobinfos from sdBlobs and seeks forward in the data

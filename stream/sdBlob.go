@@ -7,11 +7,14 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"path"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 const streamTypeLBRYFile = "lbryfile"
+const defaultSanitizedFilename = "lbry_download"
 
 // BlobInfo is the stream descriptor info for a single blob in a stream
 // Encoding to and from JSON is customized to match existing behavior (see json.go in package)
@@ -35,14 +38,14 @@ func (bi BlobInfo) Hash() []byte {
 }
 
 // SDBlob contains information about the rest of the blobs in the stream
-// Encoding to and from JSON is customized to match existing behavior (see json.go in package)
+// NOTE: Encoding to and from JSON is customized to match existing behavior (see json.go in package)
 type SDBlob struct {
-	StreamName        string     `json:"-"`
+	StreamName        string     `json:"-"` // shadowed by JSONSDBlob in json.go
 	BlobInfos         []BlobInfo `json:"blobs"`
 	StreamType        string     `json:"stream_type"`
-	Key               []byte     `json:"-"`
-	SuggestedFileName string     `json:"-"`
-	StreamHash        []byte     `json:"-"`
+	Key               []byte     `json:"-"` // shadowed by JSONSDBlob in json.go
+	SuggestedFileName string     `json:"-"` // shadowed by JSONSDBlob in json.go
+	StreamHash        []byte     `json:"-"` // shadowed by JSONSDBlob in json.go
 }
 
 // Hash returns a hash of the SD blob data
@@ -154,4 +157,41 @@ func randIV() []byte {
 // NullIV returns an IV of 0s
 func NullIV() []byte {
 	return make([]byte, aes.BlockSize)
+}
+
+var illegalFilenameChars = regexp.MustCompile(`(` +
+	`[<>:"/\\|?*]+|` + // Illegal characters
+	`[\x00-\x1F]+|` + // All characters in range 0-31
+	`[ \t]*(\.)+[ \t]*$|` + // Dots at the end
+	`(^[ \t]+|[ \t]+$)|` + // Leading and trailing whitespace
+	`^CON$|^PRN$|^AUX$|` + // Illegal names on windows
+	`^NUL$|^COM[1-9]$|^LPT[1-9]$` + // Illegal names on windows
+	`)`)
+
+// sanitizeFilename cleans a filename so it can go into an sd blob
+// python implementation: https://github.com/lbryio/lbry-sdk/blob/e89acac235f497b0215991d5142aa678d525eb59/lbry/stream/descriptor.py#L69
+func sanitizeFilename(name string) string {
+	//defaultFilename := "lbry_download"
+
+	ext := path.Ext(name)
+	name = name[:len(name)-len(ext)]
+
+	if name == "" && ext != "" {
+		// python does it this way. I think it's weird, but we should try and match them
+		name = ext
+		ext = ""
+	}
+
+	name = illegalFilenameChars.ReplaceAllString(name, "")
+	ext = illegalFilenameChars.ReplaceAllString(ext, "")
+
+	if name == "" {
+		name = defaultSanitizedFilename
+	}
+
+	if len(ext) > 1 {
+		name += ext
+	}
+
+	return name
 }
