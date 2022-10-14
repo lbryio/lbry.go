@@ -52,6 +52,7 @@ func ChecksumIsValid(address [addressLength]byte) bool {
 	return base58.VerifyBase58Checksum(address[:])
 }
 
+// Deprecated: i'm sure lbryio/lbcd has functions for everything in this file
 func ValidateAddress(address [addressLength]byte, blockchainName string) ([addressLength]byte, error) {
 	if blockchainName != lbrycrdMain && blockchainName != lbrycrdTestnet && blockchainName != lbrycrdRegtest {
 		return address, errors.WithStack(errors.New("invalid blockchain name"))

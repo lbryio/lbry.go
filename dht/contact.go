@@ -43,7 +43,7 @@ func (c Contact) String() string {
 }
 
 func (c Contact) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
+	b, err := json.Marshal(&struct {
 		ID       string
 		IP       string
 		Port     int
@@ -54,16 +54,17 @@ func (c Contact) MarshalJSON() ([]byte, error) {
 		Port:     c.Port,
 		PeerPort: c.PeerPort,
 	})
+	return b, errors.Wrap(err, "")
 }
 
 // MarshalCompact returns a compact byteslice representation of the contact
 // NOTE: The compact representation always uses the tcp PeerPort, not the udp Port. This is dumb, but that's how the python daemon does it
 func (c Contact) MarshalCompact() ([]byte, error) {
 	if c.IP.To4() == nil {
-		return nil, errors.WithStack(errors.New("ip not set"))
+		return nil, errors.Wrap(errors.New("ip not set"), "")
 	}
 	if c.PeerPort < 0 || c.PeerPort > 65535 {
-		return nil, errors.WithStack(errors.New("invalid port"))
+		return nil, errors.Wrap(errors.New("invalid port"), "")
 	}
 
 	var buf bytes.Buffer
@@ -73,7 +74,7 @@ func (c Contact) MarshalCompact() ([]byte, error) {
 	buf.Write(c.ID[:])
 
 	if buf.Len() != compactNodeInfoLength {
-		return nil, errors.WithStack(errors.New("i dont know how this happened"))
+		return nil, errors.Wrap(errors.New("i dont know how this happened"), "")
 	}
 
 	return buf.Bytes(), nil
@@ -83,7 +84,7 @@ func (c Contact) MarshalCompact() ([]byte, error) {
 // NOTE: The compact representation always uses the tcp PeerPort, not the udp Port. This is dumb, but that's how the python daemon does it
 func (c *Contact) UnmarshalCompact(b []byte) error {
 	if len(b) != compactNodeInfoLength {
-		return errors.WithStack(errors.New("invalid compact length"))
+		return errors.Wrap(errors.New("invalid compact length"), "")
 	}
 	c.IP = net.IPv4(b[0], b[1], b[2], b[3]).To4()
 	c.PeerPort = int(uint16(b[5]) | uint16(b[4])<<8)
@@ -93,7 +94,8 @@ func (c *Contact) UnmarshalCompact(b []byte) error {
 
 // MarshalBencode returns the serialized byte slice representation of a contact.
 func (c Contact) MarshalBencode() ([]byte, error) {
-	return bencode.EncodeBytes([]interface{}{c.ID, c.IP.String(), c.Port})
+	b, err := bencode.EncodeBytes([]interface{}{c.ID, c.IP.String(), c.Port})
+	return b, errors.Wrap(err, "")
 }
 
 // UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the contact.
@@ -101,26 +103,26 @@ func (c *Contact) UnmarshalBencode(b []byte) error {
 	var raw []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 
 	if len(raw) != 3 {
-		return errors.WithStack(errors.Newf("contact must have 3 elements; got %d", len(raw)))
+		return errors.Wrap(errors.Newf("contact must have 3 elements; got %d", len(raw)), "")
 	}
 
 	err = bencode.DecodeBytes(raw[0], &c.ID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 
 	var ipStr string
 	err = bencode.DecodeBytes(raw[1], &ipStr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 	c.IP = net.ParseIP(ipStr).To4()
 	if c.IP == nil {
-		return errors.WithStack(errors.New("invalid IP"))
+		return errors.Wrap(errors.New("invalid IP"), "")
 	}
 
 	return bencode.DecodeBytes(raw[2], &c.Port)
