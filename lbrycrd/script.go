@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+// Deprecated: use lbryio/lbcd's txscript.ClaimSupportScript() instead
 func GetClaimSupportPayoutScript(name, claimid string, address lbcutil.Address) ([]byte, error) {
 	//OP_SUPPORT_CLAIM <name> <claimid> OP_2DROP OP_DROP OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
 
@@ -34,6 +35,7 @@ func GetClaimSupportPayoutScript(name, claimid string, address lbcutil.Address) 
 
 }
 
+// Deprecated: use lbryio/lbcd's txscript.ClaimNameScript() instead
 func GetClaimNamePayoutScript(name string, value []byte, address lbcutil.Address) ([]byte, error) {
 	//OP_CLAIM_NAME <name> <value> OP_2DROP OP_DROP OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
 
@@ -52,6 +54,7 @@ func GetClaimNamePayoutScript(name string, value []byte, address lbcutil.Address
 		Script()
 }
 
+// Deprecated: use lbryio/lbcd's txscript.ClaimUpdateScript() instead
 func GetUpdateClaimPayoutScript(name, claimid string, value []byte, address lbcutil.Address) ([]byte, error) {
 	//OP_UPDATE_CLAIM <name> <claimid> <value> OP_2DROP OP_DROP OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
 
@@ -87,6 +90,8 @@ func IsClaimUpdateScript(script []byte) bool {
 }
 
 // ParseClaimNameScript parses a script for the claim of a name.
+//
+// Deprecated: use lbryio/lbcd's txscript.ExtractClaimScript() instead
 func ParseClaimNameScript(script []byte) (name string, value []byte, pubkeyscript []byte, err error) {
 	// Already validated by blockchain so can be assumed
 	// opClaimName Name Value OP_2DROP OP_DROP pubkeyscript
@@ -122,6 +127,8 @@ func ParseClaimNameScript(script []byte) (name string, value []byte, pubkeyscrip
 }
 
 // ParseClaimUpdateScript parses a script for an update of a claim.
+//
+// Deprecated: use lbryio/lbcd's txscript.ExtractClaimScript() instead
 func ParseClaimUpdateScript(script []byte) (name string, claimid string, value []byte, pubkeyscript []byte, err error) {
 	// opUpdateClaim Name ClaimID Value OP_2DROP OP_2DROP pubkeyscript
 

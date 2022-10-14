@@ -62,7 +62,7 @@ func (m *messageID) UnmarshalBencode(encoded []byte) error {
 	var str string
 	err := bencode.DecodeBytes(encoded, &str)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 	copy(m[:], str)
 	return nil
@@ -103,13 +103,14 @@ func (r Request) MarshalBencode() ([]byte, error) {
 	} else {
 		args = []string{} // request must always have keys 0-4, so we use an empty list for PING
 	}
-	return bencode.EncodeBytes(map[string]interface{}{
+	b, err := bencode.EncodeBytes(map[string]interface{}{
 		headerTypeField:      requestType,
 		headerMessageIDField: r.ID,
 		headerNodeIDField:    r.NodeID,
 		headerPayloadField:   r.Method,
 		headerArgsField:      args,
 	})
+	return b, errors.Wrap(err, "bencode")
 }
 
 // UnmarshalBencode unmarshals the serialized byte slice into the appropriate fields of the request.
@@ -122,7 +123,7 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 	}
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {
-		return errors.WithMessage(err, "request unmarshal")
+		return errors.Wrap(err, "request unmarshal")
 	}
 
 	r.ID = raw.ID
@@ -133,7 +134,7 @@ func (r *Request) UnmarshalBencode(b []byte) error {
 		r.StoreArgs = &storeArgs{} // bencode wont find the unmarshaler on a null pointer. need to fix it.
 		err = bencode.DecodeBytes(raw.Args, &r.StoreArgs)
 		if err != nil {
-			return errors.WithMessage(err, "request unmarshal")
+			return errors.Wrap(err, "request unmarshal")
 		}
 	} else if len(raw.Args) > 2 { // 2 because an empty list is `le`
 		r.Arg, r.ProtocolVersion, err = processArgsAndProtoVersion(raw.Args)
@@ -149,7 +150,7 @@ func processArgsAndProtoVersion(raw bencode.RawMessage) (arg *bits.Bitmap, versi
 	var args []bencode.RawMessage
 	err = bencode.DecodeBytes(raw, &args)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.Wrap(err, "")
 	}
 
 	if len(args) == 0 {
@@ -169,7 +170,7 @@ func processArgsAndProtoVersion(raw bencode.RawMessage) (arg *bits.Bitmap, versi
 		var b bits.Bitmap
 		err = bencode.DecodeBytes(args[0], &b)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, errors.Wrap(err, "")
 		}
 		arg = &b
 	}
@@ -224,39 +225,39 @@ func (s *storeArgs) UnmarshalBencode(b []byte) error {
 	var argsInt []bencode.RawMessage
 	err := bencode.DecodeBytes(b, &argsInt)
 	if err != nil {
-		return errors.WithMessage(err, "storeArgs unmarshal")
+		return errors.Wrap(err, "storeArgs unmarshal")
 	}
 
 	if len(argsInt) != 4 {
-		return errors.WithStack(errors.Newf("unexpected number of fields for store args. got %d", len(argsInt)))
+		return errors.Wrap(errors.Newf("unexpected number of fields for store args. got %d", len(argsInt)), "")
 	}
 
 	err = bencode.DecodeBytes(argsInt[0], &s.BlobHash)
 	if err != nil {
-		return errors.WithMessage(err, "storeArgs unmarshal")
+		return errors.Wrap(err, "storeArgs unmarshal")
 	}
 
 	err = bencode.DecodeBytes(argsInt[1], &s.Value)
 	if err != nil {
-		return errors.WithMessage(err, "storeArgs unmarshal")
+		return errors.Wrap(err, "storeArgs unmarshal")
 	}
 
 	err = bencode.DecodeBytes(argsInt[2], &s.NodeID)
 	if err != nil {
-		return errors.WithMessage(err, "storeArgs unmarshal")
+		return errors.Wrap(err, "storeArgs unmarshal")
 	}
 
 	var selfStore int
 	err = bencode.DecodeBytes(argsInt[3], &selfStore)
 	if err != nil {
-		return errors.WithMessage(err, "storeArgs unmarshal")
+		return errors.Wrap(err, "storeArgs unmarshal")
 	}
 	if selfStore == 0 {
 		s.SelfStore = false
 	} else if selfStore == 1 {
 		s.SelfStore = true
 	} else {
-		return errors.WithStack(errors.New("selfstore must be 1 or 0"))
+		return errors.Wrap(errors.New("selfstore must be 1 or 0"), "")
 	}
 
 	return nil
@@ -454,7 +455,7 @@ func (e *Error) UnmarshalBencode(b []byte) error {
 	}
 	err := bencode.DecodeBytes(b, &raw)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 
 	e.ID = raw.ID
