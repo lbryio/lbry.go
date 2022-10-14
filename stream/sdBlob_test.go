@@ -73,3 +73,48 @@ func TestSdBlob_UnmarshalJSON(t *testing.T) {
 		t.Fatal("re-encoded string is not equal to original string")
 	}
 }
+
+func TestSdBlob_SanitizeFilename(t *testing.T) {
+	// from https://github.com/lbryio/lbry-sdk/blob/ff303860513690c4b1c52a053aa75f28858002d3/tests/unit/stream/test_stream_descriptor.py#L81
+
+	testCases := []struct {
+		Filename  string
+		Santizied string
+	}{
+		{
+			Filename:  " t/-?t|.g.ext ",
+			Santizied: "t-t.g.ext",
+		},
+		{
+			Filename:  "end_dot .",
+			Santizied: "end_dot",
+		},
+		{
+			Filename:  ".file\x00\x00",
+			Santizied: ".file",
+		},
+		{
+			Filename:  "test n\x16ame.ext",
+			Santizied: "test name.ext",
+		},
+		{
+			Filename:  "COM8.ext",
+			Santizied: "lbry_download.ext",
+		},
+		{
+			Filename:  "LPT2",
+			Santizied: "lbry_download",
+		},
+		{
+			Filename:  "",
+			Santizied: "lbry_download",
+		},
+	}
+
+	for _, tt := range testCases {
+		sanitized := sanitizeFilename(tt.Filename)
+		if sanitized != tt.Santizied {
+			t.Errorf("expected: '%s', actual: '%s'", tt.Santizied, sanitized)
+		}
+	}
+}
