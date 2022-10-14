@@ -8,5 +8,7 @@ func TestDecodeAddress(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	println(btcAddr.EncodeAddress())
+	if btcAddr.EncodeAddress() != addr {
+		t.Errorf("expected: %s, actual: %s", addr, btcAddr.EncodeAddress())
+	}
 }
