@@ -154,7 +154,7 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 		return nil, errors.WithStack(err)
 	}
 
-	hash, err := c.Client.SendToAddress(decodedAddress, lbcAmount)
+	hash, err := c.Client.SendToAddress(decodedAddress, lbcAmount, nil)
 	if err != nil {
 		if err.Error() == "-6: Insufficient funds" {
 			err = errors.WithStack(errInsufficientFunds)
@@ -207,7 +207,7 @@ func getLbrycrdURLFromConfFile() (string, error) {
 }
 
 func (c *Client) CreateBaseRawTx(inputs []btcjson.TransactionInput, change float64) (*wire.MsgTx, error) {
-	addresses := make(map[lbcutil.Address]lbcutil.Amount)
+	addresses := make(map[lbcutil.Address]interface{})
 	changeAddress, err := c.GetNewAddress("")
 	if err != nil {
 		return nil, errors.WithStack(err)
