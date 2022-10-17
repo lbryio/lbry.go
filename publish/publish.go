@@ -120,7 +120,7 @@ func baseTx(client *lbrycrd.Client, amount float64, changeAddress lbcutil.Addres
 	change := total - amount - txFee
 
 	// create base raw tx
-	addresses := make(map[lbcutil.Address]lbcutil.Amount)
+	addresses := make(map[lbcutil.Address]interface{})
 	//changeAddr, err := client.GetNewAddress("")
 	changeAmount, err := lbcutil.NewAmount(change)
 	if err != nil {
