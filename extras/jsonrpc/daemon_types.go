@@ -435,6 +435,9 @@ const (
 	LegacyPurchaseContentTag = SpecialContentType("purchase:")
 	LegacyRentalContentTag   = SpecialContentType("rental:")
 	LegacyPreorderContentTag = SpecialContentType("preorder:")
+	ScheduledShowContentTag  = SpecialContentType("c:scheduled:show")
+	ScheduledHideContentTag  = SpecialContentType("c:scheduled:hide")
+	UnlistedContentTag       = SpecialContentType("c:unlisted")
 )
 
 type SpecialContentType string
