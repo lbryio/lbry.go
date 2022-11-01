@@ -435,15 +435,20 @@ const (
 	LegacyPurchaseContentTag = SpecialContentType("purchase:")
 	LegacyRentalContentTag   = SpecialContentType("rental:")
 	LegacyPreorderContentTag = SpecialContentType("preorder:")
+	ScheduledShowContentTag  = SpecialContentType("c:scheduled:show")
+	ScheduledHideContentTag  = SpecialContentType("c:scheduled:hide")
+	UnlistedContentTag       = SpecialContentType("c:unlisted")
 )
 
 type SpecialContentType string
 
 //IsContentSpecial returns true if the claim is of a special content type
-func (c *Claim) IsContentSpecial(specialTag SpecialContentType) bool {
+func (c *Claim) IsContentSpecial(specialTags ...SpecialContentType) bool {
 	for _, t := range c.Value.GetTags() {
-		if strings.Contains(t, string(specialTag)) {
-			return true
+		for _, ct := range specialTags {
+			if strings.Contains(t, string(ct)) {
+				return true
+			}
 		}
 	}
 	return false
