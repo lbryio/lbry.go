@@ -15,7 +15,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 const DefaultPort = 5279
