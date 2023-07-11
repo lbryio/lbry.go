@@ -7,6 +7,8 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"io"
+	"io/ioutil"
+	"path"
 	"testing"
 
 	"github.com/cockroachdb/errors"
@@ -55,6 +57,9 @@ func TestStreamToFile(t *testing.T) {
 
 	enc := NewEncoderFromSD(bytes.NewBuffer(data), sdBlob)
 	newStream, err := enc.Stream()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(newStream) != len(testdataBlobHashes) {
 		t.Fatalf("stream length mismatch. got %d blobs, expected %d", len(newStream), len(testdataBlobHashes))
@@ -133,6 +138,75 @@ func TestMakeStream(t *testing.T) {
 	}
 	for i := 1; i < len(stream); i++ { // start at 1 to skip sd blob
 		if !bytes.Equal(stream[i], reconstructedStream[i]) {
+			t.Errorf("blob %d of reconstructed stream does not match original stream", i)
+		}
+	}
+}
+
+func TestWriteOut(t *testing.T) {
+	blobsToRead := 3
+	totalBlobs := blobsToRead + 3
+
+	data := make([]byte, ((totalBlobs-1)*maxBlobDataSize)+1000) // last blob is partial
+	_, err := rand.Read(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := bytes.NewBuffer(data)
+
+	enc := NewEncoder(buf)
+
+	stream := make(Stream, blobsToRead+1) // +1 for sd blob
+	for i := 1; i < blobsToRead+1; i++ {  // start at 1 to skip sd blob
+		stream[i], err = enc.Next()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	sdBlob := enc.SDBlob()
+
+	if len(sdBlob.BlobInfos) != blobsToRead {
+		t.Errorf("expected %d blobs in partial sdblob, got %d", blobsToRead, len(sdBlob.BlobInfos))
+	}
+	if enc.SourceLen() != maxBlobDataSize*blobsToRead {
+		t.Errorf("expected length of %d , got %d", maxBlobDataSize*blobsToRead, enc.SourceLen())
+	}
+
+	// now finish the stream, reusing key and IVs
+	buf = bytes.NewBuffer(data) // rewind to the beginning of the data
+
+	enc = NewEncoderFromSD(buf, sdBlob)
+
+	outPath := t.TempDir()
+	writtenManifest, err := enc.WriteOut(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(writtenManifest) != totalBlobs+1 { // +1 for the terminating blob at the end
+		t.Errorf("expected %d blobs in stream, got %d", totalBlobs+1, len(writtenManifest))
+	}
+	if enc.SourceLen() != len(data) {
+		t.Errorf("expected length of %d , got %d", len(data), enc.SourceLen())
+	}
+
+	sdb, err := ioutil.ReadFile(path.Join(outPath, writtenManifest[0]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	osdb := enc.SDBlob().ToBlob()
+
+	if !bytes.Equal(osdb, sdb) {
+		t.Errorf("written sd blob does not match original sd blob")
+	}
+	for i := 1; i < len(stream); i++ { // start at 1 to skip sd blob
+		b, err := ioutil.ReadFile(path.Join(outPath, writtenManifest[i]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(stream[i], b) {
 			t.Errorf("blob %d of reconstructed stream does not match original stream", i)
 		}
 	}
