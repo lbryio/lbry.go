@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"io"
 	"io/ioutil"
+	"os"
 	"path"
 	"testing"
 
@@ -143,7 +144,7 @@ func TestMakeStream(t *testing.T) {
 	}
 }
 
-func TestWriteOut(t *testing.T) {
+func TestEncode(t *testing.T) {
 	blobsToRead := 3
 	totalBlobs := blobsToRead + 3
 
@@ -180,7 +181,10 @@ func TestWriteOut(t *testing.T) {
 	enc = NewEncoderFromSD(buf, sdBlob)
 
 	outPath := t.TempDir()
-	writtenManifest, err := enc.WriteOut(outPath)
+	handler := func(h string, b []byte) error {
+		return ioutil.WriteFile(path.Join(outPath, h), b, os.ModePerm)
+	}
+	writtenManifest, err := enc.Encode(handler)
 	if err != nil {
 		t.Fatal(err)
 	}
