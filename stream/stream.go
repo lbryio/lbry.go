@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"math"
-	"os"
-	"path"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 )
@@ -174,6 +171,7 @@ func (e *Encoder) Next() (Blob, error) {
 }
 
 // Stream creates the whole stream in one call
+// TODO: Can be refactored to use Encode method
 func (e *Encoder) Stream() (Stream, error) {
 	s := make(Stream, 1, 1+int(math.Ceil(float64(e.srcSizeHint)/maxBlobDataSize))) // len starts at 1 and cap is +1 to leave room for sd blob
 
@@ -200,8 +198,8 @@ func (e *Encoder) Stream() (Stream, error) {
 	return s, nil
 }
 
-// WriteOut splits the source into blobs and writes them to disk
-func (e *Encoder) WriteOut(dstPath string) ([]string, error) {
+// Encode splits the source into blobs and feeds them into handler function
+func (e *Encoder) Encode(handler func(string, []byte) error) ([]string, error) {
 	manifest := []string{}
 
 	for {
@@ -212,18 +210,19 @@ func (e *Encoder) WriteOut(dstPath string) ([]string, error) {
 			}
 			return nil, err
 		}
-		err = ioutil.WriteFile(path.Join(dstPath, blob.HashHex()), blob, os.ModePerm)
+
+		err = handler(blob.HashHex(), blob)
 		if err != nil {
-			return nil, fmt.Errorf("cannot write blob: %w", err)
+			return nil, fmt.Errorf("cannot process blob: %w", err)
 		}
 		manifest = append(manifest, blob.HashHex())
 	}
 
 	sdb := e.SDBlob().ToBlob()
 	h := sdb.HashHex()
-	err := ioutil.WriteFile(path.Join(dstPath, h), sdb, os.ModePerm)
+	err := handler(h, sdb)
 	if err != nil {
-		return nil, fmt.Errorf("cannot write SD blob: %w", err)
+		return nil, fmt.Errorf("cannot handle SD blob: %w", err)
 	}
 	manifest = append([]string{h}, manifest...)
 
