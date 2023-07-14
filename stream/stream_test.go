@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
@@ -277,13 +278,14 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewEncoderFromFile(t *testing.T) {
-	f, err := os.Open(filepath.Join("testdata", "new encoder from file.whatever..."))
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	sketchyFile := filepath.Join(t.TempDir(), `new "encoder" from file.whatever...`)
+	file, err := os.OpenFile(sketchyFile, os.O_RDONLY|os.O_CREATE, 0644)
+	require.NoError(t, err)
+	file.Close()
+	file, err = os.Open(sketchyFile)
+	require.NoError(t, err)
 
-	e := NewEncoderFromFile(f)
+	e := NewEncoderFromFile(file)
 
 	if e.sd.SuggestedFileName != "new encoder from file.whatever" {
 		t.Error("wrong or missing suggested_file_name in sd blob")
