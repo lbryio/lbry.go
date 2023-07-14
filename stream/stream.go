@@ -151,6 +151,12 @@ func NewEncoderFromFile(file *os.File) *Encoder {
 	return e
 }
 
+// SetFilename saves provided source filename into stream metadata
+func (e *Encoder) SetFilename(filename string) {
+	e.sd.StreamName = filename
+	e.sd.SuggestedFileName = sanitizeFilename(filename)
+}
+
 // WithIVs sets preset cryptographic material for encoding
 func (e *Encoder) WithIVs(key []byte, ivs [][]byte) *Encoder {
 	e.sd.Key = key

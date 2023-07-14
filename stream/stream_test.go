@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"gotest.tools/assert"
 )
 
 var testdataBlobHashes = []string{
@@ -281,7 +282,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewEncoderFromFile(t *testing.T) {
-	f, err := os.Open(filepath.Join("testdata", `new "encoder" from file.whatever`))
+	f, err := os.Open(filepath.Join("testdata", "new encoder from file.whatever..."))
 	if err != nil {
 		t.Error(err)
 		return
@@ -292,4 +293,12 @@ func TestNewEncoderFromFile(t *testing.T) {
 	if e.sd.SuggestedFileName != "new encoder from file.whatever" {
 		t.Error("wrong or missing suggested_file_name in sd blob")
 	}
+}
+
+func TestSetFilename(t *testing.T) {
+	enc := NewEncoder(bytes.NewBuffer(nil))
+	enc.SetFilename(`filename "sketchy" string`)
+
+	assert.Equal(t, "filename sketchy string", enc.sd.SuggestedFileName)
+	assert.Equal(t, `filename "sketchy" string`, enc.sd.StreamName)
 }
