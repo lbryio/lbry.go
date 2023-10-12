@@ -8,7 +8,7 @@ import (
 
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/lbryio/lbcd/btcec"
 )
 
 type rawClaim struct {

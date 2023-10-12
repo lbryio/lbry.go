@@ -3,7 +3,7 @@ package jsonrpc
 import (
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"reflect"
@@ -386,7 +386,7 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, errors.Err(err)
 	}
@@ -409,7 +409,7 @@ func (c *Claim) GetStreamSizeByMagic() (streamSize uint64, e error) {
 	}
 	defer resp2.Body.Close()
 
-	body2, err := ioutil.ReadAll(resp2.Body)
+	body2, err := io.ReadAll(resp2.Body)
 	if err != nil {
 		return 0, errors.Err(err)
 	}
@@ -442,7 +442,7 @@ const (
 
 type SpecialContentType string
 
-//IsContentSpecial returns true if the claim is of a special content type
+// IsContentSpecial returns true if the claim is of a special content type
 func (c *Claim) IsContentSpecial(specialTags ...SpecialContentType) bool {
 	for _, t := range c.Value.GetTags() {
 		for _, ct := range specialTags {
@@ -599,7 +599,7 @@ type transactionListBlob struct {
 	Nout         int    `json:"nout"`
 }
 
-//TODO: this repeats all the fields from transactionListBlob which doesn't make sense
+// TODO: this repeats all the fields from transactionListBlob which doesn't make sense
 // but if i extend the type with transactionListBlob it doesn't fill the fields. does our unmarshaller crap out on these?
 type supportBlob struct {
 	Address      string `json:"address"`

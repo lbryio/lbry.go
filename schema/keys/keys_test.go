@@ -6,7 +6,7 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/lbryio/lbcd/btcec"
 	"gotest.tools/assert"
 )
 

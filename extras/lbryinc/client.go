@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -197,7 +197,7 @@ func (c Client) doCall(url string, payload string) ([]byte, error) {
 		return body, fmt.Errorf("server returned non-OK status: %v", r.StatusCode)
 	}
 	defer r.Body.Close()
-	return ioutil.ReadAll(r.Body)
+	return io.ReadAll(r.Body)
 }
 
 // CallResource calls a remote internal-apis server resource, returning a response,

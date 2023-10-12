@@ -8,7 +8,7 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/schema/keys"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/lbryio/lbcd/btcec"
 	"gotest.tools/assert"
 )
 

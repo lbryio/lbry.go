@@ -7,7 +7,7 @@ import (
 	legacy "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func (c *StakeHelper) serialized() ([]byte, error) {

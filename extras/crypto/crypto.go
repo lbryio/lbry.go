@@ -9,7 +9,7 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/lbryio/lbcutil/base58"
 	"golang.org/x/crypto/sha3"
 )
 

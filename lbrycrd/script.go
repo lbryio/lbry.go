@@ -3,10 +3,10 @@ package lbrycrd
 import (
 	"encoding/hex"
 
+	btcutil "github.com/lbryio/lbcutil"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcutil"
+	"github.com/lbryio/lbcd/txscript"
 )
 
 func getClaimSupportPayoutScript(name, claimid string, address btcutil.Address) ([]byte, error) {
@@ -23,12 +23,12 @@ func getClaimSupportPayoutScript(name, claimid string, address btcutil.Address) 
 	}
 
 	return txscript.NewScriptBuilder().
-		AddOp(txscript.OP_NOP7).  //OP_SUPPORT_CLAIM
-		AddData([]byte(name)).    //<name>
-		AddData(rev(bytes)).      //<claimid>
-		AddOp(txscript.OP_2DROP). //OP_2DROP
-		AddOp(txscript.OP_DROP).  //OP_DROP
-		AddOps(pkscript).         //OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
+		AddOp(txscript.OP_SUPPORTCLAIM). //OP_SUPPORT_CLAIM
+		AddData([]byte(name)).           //<name>
+		AddData(rev(bytes)).             //<claimid>
+		AddOp(txscript.OP_2DROP).        //OP_2DROP
+		AddOp(txscript.OP_DROP).         //OP_DROP
+		AddOps(pkscript).                //OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
 		Script()
 
 }
@@ -42,12 +42,12 @@ func getClaimNamePayoutScript(name string, value []byte, address btcutil.Address
 	}
 
 	return txscript.NewScriptBuilder().
-		AddOp(txscript.OP_NOP6).  //OP_CLAIMNAME
-		AddData([]byte(name)).    //<name>
-		AddData(value).           //<value>
-		AddOp(txscript.OP_2DROP). //OP_2DROP
-		AddOp(txscript.OP_DROP).  //OP_DROP
-		AddOps(pkscript).         //OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
+		AddOp(txscript.OP_CLAIMNAME). //OP_CLAIMNAME
+		AddData([]byte(name)).        //<name>
+		AddData(value).               //<value>
+		AddOp(txscript.OP_2DROP).     //OP_2DROP
+		AddOp(txscript.OP_DROP).      //OP_DROP
+		AddOps(pkscript).             //OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
 		Script()
 }
 
@@ -65,12 +65,12 @@ func getUpdateClaimPayoutScript(name, claimid string, value []byte, address btcu
 	}
 
 	return txscript.NewScriptBuilder().
-		AddOp(txscript.OP_NOP8).  //OP_UPDATE_CLAIM
-		AddData([]byte(name)).    //<name>
-		AddData(rev(bytes)).      //<claimid>
-		AddData(value).           //<value>
-		AddOp(txscript.OP_2DROP). //OP_2DROP
-		AddOp(txscript.OP_DROP).  //OP_DROP
-		AddOps(pkscript).         //OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
+		AddOp(txscript.OP_UPDATECLAIM). //OP_UPDATE_CLAIM
+		AddData([]byte(name)).          //<name>
+		AddData(rev(bytes)).            //<claimid>
+		AddData(value).                 //<value>
+		AddOp(txscript.OP_2DROP).       //OP_2DROP
+		AddOp(txscript.OP_DROP).        //OP_DROP
+		AddOps(pkscript).               //OP_DUP OP_HASH160 <address> OP_EQUALVERIFY OP_CHECKSIG
 		Script()
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/lbryio/lbry.go/v2/schema/address"
 	"github.com/lbryio/lbry.go/v2/schema/keys"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/lbryio/lbcd/btcec"
 )
 
 func Sign(privKey btcec.PrivateKey, channel StakeHelper, claim StakeHelper, k string) (*keys.Signature, error) {

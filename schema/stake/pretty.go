@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func marshalToString(c *StakeHelper) (string, error) {
-	m_pb := &jsonpb.Marshaler{}
+	m_pb := &protojson.Marshal()
 	if c.IsSupport() {
 		return m_pb.MarshalToString(c.Support)
 	}

@@ -5,8 +5,8 @@ import (
 
 	types "github.com/lbryio/types/v2/go"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func ToJSON(value []byte) (string, error) {
@@ -17,8 +17,8 @@ func ToJSON(value []byte) (string, error) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	m := jsonpb.Marshaler{Indent: "  "}
-	err = m.Marshal(b, c)
+	m := protojson.MarshalOptions{Indent: "  "}
+	b, err = m.Marshal(c)
 
 	return b.String(), err
 }

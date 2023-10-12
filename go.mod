@@ -1,12 +1,8 @@
-go 1.18
+go 1.20
 
 module github.com/lbryio/lbry.go/v2
 
-replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19
-
 require (
-	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32
-	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
 	github.com/go-errors/errors v1.4.2
@@ -14,6 +10,8 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
+	github.com/lbryio/lbcd v0.22.119
+	github.com/lbryio/lbcutil v1.0.202
 	github.com/lbryio/ozzo-validation v3.0.3-0.20170512160344-202201e212ec+incompatible
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5
@@ -44,12 +42,11 @@ require (
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

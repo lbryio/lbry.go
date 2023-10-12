@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -139,7 +139,7 @@ func TestBlob_Plaintext(t *testing.T) {
 }
 
 func testdata(t *testing.T, filename string) []byte {
-	data, err := ioutil.ReadFile(filepath.Join("testdata", filename))
+	data, err := os.ReadFile(filepath.Join("testdata", filename))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,9 +5,10 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/lbryio/lbcd/chaincfg"
+	btcutil "github.com/lbryio/lbcutil"
+	"github.com/lbryio/lbcutil/base58"
+
 	"golang.org/x/crypto/ripemd160"
 )
 

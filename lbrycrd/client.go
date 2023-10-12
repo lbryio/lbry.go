@@ -6,17 +6,17 @@ import (
 	"os"
 	"strconv"
 
+	btcutil "github.com/lbryio/lbcutil"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	c "github.com/lbryio/lbry.go/v2/schema/stake"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/go-ini/ini"
+	"github.com/lbryio/lbcd/btcec"
+	"github.com/lbryio/lbcd/btcjson"
+	"github.com/lbryio/lbcd/chaincfg"
+	"github.com/lbryio/lbcd/chaincfg/chainhash"
+	"github.com/lbryio/lbcd/rpcclient"
+	"github.com/lbryio/lbcd/wire"
 )
 
 const DefaultPort = 9245
@@ -117,7 +117,7 @@ func New(lbrycrdURL string, chainParams *chaincfg.Params) (*Client, error) {
 		Host:         u.Host,
 		User:         u.User.Username(),
 		Pass:         password,
-		Params:       chain,
+		Params:       chain.Name,
 		HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
 		DisableTLS:   true, // Bitcoin core does not provide TLS by default
 	}
@@ -158,7 +158,7 @@ func (c *Client) SimpleSend(toAddress string, amount float64) (*chainhash.Hash, 
 		return nil, errors.Err(err)
 	}
 
-	hash, err := c.Client.SendToAddress(decodedAddress, lbcAmount)
+	hash, err := c.Client.SendToAddress(decodedAddress, lbcAmount, nil)
 	if err != nil {
 		if err.Error() == "-6: Insufficient funds" {
 			err = errors.Err(errInsufficientFunds)
@@ -211,7 +211,7 @@ func getLbrycrdURLFromConfFile() (string, error) {
 }
 
 func (c *Client) CreateBaseRawTx(inputs []btcjson.TransactionInput, change float64) (*wire.MsgTx, error) {
-	addresses := make(map[btcutil.Address]btcutil.Amount)
+	addresses := make(map[btcutil.Address]interface{})
 	changeAddress, err := c.GetNewAddress("")
 	if err != nil {
 		return nil, errors.Err(err)

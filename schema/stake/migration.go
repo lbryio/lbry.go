@@ -7,7 +7,7 @@ import (
 	v1pb "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/lbryio/lbcutil/base58"
 )
 
 const lbrySDHash = "lbry_sd_hash"

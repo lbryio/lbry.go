@@ -10,8 +10,8 @@ import (
 	legacy_pb "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/golang/protobuf/proto"
+	"github.com/lbryio/lbcd/btcec"
+	"google.golang.org/protobuf/proto"
 )
 
 type version byte

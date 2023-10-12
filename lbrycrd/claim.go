@@ -7,8 +7,8 @@ import (
 	c "github.com/lbryio/lbry.go/v2/schema/stake"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/lbryio/lbcd/btcec"
+	"github.com/lbryio/lbcd/wire"
 )
 
 func NewImageStreamClaim() (*c.StakeHelper, error) {
