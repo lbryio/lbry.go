@@ -17,7 +17,7 @@ import (
 	"github.com/lbryio/lbcutil"
 
 	"github.com/cockroachdb/errors"
-	"github.com/go-ini/ini"
+	"gopkg.in/ini.v1"
 )
 
 const DefaultPort = 9245
