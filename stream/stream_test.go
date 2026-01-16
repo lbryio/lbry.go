@@ -7,7 +7,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -182,7 +181,7 @@ func TestEncode(t *testing.T) {
 
 	outPath := t.TempDir()
 	handler := func(h string, b []byte) error {
-		return ioutil.WriteFile(path.Join(outPath, h), b, os.ModePerm)
+		return os.WriteFile(path.Join(outPath, h), b, os.ModePerm)
 	}
 	writtenManifest, err := enc.Encode(handler)
 	if err != nil {
@@ -196,7 +195,7 @@ func TestEncode(t *testing.T) {
 		t.Errorf("expected length of %d , got %d", len(data), enc.SourceLen())
 	}
 
-	sdb, err := ioutil.ReadFile(path.Join(outPath, writtenManifest[0]))
+	sdb, err := os.ReadFile(path.Join(outPath, writtenManifest[0]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +205,7 @@ func TestEncode(t *testing.T) {
 		t.Errorf("written sd blob does not match original sd blob")
 	}
 	for i := 1; i < len(stream); i++ { // start at 1 to skip sd blob
-		b, err := ioutil.ReadFile(path.Join(outPath, writtenManifest[i]))
+		b, err := os.ReadFile(path.Join(outPath, writtenManifest[i]))
 		if err != nil {
 			t.Fatal(err)
 		}
