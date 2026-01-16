@@ -7,6 +7,8 @@ import (
 	"hash"
 	"io"
 	"math"
+	"os"
+	"path"
 
 	"github.com/cockroachdb/errors"
 )

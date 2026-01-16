@@ -1,8 +1,9 @@
 package address
 
 import (
-	"github.com/cockroachdb/errors"
 	"github.com/lbryio/lbry.go/v3/schema/address/base58"
+
+	"github.com/cockroachdb/errors"
 )
 
 func DecodeAddress(address string, blockchainName string) ([addressLength]byte, error) {

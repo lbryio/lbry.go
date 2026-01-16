@@ -9,6 +9,7 @@ import (
 	"github.com/lbryio/lbry.go/v3/schema/address"
 
 	"github.com/lbryio/lbcutil/base58"
+
 	"gotest.tools/assert"
 )
 

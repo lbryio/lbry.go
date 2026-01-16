@@ -4,8 +4,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/lbryio/lbcd/btcec"
 	"github.com/lbryio/lbry.go/v3/schema/keys"
+
+	"github.com/lbryio/lbcd/btcec"
 	pb "github.com/lbryio/types/v2/go"
 
 	"gotest.tools/assert"

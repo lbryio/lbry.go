@@ -9,12 +9,12 @@ import (
 
 	"github.com/lbryio/lbry.go/v3/lbrycrd"
 	"github.com/lbryio/lbry.go/v3/stream"
-	pb "github.com/lbryio/types/v2/go"
 
 	"github.com/lbryio/lbcd/btcjson"
 	"github.com/lbryio/lbcd/chaincfg/chainhash"
 	"github.com/lbryio/lbcd/wire"
 	"github.com/lbryio/lbcutil"
+	pb "github.com/lbryio/types/v2/go"
 
 	"github.com/cockroachdb/errors"
 	"github.com/golang/protobuf/proto"
@@ -108,7 +108,7 @@ func Publish(client *lbrycrd.Client, path, name, address string, details Details
 	return st, signedTx, txid, nil
 }
 
-//TODO: lots of assumptions. hardcoded values need to be passed in or calculated
+// TODO: lots of assumptions. hardcoded values need to be passed in or calculated
 func baseTx(client *lbrycrd.Client, amount float64, changeAddress lbcutil.Address) (*wire.MsgTx, error) {
 	txFee := 0.0002 // TODO: estimate this better?
 

@@ -6,12 +6,13 @@ import (
 
 	"github.com/lbryio/lbry.go/v3/schema/address"
 	"github.com/lbryio/lbry.go/v3/schema/keys"
+
+	"github.com/lbryio/lbcd/btcec"
 	v1PB "github.com/lbryio/types/v1/go"
 	v2PB "github.com/lbryio/types/v2/go"
 
 	"github.com/cockroachdb/errors"
 	"github.com/golang/protobuf/proto"
-	"github.com/lbryio/lbcd/btcec"
 )
 
 type version byte

@@ -7,11 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/lbryio/lbry.go/v3/dht/bits"
 
 	"github.com/cockroachdb/errors"
+	"golang.org/x/time/rate"
 )
 
 type queueEdit struct {

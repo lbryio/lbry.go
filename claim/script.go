@@ -3,9 +3,10 @@ package claim
 import (
 	"encoding/hex"
 
-	"github.com/cockroachdb/errors"
 	"github.com/lbryio/lbcd/txscript"
 	"github.com/lbryio/lbcutil"
+
+	"github.com/cockroachdb/errors"
 )
 
 func ClaimSupportPayoutScript(name, claimid string, address lbcutil.Address) ([]byte, error) {

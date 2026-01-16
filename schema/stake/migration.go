@@ -3,11 +3,11 @@ package stake
 import (
 	"encoding/hex"
 
-	"github.com/cockroachdb/errors"
+	"github.com/lbryio/lbcutil/base58"
 	v1pb "github.com/lbryio/types/v1/go"
 	pb "github.com/lbryio/types/v2/go"
 
-	"github.com/lbryio/lbcutil/base58"
+	"github.com/cockroachdb/errors"
 )
 
 const lbrySDHash = "lbry_sd_hash"

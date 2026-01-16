@@ -6,11 +6,12 @@ import (
 
 	"github.com/lbryio/lbry.go/v3/lbrycrd"
 	"github.com/lbryio/lbry.go/v3/schema/stake"
+
+	"github.com/lbryio/lbcutil"
 	types "github.com/lbryio/types/v2/go"
 
 	"github.com/cockroachdb/errors"
 	"github.com/golang/protobuf/proto"
-	"github.com/lbryio/lbcutil"
 	"github.com/spf13/cast"
 )
 

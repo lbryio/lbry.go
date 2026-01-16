@@ -3,13 +3,12 @@ package lbrycrd
 import (
 	"encoding/hex"
 
-	"golang.org/x/crypto/ripemd160"
-
 	"github.com/lbryio/lbcd/chaincfg"
 	"github.com/lbryio/lbcutil"
 	"github.com/lbryio/lbcutil/base58"
 
 	"github.com/cockroachdb/errors"
+	"golang.org/x/crypto/ripemd160"
 )
 
 // DecodeAddress decodes the string encoding of an address and returns

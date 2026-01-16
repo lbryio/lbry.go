@@ -1,8 +1,9 @@
 package lbrycrd
 
 import (
-	"github.com/cockroachdb/errors"
 	"github.com/lbryio/lbcd/btcjson"
+
+	"github.com/cockroachdb/errors"
 )
 
 type outputFinder struct {

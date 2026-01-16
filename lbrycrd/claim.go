@@ -4,11 +4,12 @@ import (
 	"encoding/hex"
 
 	c "github.com/lbryio/lbry.go/v3/schema/stake"
+
+	"github.com/lbryio/lbcd/btcec"
+	"github.com/lbryio/lbcd/wire"
 	pb "github.com/lbryio/types/v2/go"
 
 	"github.com/cockroachdb/errors"
-	"github.com/lbryio/lbcd/btcec"
-	"github.com/lbryio/lbcd/wire"
 )
 
 func NewImageStreamClaim() (*c.Helper, error) {

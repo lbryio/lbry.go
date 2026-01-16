@@ -7,8 +7,9 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"github.com/cockroachdb/errors"
 	"github.com/lbryio/lbry.go/v2/schema/address"
+
+	"github.com/cockroachdb/errors"
 )
 
 const SECP256k1 = "SECP256k1"

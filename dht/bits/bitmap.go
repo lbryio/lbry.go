@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-
 	"github.com/lyoshenka/bencode"
 )
 

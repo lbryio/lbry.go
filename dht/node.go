@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lbryio/lbry.go/v3/dht/bits"
 	"github.com/lbryio/lbry.go/v3/extras/stop"
+
+	"github.com/cockroachdb/errors"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lyoshenka/bencode"
 )
 
