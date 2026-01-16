@@ -1,9 +1,0 @@
-os: linux
-dist: trusty
-language: go
-
-go:
-  - 1.15.x
-
-script:
-  - ./build_and_test.sh

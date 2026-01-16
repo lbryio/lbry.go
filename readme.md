@@ -4,9 +4,7 @@ lbry.go is a set of tools and projects implemented in Golang. See each subfolder
 
 **there are significant updates in the [v3 branch](https://github.com/lbryio/lbry.go/tree/v3). if you're starting a new project, strongly consider using that version instead**
 
-[![Build Status](https://travis-ci.org/lbryio/lbry.go.svg?branch=master)](https://travis-ci.org/lbryio/lbry.go)
-
-This project uses Go modules. Make sure you have Go 1.11+ installed.
+This project uses Go modules. Make sure you have Go 1.25+ installed.
 
 - Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
 - OSX: `brew install go`
@@ -26,7 +24,7 @@ Make sure you `go fmt` your code before submitting PRs.
 
 This codebase follows the semver standards. You can find the releases [here](https://github.com/lbryio/lbry.go/releases)
 
-You can include the libraries by running `go get github.com/lbryio/lbry.go@latest`. 
+You can include the libraries by running `go get github.com/lbryio/lbry.go/v2@master`. 
 You can lock (and you should) to a version whenever you make use of this set of libraries.
 
 ## License

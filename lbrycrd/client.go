@@ -16,7 +16,7 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	"github.com/go-ini/ini"
+	"gopkg.in/ini.v1"
 )
 
 const DefaultPort = 9245
