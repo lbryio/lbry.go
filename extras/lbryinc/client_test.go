@@ -6,9 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"golang.org/x/oauth2"
-
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
 )
 
 func launchDummyServer(lastReq **http.Request, path, response string, status int) *httptest.Server {

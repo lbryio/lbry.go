@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
+	schema "github.com/lbryio/lbry.go/v2/schema/stake"
 	"github.com/lbryio/lbry.go/v2/stream"
 
-	schema "github.com/lbryio/lbry.go/v2/schema/stake"
 	lbryschema "github.com/lbryio/types/v2/go"
 
 	"github.com/shopspring/decimal"
@@ -442,7 +442,7 @@ const (
 
 type SpecialContentType string
 
-//IsContentSpecial returns true if the claim is of a special content type
+// IsContentSpecial returns true if the claim is of a special content type
 func (c *Claim) IsContentSpecial(specialTags ...SpecialContentType) bool {
 	for _, t := range c.Value.GetTags() {
 		for _, ct := range specialTags {
@@ -599,7 +599,7 @@ type transactionListBlob struct {
 	Nout         int    `json:"nout"`
 }
 
-//TODO: this repeats all the fields from transactionListBlob which doesn't make sense
+// TODO: this repeats all the fields from transactionListBlob which doesn't make sense
 // but if i extend the type with transactionListBlob it doesn't fill the fields. does our unmarshaller crap out on these?
 type supportBlob struct {
 	Address      string `json:"address"`

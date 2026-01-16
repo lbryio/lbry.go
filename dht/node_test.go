@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbry.go/v2/dht/bits"
+
 	"github.com/lyoshenka/bencode"
 )
 

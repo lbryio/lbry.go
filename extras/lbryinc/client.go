@@ -10,9 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	"golang.org/x/oauth2"
-
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
 )
 
 const (

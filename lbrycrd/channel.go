@@ -1,11 +1,13 @@
 package lbrycrd
 
 import (
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/schema/keys"
 	c "github.com/lbryio/lbry.go/v2/schema/stake"
+
 	pb "github.com/lbryio/types/v2/go"
+
+	"github.com/btcsuite/btcd/btcec"
 )
 
 func NewChannel() (*c.StakeHelper, *btcec.PrivateKey, error) {

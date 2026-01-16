@@ -2,9 +2,10 @@ package util
 
 import (
 	"encoding/hex"
+	"strings"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
-	"strings"
 )
 
 func StringSplitArg(stringToSplit, separator string) []interface{} {

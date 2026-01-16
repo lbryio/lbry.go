@@ -468,7 +468,7 @@ func (n *Node) Store(hash bits.Bitmap, c Contact) {
 	n.store.Upsert(hash, c)
 }
 
-//AddKnownNode adds a known-good node to the routing table
+// AddKnownNode adds a known-good node to the routing table
 func (n *Node) AddKnownNode(c Contact) {
 	n.rt.Update(c)
 }

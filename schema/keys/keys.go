@@ -42,7 +42,7 @@ func PublicKeyToDER(publicKey *btcec.PublicKey) ([]byte, error) {
 
 }
 
-//This type provides compatibility with the btcec package
+// This type provides compatibility with the btcec package
 type ecPrivateKey struct {
 	Version       int
 	PrivateKey    []byte
@@ -84,7 +84,7 @@ func GetPrivateKeyFromBytes(privKeyBytes []byte) (*btcec.PrivateKey, *btcec.Publ
 	return priv, publ, nil
 }
 
-//Returns a btec.Private key object if provided a correct secp256k1 encoded pem.
+// Returns a btec.Private key object if provided a correct secp256k1 encoded pem.
 func ExtractKeyFromPem(pm string) (*btcec.PrivateKey, *btcec.PublicKey) {
 	byta := []byte(pm)
 	blck, _ := pem.Decode(byta)

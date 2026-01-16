@@ -1,7 +1,9 @@
-/*Package stop implements the stopper pattern for golang concurrency management. The main use case is to gracefully
- exit an application. The pattern allows for a hierarchy of stoppers. Each package should have its own unexported stopper.
- The package should maintain startup and shutdown exported methods. If the stopper should stop when another stopper for
- a different package stops, the parent argument for the initialization of a stopper be used to create the dependency.
+/*
+Package stop implements the stopper pattern for golang concurrency management. The main use case is to gracefully
+
+	exit an application. The pattern allows for a hierarchy of stoppers. Each package should have its own unexported stopper.
+	The package should maintain startup and shutdown exported methods. If the stopper should stop when another stopper for
+	a different package stops, the parent argument for the initialization of a stopper be used to create the dependency.
 
 The package also comes with a debugging tool to help in determining why and where a stopper is not stopping as expected.
 If a more complex concurrency is used, it is recommended to implement the library using `DoneNamed` and `AddNamed`.
@@ -75,7 +77,7 @@ func (s *Group) Child() *Group {
 	return New(s)
 }
 
-//AddNamed is the same as Add but will register the functional name of the routine for later output. See `DoneNamed`.
+// AddNamed is the same as Add but will register the functional name of the routine for later output. See `DoneNamed`.
 func (s *Group) AddNamed(delta int, name string) {
 	s.Add(delta)
 
@@ -95,7 +97,7 @@ func (s *Group) AddNamed(delta int, name string) {
 	}
 }
 
-//DoneNamed is the same as `Done` but will output the functional name of all remaining named routines and the waiting on count.
+// DoneNamed is the same as `Done` but will output the functional name of all remaining named routines and the waiting on count.
 func (s *Group) DoneNamed(name string) {
 	defer s.Done()
 

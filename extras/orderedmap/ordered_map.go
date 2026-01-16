@@ -56,7 +56,7 @@ func (o *Map) Set(key string, value interface{}) {
 
 const outOfRange = "position value %d is outside of the range %d - %d"
 
-//InsertAt This is a zero based position index: 0,1,2,3..n(from left) OR -1,-2,-3...-n(from right) where -1 is the last place.
+// InsertAt This is a zero based position index: 0,1,2,3..n(from left) OR -1,-2,-3...-n(from right) where -1 is the last place.
 func (o *Map) InsertAt(key string, value interface{}, position int) error {
 	o.l.Lock()
 	defer o.l.Unlock()

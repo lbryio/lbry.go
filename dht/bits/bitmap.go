@@ -67,10 +67,9 @@ func (b Bitmap) Big() *big.Int {
 
 // Cmp compares b and other and returns:
 //
-//   -1 if b < other
-//    0 if b == other
-//   +1 if b > other
-//
+//	-1 if b < other
+//	 0 if b == other
+//	+1 if b > other
 func (b Bitmap) Cmp(other Bitmap) int {
 	for k := range b {
 		if b[k] < other[k] {
@@ -282,13 +281,13 @@ func FromBytesP(data []byte) Bitmap {
 	return bmp
 }
 
-//FromString returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
+// FromString returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters
 func FromString(data string) (Bitmap, error) {
 	return FromBytes([]byte(data))
 }
 
-//FromStringP returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
+// FromStringP returns a bitmap by converting the string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters otherwise it wil panic.
 func FromStringP(data string) Bitmap {
 	bmp, err := FromString(data)
@@ -298,7 +297,7 @@ func FromStringP(data string) Bitmap {
 	return bmp
 }
 
-//FromHex returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
+// FromHex returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters
 func FromHex(hexStr string) (Bitmap, error) {
 	decoded, err := hex.DecodeString(hexStr)
@@ -308,7 +307,7 @@ func FromHex(hexStr string) (Bitmap, error) {
 	return FromBytes(decoded)
 }
 
-//FromHexP returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
+// FromHexP returns a bitmap by converting the hex string to bytes and creating from bytes as long as the byte array
 // is of a specific length specified in the parameters otherwise it wil panic.
 func FromHexP(hexStr string) Bitmap {
 	bmp, err := FromHex(hexStr)
@@ -318,13 +317,13 @@ func FromHexP(hexStr string) Bitmap {
 	return bmp
 }
 
-//FromShortHex returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
+// FromShortHex returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
 // hex string and creating from bytes as long as the byte array is of a specific length specified in the parameters
 func FromShortHex(hexStr string) (Bitmap, error) {
 	return FromHex(strings.Repeat("0", NumBytes*2-len(hexStr)) + hexStr)
 }
 
-//FromShortHexP returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
+// FromShortHexP returns a bitmap by converting the hex string to bytes, adding the leading zeros prefix to the
 // hex string and creating from bytes as long as the byte array is of a specific length specified in the parameters
 // otherwise it wil panic.
 func FromShortHexP(hexStr string) Bitmap {

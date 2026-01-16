@@ -5,6 +5,7 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	c "github.com/lbryio/lbry.go/v2/schema/stake"
+
 	pb "github.com/lbryio/types/v2/go"
 
 	"github.com/btcsuite/btcd/btcec"
